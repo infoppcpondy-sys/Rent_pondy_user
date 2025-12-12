@@ -4680,53 +4680,53 @@ const formattedCreatedAt = Date.now
 };
 
   const propertyDetailsList = [
-    { heading: true, label: "Basic Property Info" }, // Heading 1
-    { icon: fieldIcons.propertyMode, label: "Property Mode", value:  propertyDetails.propertyMode},
-    { icon: fieldIcons.propertyType, label: "Property Type", value: propertyDetails.propertyType },
-    { icon: fieldIcons.rentType, label: "rentType", value: propertyDetails.rentType },
+    { heading: true, label: "Basic property info" }, // Heading 1
+    { icon: fieldIcons.propertyMode, label: "Property mode", value:  propertyDetails.propertyMode},
+    { icon: fieldIcons.propertyType, label: "Property type", value: propertyDetails.propertyType },
+    { icon: fieldIcons.rentType, label: "Rent type", value: propertyDetails.rentType },
         {
       icon: fieldIcons.totalArea,
-      label: "Total Area",
+      label: "Total area",
       value: `${propertyDetails.totalArea} ${propertyDetails.areaUnit}`, // Combined value
     },
 
     { icon: fieldIcons.negotiation, label: "Negotiation", value: propertyDetails.negotiation },
 
-           { icon: fieldIcons.securityDeposit, label: "security Deposit ₹", value: propertyDetails.securityDeposit },
-    { icon: <AiOutlineEye />, label: "No.Of.Views", value:propertyDetails.views },
+           { icon: fieldIcons.securityDeposit, label: "Security deposit ₹", value: propertyDetails.securityDeposit },
+    { icon: <AiOutlineEye />, label: "No. of views", value:propertyDetails.views },
 
 
-    { heading: true, label: "Property Features" }, // Heading 1
+    { heading: true, label: "Property features" }, // Heading 1
 
 
     { icon: fieldIcons.bedrooms, label: "Bedrooms", value: propertyDetails.bedrooms },
 
-    { icon: fieldIcons.floorNo, label: "Floor No", value:propertyDetails.floorNo },
+    { icon: fieldIcons.floorNo, label: "Floor no", value:propertyDetails.floorNo },
     { icon: fieldIcons.kitchen, label: "Kitchen", value: propertyDetails.kitchen},
     { icon: fieldIcons.balconies, label: "Balconies", value: propertyDetails.balconies},
 { label: "Western", value: propertyDetails.western, icon: fieldIcons.western},
 { label: "Attached", value: propertyDetails.attachedBathrooms, icon:fieldIcons.attachedBathrooms },
-    { icon: fieldIcons.wheelChairAvailable, label: "Wheel Chair", value: propertyDetails.wheelChairAvailable },
+    { icon: fieldIcons.wheelChairAvailable, label: "Wheel chair", value: propertyDetails.wheelChairAvailable },
 
-    { icon: fieldIcons.carParking, label: "Car Park", value: propertyDetails.carParking },
+    { icon: fieldIcons.carParking, label: "Car park", value: propertyDetails.carParking },
     { icon: fieldIcons.lift, label: "Lift", value: propertyDetails.lift },
     { icon: fieldIcons.furnished, label: "Furnished", value: propertyDetails.furnished },
     { icon: fieldIcons.facing, label: "Facing", value: propertyDetails.facing },
-    { icon: fieldIcons.propertyAge, label: "Property Age", value: propertyDetails.propertyAge },
-    { icon: fieldIcons.postedBy, label: "Posted By", value:propertyDetails.postedBy},
-    { icon: fieldIcons.availableDate, label: "availableDate", value: propertyDetails.availableDate },
+    { icon: fieldIcons.propertyAge, label: "Property age", value: propertyDetails.propertyAge },
+    { icon: fieldIcons.postedBy, label: "Posted by", value:propertyDetails.postedBy},
+    { icon: fieldIcons.availableDate, label: "Available date", value: propertyDetails.availableDate },
 
-    { icon: fieldIcons.availableDate, label: "Posted On", value:formattedCreatedAt },
+    { icon: fieldIcons.availableDate, label: "Posted on", value:formattedCreatedAt },
 
-    { heading: true, label: "Property Description" }, // Heading 3
+    { heading: true, label: "Property description" }, // Heading 3
     { icon: fieldIcons.description, label: "Description" ,  value: propertyDetails.description },
-      { heading: true, label: "Tenant Prefrence" }, // Heading 4
+      { heading: true, label: "Tenant preferences" }, // Heading 4
 
-    { icon: fieldIcons.familyMembers, label: "No. of family Members", value: propertyDetails.familyMembers },
-    { icon: fieldIcons.foodHabit, label: "Food Habit", value: propertyDetails.foodHabit },
-    { icon: fieldIcons.jobType, label: "Job Type", value: propertyDetails.jobType },
+    { icon: fieldIcons.familyMembers, label: "No. of family members", value: propertyDetails.familyMembers },
+    { icon: fieldIcons.foodHabit, label: "Food habit", value: propertyDetails.foodHabit },
+    { icon: fieldIcons.jobType, label: "Job type", value: propertyDetails.jobType },
     { icon: fieldIcons.petAllowed, label: "Pet", value: propertyDetails.petAllowed },
-    { heading: true, label: "rental Property Address " }, // Heading 3
+    { heading: true, label: "Rental property address" }, // Heading 3
     { icon: fieldIcons.country, label: "Country", value: propertyDetails.country },
     { icon: fieldIcons.state, label: "State", value: propertyDetails.state },
     { icon: fieldIcons.city, label: "City", value: propertyDetails.city },
@@ -4734,11 +4734,11 @@ const formattedCreatedAt = Date.now
     { icon: fieldIcons.area, label: "Area", value: propertyDetails.area },
     
     { icon: fieldIcons.nagar, label: "Nagar", value: propertyDetails.nagar },
-       { icon: fieldIcons.streetName, label: "Street Name", value: propertyDetails.streetName },
+       { icon: fieldIcons.streetName, label: "Street name", value: propertyDetails.streetName },
    
-    { icon: fieldIcons.doorNumber, label: "Door Number", value: propertyDetails.doorNumber },
+    { icon: fieldIcons.doorNumber, label: "Door number", value: propertyDetails.doorNumber },
     { icon: fieldIcons.pinCode, label: "Pincode", value: propertyDetails.pinCode },
-    { icon: fieldIcons.locationCoordinates, label: "lat. & lng.", value: propertyDetails.locationCoordinates },
+    { icon: fieldIcons.locationCoordinates, label: "Lat. & lng.", value: propertyDetails.locationCoordinates },
 
   ];
 
@@ -4746,11 +4746,11 @@ const excludedPropertyTypes = ["plot", "land", "agricultural land"];
 
 const filteredDetailsList = propertyDetailsList.filter((item) => {
   const isPropertyFeatureSection =
-    item.label === "Tenant Prefrence" ||
+    item.label === "Tenant preferences" ||
     [
-      "Bedrooms", "Floor No", "Kitchen", "Balconies",
-      "Wheel Chair", "Western", "Attached", "Car Park", "Lift", "Furnished",
-      "No. of family Members", "Food Habit", "Job Type", "Pet" , "Door Number"
+      "Bedrooms", "Floor no", "Kitchen", "Balconies",
+      "Wheel chair", "Western", "Attached", "Car park", "Lift", "Furnished",
+      "No. of family members", "Food habit", "Job type", "Pet" , "Door number"
     ].includes(item.label);
 
   // Make propertyType lowercase for comparison
@@ -4764,27 +4764,27 @@ const filteredDetailsList = propertyDetailsList.filter((item) => {
 });
 
   const labelToKeyMap  = {
-    "Phone Number": "phoneNumber",
-    "Alternate Phone": "altPhoneNumber",
+    "Phone number": "phoneNumber",
+    "Alternate phone": "altPhoneNumber",
     "City": "city",
     "Area": "area",
-    "Min Price": "minPrice",
-    "Max Price": "maxPrice",
+    "Min price": "minPrice",
+    "Max price": "maxPrice",
     "Facing": "facing",
     "Bedrooms": "bedrooms",
-    "Property Mode": "propertyMode",
-    "Property Type": "propertyType",
-    "Rent Type": "rentType",
-    "Floor No": "floorNo",
-    "Requirement Type": "requirementType",
-    "Family Members": "familyMembers",
-    "Food Habit": "foodHabit",
-    "Job Type": "jobType",
-    "Pet Allowed": "petAllowed",
+    "Property mode": "propertyMode",
+    "Property type": "propertyType",
+    "Rent type": "rentType",
+    "Floor no": "floorNo",
+    "Requirement type": "requirementType",
+    "Family members": "familyMembers",
+    "Food habit": "foodHabit",
+    "Job type": "jobType",
+    "Pet allowed": "petAllowed",
     "State": "state",
     "Description": "description",
-    "RA Name": "raName",
-    "AlternatePhone": "alternatePhone"
+    "RA name": "raName",
+    "Alternate phone": "alternatePhone"
   };
 
 const isFieldMatched = (label, value) => {

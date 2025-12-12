@@ -884,68 +884,68 @@ const formattedCreatedAt = Date.now
 };
 
   const propertyDetailsList = [
-    { heading: true, label: "Basic Property Info" }, // Heading 1
-    { icon: fieldIcons.propertyMode, label: "Property Mode", value:  formData.propertyMode},
-    { icon: fieldIcons.propertyType, label: "Property Type", value: formData.propertyType },
+    { heading: true, label: "Basic property info" }, // Heading 1
+    { icon: fieldIcons.propertyMode, label: "Property mode", value:  formData.propertyMode},
+    { icon: fieldIcons.propertyType, label: "Property type", value: formData.propertyType },
     // { icon: <MdOutlineCurrencyRupee />, label: "Price", value: formData.price },
     // { icon: fieldIcons.email, label: "Length", value: formData.length },
     // { icon: fieldIcons.email, label: "Breadth", value: formData.breadth  },
     // // { icon: <RiLayoutLine />, label: "Total Area", value: formData.totalArea},
-    { icon: fieldIcons.rentType, label: "Rent Type", value: formData.rentType },
+    { icon: fieldIcons.rentType, label: "Rent type", value: formData.rentType },
            {
       icon: fieldIcons.totalArea,
-      label: "Total Area",
+      label: "Total area",
       value: `${formData.totalArea} ${formData.areaUnit}`, // Combined value
     },
         { icon: fieldIcons.negotiation, label: "Negotiation", value: formData.negotiation },
 
-    { icon: fieldIcons.securityDeposit, label: "Security Deposit ₹", value: formData.securityDeposit },
+    { icon: fieldIcons.securityDeposit, label: "Security deposit ₹", value: formData.securityDeposit },
 
 
   
-    { heading: true, label: "Property Features" }, // Heading 1
+    { heading: true, label: "Property features" }, // Heading 1
 
-    // { icon: <BiRuler />, label: "Area Unit", value: formData.areaUnit },
+    // { icon: <BiRuler />, label: "Area unit", value: formData.areaUnit },
     // { icon: fieldIcons.email, label: "Ownership", value: formData.ownership },
-    // { icon: fieldIcons.email, label: "Property Approved", value: formData.propertyApproved },
-    // { icon: fieldIcons.email, label: "Bank Loan", value: formData.bankLoan },
+    // { icon: fieldIcons.email, label: "Property approved", value: formData.propertyApproved },
+    // { icon: fieldIcons.email, label: "Bank loan", value: formData.bankLoan },
 
 
     { icon: fieldIcons.bedrooms, label: "Bedrooms", value: formData.bedrooms },
 
-    { icon: fieldIcons.floorNo, label: "Floor No", value:formData.floorNo },
+    { icon: fieldIcons.floorNo, label: "Floor no", value:formData.floorNo },
     { icon: fieldIcons.kitchen, label: "Kitchen", value: formData.kitchen},
-    // { icon: <MdOutlineKitchen />, label: "Kitchen Type", value: formData.kitchenType },
+    // { icon: <MdOutlineKitchen />, label: "Kitchen type", value: formData.kitchenType },
     { icon: fieldIcons.balconies, label: "Balconies", value: formData.balconies},
     // { icon: fieldIcons.email, label: "Floors", value: formData.numberOfFloors },
 { label: "Western", value: formData.western, icon: fieldIcons.western},
 { label: "Attached", value: formData.attachedBathrooms, icon:fieldIcons.attachedBathrooms },
-    { icon: fieldIcons.wheelChairAvailable, label: "Wheel Chair", value: formData.wheelChairAvailable },
+    { icon: fieldIcons.wheelChairAvailable, label: "Wheel chair", value: formData.wheelChairAvailable },
 
-    { icon: fieldIcons.carParking, label: "Car Park", value: formData.carParking },
+    { icon: fieldIcons.carParking, label: "Car park", value: formData.carParking },
     { icon: fieldIcons.lift, label: "Lift", value: formData.lift },
     // { heading: true, label: "Other details" }, // Heading 2
 
     { icon: fieldIcons.furnished, label: "Furnished", value: formData.furnished },
     { icon: fieldIcons.facing, label: "Facing", value: formData.facing },
-    { icon: fieldIcons.propertyAge, label: "Property Age", value: formData.propertyAge },
+    { icon: fieldIcons.propertyAge, label: "Property age", value: formData.propertyAge },
 
-    // { icon: fieldIcons.email, label: "Sale Mode", value: formData.salesMode },
-    // { icon: fieldIcons.email, label: "Sales Type", value: formData.salesType },
-    { icon: fieldIcons.postedBy, label: "Posted By", value:formData.postedBy},
+    // { icon: fieldIcons.email, label: "Sale mode", value: formData.salesMode },
+    // { icon: fieldIcons.email, label: "Sales type", value: formData.salesType },
+    { icon: fieldIcons.postedBy, label: "Posted by", value:formData.postedBy},
     // { icon: <AiOutlineEye />, label: "No.Of.Views", value: "1200" },
-    { icon: fieldIcons.availableDate, label: "Posted On", value:formattedCreatedAt },
-          { icon: fieldIcons.availableDate, label: "Available From", value: formData.availableDate },
+    { icon: fieldIcons.availableDate, label: "Posted on", value:formattedCreatedAt },
+          { icon: fieldIcons.availableDate, label: "Available from", value: formData.availableDate },
 
-    { heading: true, label: "Property Description" }, // Heading 3
+    { heading: true, label: "Property description" }, // Heading 3
     { icon: fieldIcons.description, label: "Description" ,  value: formData.description },
-      { heading: true, label: "Tenant Prefrences" }, // Heading 4
+      { heading: true, label: "Tenant preferences" }, // Heading 4
 
-    { icon: fieldIcons.familyMembers, label: "No. of family Members", value: formData.familyMembers },
-    { icon: fieldIcons.foodHabit, label: "Food Habit", value: formData.foodHabit },
-    { icon: fieldIcons.jobType, label: "Job Type", value: formData.jobType },
+    { icon: fieldIcons.familyMembers, label: "No. of family members", value: formData.familyMembers },
+    { icon: fieldIcons.foodHabit, label: "Food habit", value: formData.foodHabit },
+    { icon: fieldIcons.jobType, label: "Job type", value: formData.jobType },
     { icon: fieldIcons.petAllowed, label: "Pet", value: formData.petAllowed },
-    { heading: true, label: "Rental Property Address " }, // Heading 3
+    { heading: true, label: "Rental property address" }, // Heading 3
 
     // { icon: <BiMap />, label: "Location", value: "New York, USA" },
     { icon: fieldIcons.country, label: "Country", value: formData.country },
@@ -955,21 +955,21 @@ const formattedCreatedAt = Date.now
     { icon: fieldIcons.area, label: "Area", value: formData.area },
     
     { icon: fieldIcons.nagar, label: "Nagar", value: formData.nagar },
-       { icon: fieldIcons.streetName, label: "Street Name", value: formData.streetName },
+       { icon: fieldIcons.streetName, label: "Street name", value: formData.streetName },
    
-    { icon: fieldIcons.doorNumber, label: "Door Number", value: formData.doorNumber },
+    { icon: fieldIcons.doorNumber, label: "Door number", value: formData.doorNumber },
     { icon: fieldIcons.pinCode, label: "Pincode", value: formData.pinCode },
-    { icon: fieldIcons.locationCoordinates, label: "lat. & lng.", value: formData.locationCoordinates },
+    { icon: fieldIcons.locationCoordinates, label: "Lat. & lng.", value: formData.locationCoordinates },
 
-    { heading: true, label: "Contact Info" }, // Heading 5
+    { heading: true, label: "Contact info" }, // Heading 5
    
-    { icon: fieldIcons.ownerName, label: "Owner Name", value: formData.ownerName },
+    { icon: fieldIcons.ownerName, label: "Owner name", value: formData.ownerName },
     { icon: fieldIcons.email, label: "Email", value: formData.email },
 
-    { icon: fieldIcons.phoneNumber, label: "Phone Number", value: phoneNumber },
-    { icon: fieldIcons.alternatePhone, label: "Alternate Phone", value: formData.alternatePhone },
+    { icon: fieldIcons.phoneNumber, label: "Phone number", value: phoneNumber },
+    { icon: fieldIcons.alternatePhone, label: "Alternate phone", value: formData.alternatePhone },
 
-    { icon: fieldIcons.bestTimeToCall, label: "Best Time To Call", value: formData.bestTimeToCall },
+    { icon: fieldIcons.bestTimeToCall, label: "Best time to call", value: formData.bestTimeToCall },
  
   ];
 
@@ -2075,59 +2075,61 @@ const cancelStepSubmit = () => {
 }, [formData.length, formData.breadth]);
 
 const fieldLabels = {
-  propertyMode: "Property Mode",
-  propertyType: "Property Type",
-    rentType: "rent Type",
-  rentalAmount: "rental Amount",
-  propertyAge: "Property Age",
-  bankLoan: "Bank Loan",
+  propertyMode: "Property mode",
+  propertyType: "Property type",
+    rentType: "Rent type",
+  rentalAmount: "Rental amount",
+  propertyAge: "Property age",
+  bankLoan: "Bank loan",
   negotiation: "Negotiation",
-    securityDeposit: "security Deposit",
+    securityDeposit: "Security deposit",
   length: "Length",
   breadth: "Breadth",
-  totalArea: "Total Area",
+  totalArea: "Total area",
   ownership: "Ownership",
   bedrooms: "Bedrooms",
   kitchen: "Kitchen",
-  availableDate: "available From",
-  familyMembers: "No. of family Members",
-  foodHabit: "food Habit",
-  jobType: "job Type",
-  petAllowed: "pet",
-    wheelChairAvailable:"wheel Chair",
+  availableDate: "Available from",
+  familyMembers: "No. of family members",
+  foodHabit: "Food habit",
+  jobType: "Job type",
+  petAllowed: "Pet",
+    wheelChairAvailable:"Wheel chair",
 
-  kitchenType: "Kitchen Type",
+  kitchenType: "Kitchen type",
   balconies: "Balconies",
-  floorNo: "Floor No.",
-  areaUnit: "Area Unit",
-  propertyApproved: "Property Approved",
-  postedBy: "Posted By",
+  floorNo: "Floor no.",
+  areaUnit: "Area unit",
+  propertyApproved: "Property approved",
+  postedBy: "Posted by",
   facing: "Facing",
-  salesMode: "Sales Mode",
-  salesType: "Sales Type",
+  salesMode: "Sales mode",
+  salesType: "Sales type",
   description: "Description",
   furnished: "Furnished",
   lift: "Lift",
-  attachedBathrooms: "Attached Bathrooms",
-  western: "Western Toilet",
-  numberOfFloors: "Number of Floors",
-  carParking: "Car Parking",
-  rentalPropertyAddress: "Property Address",
+  attachedBathrooms: "Attached bathrooms",
+  western: "Western toilet",
+  numberOfFloors: "Number of floors",
+  carParking: "Car parking",
+  rentalPropertyAddress: "Property address",
   country: "Country",
   state: "State",
   city: "City",
   district: "District",
   area: "Area",
-  streetName: "Street Name",
-  doorNumber: "Door Number",
+  streetName: "Street name",
+  doorNumber: "Door number",
   nagar: "Nagar",
-  ownerName: "Owner Name",
+  ownerName: "Owner name",
   email: "Email",
-  phoneNumber: "Phone Number",
-  phoneNumberCountryCode: "Phone Country Code",
-  alternatePhone: "Alternate Phone",
-  alternatePhoneCountryCode: "Alternate Phone Country Code",
-  bestTimeToCall: "Best Time to Call",
+  phoneNumber: "Phone number",
+  phoneNumberCountryCode: "Phone country code",
+  alternatePhone: "Alternate phone",
+  alternatePhoneCountryCode: "Alternate phone country code",
+  bestTimeToCall: "Best time to call",
+  pinCode: "Pincode",
+  locationCoordinates: "Lat. & lng.",
 };
 
  const renderDropdown = (field) => {
