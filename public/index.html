@@ -2,18 +2,35 @@
 <html lang="en">
   <head>
     <meta charset="utf-8" />
-    <link rel="icon" href="%PUBLIC_URL%/rentpondylogo.png" />
-    <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <meta name="theme-color" content="#000000" />
-    <meta
-      name="description"
-      content="Web site created using create-react-app"
-    />
+    <!-- Favicon configurations -->
+    <link rel="icon" href="%PUBLIC_URL%/favicon.ico" />
+    <link rel="alternate icon" href="%PUBLIC_URL%/rentpondylogo.png" type="image/png" />
     <link rel="apple-touch-icon" href="%PUBLIC_URL%/logo192.png" />
-    <script  async
-  defer src="https://maps.googleapis.com/maps/api/js?key=AIzaSyB0wL8bW7T1bHM0YXMQgJbd1XKk-YIxaDU&libraries=places"></script>
     
-<script src="https://unpkg.com/@googlemaps/markerclustererplus/dist/index.min.js"></script>
+    <!-- Viewport and theme -->
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="theme-color" content="#4F4B7E" />
+    
+    <!-- SEO and description -->
+    <meta name="description" content="RentPondy - Find and list rental properties. Discover apartments, houses, and more rental properties near you." />
+    <meta name="keywords" content="rental properties, apartments, house rental, property listing" />
+    <meta name="author" content="RentPondy" />
+    <meta name="mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+    <meta name="apple-mobile-web-app-title" content="RentPondy" />
+    
+    <!-- Open Graph for social sharing -->
+    <meta property="og:title" content="RentPondy | Properties" />
+    <meta property="og:description" content="Find and list rental properties with RentPondy" />
+    <meta property="og:type" content="website" />
+    <meta property="og:image" content="%PUBLIC_URL%/rentpondylogo.png" />
+    
+    <!-- Google Maps API -->
+    <script async
+      defer src="https://maps.googleapis.com/maps/api/js?key=AIzaSyB0wL8bW7T1bHM0YXMQgJbd1XKk-YIxaDU&libraries=places"></script>
+    
+    <script src="https://unpkg.com/@googlemaps/markerclustererplus/dist/index.min.js"></script>
     <script>
       // Cross-domain storage handler
       window.addEventListener('storage', function(event) {

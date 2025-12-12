@@ -105,6 +105,7 @@ function AddProperty() {
   const [loading, setLoading] = useState(false);
   const [step, setStep] = useState("form"); // "form" -> "preview" -> "submitted"
 const [videos, setVideos] = useState([]);
+  const [uploadProgress, setUploadProgress] = useState(0);
 
     const [currentStep, setCurrentStep] = useState(1);
     const [showPlans, setshowPlans] = useState(false);
@@ -774,29 +775,34 @@ const formattedCreatedAt = Date.now
 
 
   const handlePreview = () => {
-    // Property types that require validation popup
-    const typesRequiringValidation = ['house', 'villa', 'farmhouse', 'commercial building', 'apartment'].map(type => type.toLowerCase());
-    const shouldValidate = formData.propertyType && typesRequiringValidation.includes(formData.propertyType.toLowerCase());
-    
-    const requiredFields = Object.keys(formRefs);
-    const missingFields = requiredFields.filter(field => !formData[field]);
+    // Validate required fields for ALL property types
+    const stepRequiredFields = getRequiredFieldsForStep(currentStep) || [];
+    const missingFields = stepRequiredFields.filter(field => !formData[field] || (typeof formData[field] === 'string' && formData[field].trim() === ""));
   
-    if (shouldValidate && missingFields.length > 0) {
-      alert(`Please fill in the following fields before previewing: ${missingFields.join(", ")}`);
-  
-      // Focus and scroll to the first missing field
-      const firstMissingField = missingFields[0];
-      const fieldRef = formRefs[firstMissingField];
-  
-      if (fieldRef?.current) {
-        fieldRef.current.focus(); // Set focus first
+    if (missingFields.length > 0) {
+      const errorMap = {};
+      missingFields.forEach(field => {
+        if (!shouldHideField(field)) {
+          errorMap[field] = `${fieldLabels[field] || field} is required`;
+        }
+      });
+      
+      if (Object.keys(errorMap).length > 0) {
+        setFieldErrors(errorMap);
+        alert(`Please fill in all required fields before previewing: ${missingFields.join(", ")}`);
         
-        setTimeout(() => {
-          fieldRef.current.scrollIntoView({ behavior: "smooth", block: "center" }); // Scroll smoothly
-        }, 100); // Delay slightly to ensure focus happens first
+        // Focus and scroll to the first missing field
+        const firstMissingField = missingFields[0];
+        const fieldRef = formRefs[firstMissingField];
+        
+        if (fieldRef?.current) {
+          fieldRef.current.focus();
+          setTimeout(() => {
+            fieldRef.current.scrollIntoView({ behavior: "smooth", block: "center" });
+          }, 100);
+        }
+        return;
       }
-  
-      return;
     }
   
     setStep("preview");
@@ -1132,12 +1138,12 @@ const handlePhotoUpload = async (e) => {
 
   const handleVideoChange = (e) => {
   const selectedFiles = Array.from(e.target.files);
-  const maxSize = 100 * 1024 * 1024; // 50MB
+  const maxSize = 20 * 1024 * 1024; // 20MB per video (optimal for web)
   const validFiles = [];
 
   for (let file of selectedFiles) {
     if (file.size > maxSize) {
-      alert(`${file.name} exceeds the 50MB size limit.`);
+      alert(`${file.name} exceeds the 20MB size limit. Please compress your video and try again.`);
       continue;
     }
     validFiles.push(file);
@@ -1320,10 +1326,11 @@ const dropdownFieldOrder = [
   
   //   return words.trim();
   // };
+  // Define required fields for each step
   const requiredFieldsByStep = {
     1: ['propertyMode', 'propertyType' , 'rentType', 'rentalAmount', 'totalArea', 'areaUnit'],
     2: ['bedrooms', 'postedBy', 'availableDate'],
-    4: [ 'state', 'city', 'area'],
+    4: [ 'state', 'city', 'area', 'pinCode'],
   };
 
   // Filter out bedroom requirement for Land/Plot types
@@ -1352,7 +1359,7 @@ const dropdownFieldOrder = [
     'petAllowed',
     'doorNumber'
   ];
-  
+
   const getRequiredFieldsForStep = (step) => {
     const baseFields = requiredFieldsByStep[step] || [];
     if (isLandType && step === 2) {
@@ -1481,10 +1488,10 @@ const dropdownFieldOrder = [
   }
 
   const stepRequiredFields = getRequiredFieldsForStep(currentStep) || [];
-  const missingFields = stepRequiredFields.filter(field => !formData[field]);
+  const missingFields = stepRequiredFields.filter(field => !formData[field] || (typeof formData[field] === 'string' && formData[field].trim() === ""));
 
-  // Only validate if property type requires validation
-  if (shouldValidate && missingFields.length > 0) {
+  // Validate required fields for ALL property types
+  if (missingFields.length > 0) {
     const errorMap = {};
     missingFields.forEach(field => {
       // Only set error if field is not hidden
@@ -1535,6 +1542,7 @@ const dropdownFieldOrder = [
 
   try {
     setIsUploading(true); // ✅ Start loading indicator
+    setUploadProgress(0);
 
     const response = await axios.post(
       `${process.env.REACT_APP_API_URL}/update-rent-property`,
@@ -1543,11 +1551,21 @@ const dropdownFieldOrder = [
         headers: {
           'Content-Type': 'multipart/form-data',
         },
+        onUploadProgress: (progressEvent) => {
+          if (progressEvent.total) {
+            const percentCompleted = Math.round(
+              (progressEvent.loaded * 100) / progressEvent.total
+            );
+            setUploadProgress(percentCompleted);
+            console.log(`Upload progress: ${percentCompleted}%`);
+          }
+        },
       }
     );
 
     if (response.status === 200) {
       // Successfully uploaded
+      setUploadProgress(100);
     }
 
     setCurrentStep(currentStep + 1);
@@ -1555,9 +1573,11 @@ const dropdownFieldOrder = [
 
   } catch (error) {
     console.error("Failed to update property details:", error);
+    alert("Upload failed. Please check your connection and try again.");
     // Optionally set error message here
   } finally {
     setIsUploading(false); // ✅ Stop loading indicator
+    setUploadProgress(0);
   }
 };
     useEffect(() => {
@@ -2187,7 +2207,7 @@ const fieldLabels = {
                <input
                  className="m-0 rounded-0 ms-1"
                  type="text"
-                 placeholder="Filter options..."
+                 placeholder="Filter Options..."
                  value={dropdownState.filterText}
                  onChange={handleFilterChange}
                  style={{
@@ -2615,25 +2635,53 @@ const handleEdit = () => {
       left: 0,
       width: '100vw',
       height: '100vh',
-      backgroundColor: 'rgba(0, 0, 0, 0.5)', // semi-transparent background
+      backgroundColor: 'rgba(0, 0, 0, 0.5)',
       display: 'flex',
       justifyContent: 'center',
       alignItems: 'center',
-      zIndex: 9999, // make sure it appears above everything else
+      zIndex: 9999,
     }}
   >
     <div
       style={{
         backgroundColor: 'white',
-        padding: '20px 30px',
+        padding: '30px',
         borderRadius: '10px',
-        color: 'blue',
-        fontWeight: 'bold',
-        fontSize: '18px',
         boxShadow: '0 0 15px rgba(0, 0, 0, 0.2)',
+        textAlign: 'center',
+        minWidth: '300px',
       }}
     >
-      Please wait, processing your data...
+      <h5 style={{ color: 'blue', fontWeight: 'bold', marginBottom: '15px' }}>
+        Uploading Property Data
+      </h5>
+      <div
+        style={{
+          width: '100%',
+          height: '8px',
+          backgroundColor: '#e0e0e0',
+          borderRadius: '4px',
+          overflow: 'hidden',
+          marginBottom: '10px',
+        }}
+      >
+        <div
+          style={{
+            height: '100%',
+            backgroundColor: '#4F4B7E',
+            width: `${uploadProgress}%`,
+            transition: 'width 0.3s ease',
+          }}
+        />
+      </div>
+      <p style={{ color: 'black', fontWeight: 'bold', margin: '0' }}>
+        {uploadProgress}% Complete
+      </p>
+      <p style={{ color: '#666', fontSize: '12px', margin: '5px 0 0 0' }}>
+        {videos.length > 0
+          ? `Uploading ${videos.length} video(s)...`
+          : 'Processing...'}
+      </p>
     </div>
   </div>
 )}
@@ -2786,6 +2834,7 @@ const handleEdit = () => {
           </div>
         )}
 
+        {/* Property Video Upload and Preview */}
         <h4 style={{ color: "#4F4B7E", fontWeight: "bold", marginBottom: "10px" }}>Property Video</h4>
         <div className="form-group">
           <input
@@ -2796,56 +2845,54 @@ const handleEdit = () => {
             onChange={handleVideoChange}
             className="d-none"
           />
- <label
-  htmlFor="videoUpload"
-  className="file-upload-label fw-normal w-100"
-  style={{
-    borderRadius: "20px",
-    display: "flex",
-    justifyContent: "center",
-    alignItems: "center",
-    height: "60px", // optional: controls vertical alignment
-  }}
->
-  <span>
-    <FaFileVideo
-      style={{
-        color: "white",
-        backgroundColor: "#2e86e4",
-        padding: "5px",
-        fontSize: "30px",
-        marginRight: "5px",
-      }}
-    />
-    Upload Property Video
-  </span>
-</label>
-
-
-          {/* Display the selected video */}
-         {videos.length > 0 && (
-    <div className="selected-video-container mt-3">
-      <h5 className="text-start">Selected Videos:</h5>
-      <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap' }}>
-        {videos.map((video, index) => (
-          <div key={index} style={{ position: 'relative', display: 'inline-block' }}>
-            <video width="200" height="200" controls>
-              <source src={URL.createObjectURL(video)} type="video/mp4" />
-              Your browser does not support the video tag.
-            </video>
-            <Button
-              variant="danger"
-              onClick={() => removeVideo(index)}
-              style={{ border: 'none', background: "transparent" }}
-              className="position-absolute top-0 end-0 m-1 p-1"
-            >
-              <IoCloseCircle size={20} color="#F22952" />
-            </Button>
-          </div>
-        ))}
-      </div>
-    </div>
-  )}
+          <label
+            htmlFor="videoUpload"
+            className="file-upload-label fw-normal w-100"
+            style={{
+              borderRadius: "20px",
+              display: "flex",
+              justifyContent: "center",
+              alignItems: "center",
+              height: "60px",
+            }}
+          >
+            <span>
+              <FaFileVideo
+                style={{
+                  color: "white",
+                  backgroundColor: "#2e86e4",
+                  padding: "5px",
+                  fontSize: "30px",
+                  marginRight: "5px",
+                }}
+              />
+              Upload Property Video
+            </span>
+          </label>
+          {/* Only show video preview if videos exist */}
+          {videos.length > 0 && (
+            <div className="selected-video-container mt-3">
+              <h5 className="text-start">Selected Videos:</h5>
+              <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap' }}>
+                {videos.map((video, index) => (
+                  <div key={index} style={{ position: 'relative', display: 'inline-block' }}>
+                    <video width="200" height="200" controls>
+                      <source src={URL.createObjectURL(video)} type="video/mp4" />
+                      Your browser does not support the video tag.
+                    </video>
+                    <Button
+                      variant="danger"
+                      onClick={() => removeVideo(index)}
+                      style={{ border: 'none', background: "transparent" }}
+                      className="position-absolute top-0 end-0 m-1 p-1"
+                    >
+                      <IoCloseCircle size={20} color="#F22952" />
+                    </Button>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
         </div>
 
 {currentStep >= 1 && (
@@ -3252,7 +3299,7 @@ const handleEdit = () => {
       value={formData.securityDeposit}
       onChange={handleFieldChange}
       className="form-input m-0"
-      placeholder="security Deposit"
+      placeholder="Security Deposit"
         style={{ flex: '1', padding: '12px', fontSize: '14px', border: 'none', outline: 'none' , color:"grey"}}
     />
   </div>
@@ -4420,7 +4467,7 @@ const handleEdit = () => {
     value={formData.description}
     onChange={handleFieldChange}
     className="form-control"
-    placeholder="what makes you ad unquie(maximum 250 characters)"
+    placeholder="What Makes You Unique (Maximum 250 Characters)"
     maxLength={250} // Limits input to 250 characters
     style={{ flex: '1', padding: '12px', fontSize: '14px', border: 'none', outline: 'none' , color:"grey"}}
 
@@ -4759,7 +4806,7 @@ const handleEdit = () => {
 <div className="mt-3 w-100 d-flex gap-2 mb-2">
   <input 
   ref={coordRef}
-  placeholder="Enter lat & lng eg.(11.9416° N, 79.8083° E)"
+  placeholder="Enter Lat & Lng Eg.(11.9416° N, 79.8083° E)"
   className="form-control m-0"
     onChange={(e) => setCoordinateInput(e.target.value)}
 
@@ -4825,7 +4872,7 @@ const handleEdit = () => {
       value={formData.country}
       onChange={handleFieldChange}
       className="form-input m-0"
-      placeholder="country"
+      placeholder="Country"
         style={{ flex: '1', padding: '12px', fontSize: '14px', border: 'none', outline: 'none' , color:"grey"}}
     />
   </div>
@@ -5305,6 +5352,7 @@ const handleEdit = () => {
     }}
   >
      <TbMapPinCode  className="input-icon" style={{color: '#4F4B7E',}} />
+     <span style={{ color: "red", fontSize: "18px", fontWeight: "bold", marginLeft: "2px" }}>*</span>
   </span>
   <input
       type="text"
@@ -5312,7 +5360,8 @@ const handleEdit = () => {
       value={formData.pinCode}
       onChange={handleFieldChange}
       className="form-input m-0"
-      placeholder="pinCode"
+      placeholder="PinCode"
+      required
         style={{ flex: '1', padding: '12px', fontSize: '14px', border: 'none', outline: 'none' , color:"grey"}}
     />
   </div>
@@ -5360,7 +5409,7 @@ const handleEdit = () => {
       value={formData.locationCoordinates}
       onChange={handleFieldChange}
       className="form-input m-0"
-      placeholder="latitude and longitude"
+      placeholder="Latitude And Longitude"
         style={{ flex: '1', padding: '12px', fontSize: '14px', border: 'none', outline: 'none' , color:"grey"}}
     />
   </div>
@@ -5830,15 +5879,88 @@ width: window.innerWidth < 450 ? '80%' : '70%' ,      height: '50px',
                 </div>
            )} 
 {fieldErrors && Object.keys(fieldErrors).length > 0 && (
-  <div className="alert alert-danger mb-3" role="alert" style={{borderRadius: "8px", fontSize: "14px"}}>
-    <strong>Please complete required fields:</strong>
-    <ul className="mb-0 mt-2">
-      {Object.entries(fieldErrors)
-        .filter(([field]) => !shouldHideField(field))
-        .map(([field, error]) => (
-          <li key={field}>{error}</li>
-        ))}
-    </ul>
+  <div
+    style={{
+      position: "fixed",
+      top: 0,
+      left: 0,
+      right: 0,
+      bottom: 0,
+      backgroundColor: "rgba(0, 0, 0, 0.5)",
+      display: "flex",
+      alignItems: "center",
+      justifyContent: "center",
+      zIndex: 9999,
+    }}
+    onClick={() => setFieldErrors({})}
+  >
+    <div
+      style={{
+        backgroundColor: "#fff",
+        borderRadius: "12px",
+        padding: "30px",
+        maxWidth: "400px",
+        width: "90%",
+        boxShadow: "0 10px 40px rgba(0, 0, 0, 0.3)",
+        border: "2px solid #dc3545",
+        position: "relative",
+      }}
+      onClick={(e) => e.stopPropagation()}
+    >
+      <button
+        onClick={() => setFieldErrors({})}
+        style={{
+          position: "absolute",
+          top: "12px",
+          right: "12px",
+          background: "none",
+          border: "none",
+          fontSize: "24px",
+          cursor: "pointer",
+          color: "#666",
+          padding: 0,
+          width: "30px",
+          height: "30px",
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+        }}
+      >
+        ×
+      </button>
+      
+      <strong style={{ fontSize: "16px", color: "#dc3545", display: "block", marginBottom: "15px" }}>
+        Please complete required fields:
+      </strong>
+      
+      <ul style={{ margin: 0, paddingLeft: "20px", color: "#dc3545" }}>
+        {Object.entries(fieldErrors)
+          .filter(([field]) => !shouldHideField(field))
+          .map(([field, error]) => (
+            <li key={field} style={{ marginBottom: "8px", fontSize: "14px" }}>
+              {error}
+            </li>
+          ))}
+      </ul>
+      
+      <button
+        onClick={() => setFieldErrors({})}
+        style={{
+          marginTop: "20px",
+          width: "100%",
+          padding: "10px",
+          backgroundColor: "#dc3545",
+          color: "white",
+          border: "none",
+          borderRadius: "6px",
+          fontSize: "14px",
+          fontWeight: "bold",
+          cursor: "pointer",
+        }}
+      >
+        Close
+      </button>
+    </div>
   </div>
 )}
 
@@ -5851,7 +5973,7 @@ width: window.innerWidth < 450 ? '80%' : '70%' ,      height: '50px',
     <div className="mb-4">
           
            <div className="preview-section row d-flex align-items-center justify-content-center">
-           {photos.length > 0 || video ? (
+           {photos.length > 0 || videos.length > 0 ? (
              <Swiper navigation={{
               prevEl: ".swiper-button-prev-custom",
               nextEl: ".swiper-button-next-custom",
@@ -5880,8 +6002,9 @@ width: window.innerWidth < 450 ? '80%' : '70%' ,      height: '50px',
                    />
                  </SwiperSlide>
                ))}
-               {video && (
-                 <SwiperSlide>
+               {videos.length > 0 && (
+                 videos.map((video, index) => (
+                 <SwiperSlide key={index}>
                    <div
                  className="d-flex justify-content-center align-items-center"
                  style={{
@@ -5900,6 +6023,7 @@ width: window.innerWidth < 450 ? '80%' : '70%' ,      height: '50px',
                    </video>
                    </div>
                  </SwiperSlide>
+                 ))
                )}
              </Swiper>
            ) : (

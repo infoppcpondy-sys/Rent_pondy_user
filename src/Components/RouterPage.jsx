@@ -189,63 +189,63 @@ export default function RouterPage() {
         <Route path='/plans' element={ <PricingPlans  /> } />
         <Route path='/add-plan' element={ <AddPricingPlans  /> } />
         <Route path='/about' element={<About />} />
-        <Route path='/refund-policy' element={< RefundPolicy />} />
-        <Route path='/about-mobile' element={<AboutMobile  />} />
-        <Route path='/refund-mobile' element={< RefundMobile/>} />
-        <Route path='/privacy-policy' element={< PrivacyPolicy/>} />
+        <Route path='/refund-policy' element={<RefundPolicy />} />
+        <Route path='/about-mobile' element={<AboutMobile />} />
+        <Route path='/refund-mobile' element={<RefundMobile />} />
+        <Route path='/privacy-policy' element={<PrivacyPolicy />} />
         <Route path='/interest' element={ <InterestStatus  /> } />
-        <Route path='/business' element={< BusinessOpportunity />} />
-        <Route path='/our-support' element={< OurSupport  />} />
+        <Route path='/business' element={<BusinessOpportunity />} />
+        <Route path='/our-support' element={<OurSupport  />} />
         <Route path='/my-profile/:phoneNumber' element={ <MyProfile  /> } />
         <Route path='/my-plan' element={ <MyPlan /> } />
-        <Route path='/expired-plans' element={< ExpiredPlans  />} />
-        <Route path='/pricing-plans' element={< AddPlan  />} />
-        <Route path='/shiping-delivery' element={< ShippingAndDelivery  />} />
-        <Route path='/contact-web' element={< ContactUs   />} />
-        {/* <Route path='/py-property' element={< PyProperty  { <MobileViews phone={phoneNumber} /> } /> */}
-        <Route path='/contactus' element={< ContactedPage />} />
-        <Route path='/leads' element={< LeadsCenter />} />
+        <Route path='/expired-plans' element={<ExpiredPlans  />} />
+        <Route path='/pricing-plans' element={<AddPlan  />} />
+        <Route path='/shiping-delivery' element={<ShippingAndDelivery  />} />
+        <Route path='/contact-web' element={<ContactUs   />} />
+        {/* <Route path='/py-property' element={<PyProperty  { <MobileViews phone={phoneNumber} /> } /> */}
+        <Route path='/contactus' element={<ContactedPage />} />
+        <Route path='/leads' element={<LeadsCenter />} />
         <Route path='/matched-buyers' element={ <MatchedBuyers /> } />
-        <Route path='/my-call' element={< MyCalledList  />} />
-        <Route path='/my-interest-buyer' element={< MyInterestBuyers/>} />
-        <Route path='/my-photo' element={< MyPhotoRequest  />} />
-        <Route path='/my-offers' element={< MyOffers />} />
-        <Route path='/my-last-property' element={< MyLastViewProperty />} />
-        <Route path='/my-sent-interest' element={< MySentInterest />} />
-        <Route path='/my-short-property' element={< MyShortlistedProperty />} />
-        <Route path='/my-sent-interest' element={< MySentInterest />} />
-        <Route path='/shortlist-buyer' element={< ShortListedBuyers />} />
-        <Route path='/view-buyers' element={< ViewedBuyers />} />
-        {/* <Route path='/buyer-lists' element={< BuyerList />} /> */}
-        <Route path='/buyer-lists' element={< BuyerLists/>} />
-        <Route path='/buyer-list' element={< BuyerList/>} />
-        <Route path='/tenant-search' element={< FormComponent/>} />
-        <Route path='/cards' element={< CardsComponent/>} />
-        <Route path='/Buyer-List-Filter' element={< BuyerListFilter/>} />
-        <Route path='/Property-Assistance-Search/:phoneNumber' element={< PropertyAssistanceSearch/>} />
-        <Route path='/Sort-Property' element={< SortProperty/>} />
-        <Route path='/sort/old-to-new' element={< OldDate/>} />
-        <Route path='/sort/new-to-old' element={< NewDate/>} />
-        <Route path='/sort/low-to-high' element={< LowtoHigh/>} />
-        <Route path='/sort/high-to-low' element={< HightoLow/>} />
-        <Route path='/sort/with-image' element={< PhotosWith/>} />
-                <Route path='/sort/with-image' element={< PhotosWith/>} />
-                <Route path='/expire-property' element={< ExpireProperty/>} />
-                <Route path='/Mapp' element={< Mapp/>} />
+        <Route path='/my-call' element={<MyCalledList  />} />
+        <Route path='/my-interest-buyer' element={<MyInterestBuyers/>} />
+        <Route path='/my-photo' element={<MyPhotoRequest  />} />
+        <Route path='/my-offers' element={<MyOffers />} />
+        <Route path='/my-last-property' element={<MyLastViewProperty />} />
+        <Route path='/my-sent-interest' element={<MySentInterest />} />
+        <Route path='/my-short-property' element={<MyShortlistedProperty />} />
+        <Route path='/my-sent-interest' element={<MySentInterest />} />
+        <Route path='/shortlist-buyer' element={<ShortListedBuyers />} />
+        <Route path='/view-buyers' element={<ViewedBuyers />} />
+        {/* <Route path='/buyer-lists' element={<BuyerList />} /> */}
+        <Route path='/buyer-lists' element={<BuyerLists/>} />
+        <Route path='/buyer-list' element={<BuyerList/>} />
+        <Route path='/tenant-search' element={<FormComponent/>} />
+        <Route path='/cards' element={<CardsComponent/>} />
+        <Route path='/Buyer-List-Filter' element={<BuyerListFilter/>} />
+        <Route path='/Property-Assistance-Search/:phoneNumber' element={<PropertyAssistanceSearch/>} />
+        <Route path='/Sort-Property' element={<SortProperty/>} />
+        <Route path='/sort/old-to-new' element={<OldDate/>} />
+        <Route path='/sort/new-to-old' element={<NewDate/>} />
+        <Route path='/sort/low-to-high' element={<LowtoHigh/>} />
+        <Route path='/sort/high-to-low' element={<HightoLow/>} />
+        <Route path='/sort/with-image' element={<PhotosWith/>} />
+                <Route path='/sort/with-image' element={<PhotosWith/>} />
+                <Route path='/expire-property' element={<ExpireProperty/>} />
+                <Route path='/Mapp' element={<Mapp/>} />
 
 
-                <Route path='/edit-prop' element={< EditProperty/>} />
+                <Route path='/edit-prop' element={<EditProperty/>} />
 
 
-        {/* <Route path='/more' element={< MoreSidebar/>} /> */}
-        <Route path='/details/:rentId' element={< DetailProperty/>} />
+        {/* <Route path='/more' element={<MoreSidebar/>} /> */}
+        <Route path='/details/:rentId' element={<DetailProperty/>} />
 
 
 
         {/* <Route path='/details/:ppcId' element={ <DetailProperty phone={phoneNumber} /> } /> */}
 
-        <Route path='/owner' element={< Owner />} />
-        <Route path='/RefundPolicy' element={< RefundPolicy />} />
+        <Route path='/owner' element={<Owner />} />
+        <Route path='/RefundPolicy' element={<RefundPolicy />} />
         <Route path='/buyer-assistance' element={ <BuyerAssistance />} />
 
         <Route path='/matched-owner' element={ <MatchedOwner /> } />
@@ -348,12 +348,12 @@ export default function RouterPage() {
 <Route path='/address-request-owner' element={<AddressRequestOwner/>} />
 <Route path='/address-request-buyer' element={<AddressRequestBuyer/>} />
 
-                <Route path='/address-edit-form' element={< AddressEditForm/>} />
+                <Route path='/address-edit-form' element={<AddressEditForm/>} />
 
-                                <Route path='/owner-menu' element={< OwnerSideMenu/>} />
-                                                                <Route path='/buyer-menu' element={< BuyerSideMenu/>} />
+                                <Route path='/owner-menu' element={<OwnerSideMenu/>} />
+                                                                <Route path='/buyer-menu' element={<BuyerSideMenu/>} />
 
-                                                                <Route path='/sale-property' element={< SaleProperty/>} />
+                                                                <Route path='/sale-property' element={<SaleProperty/>} />
 
 
 
@@ -596,72 +596,63 @@ export default function RouterPage() {
 //         <Route path='/plans' element={isAuthenticated ? <PricingPlans phone={phoneNumber} /> : <App to="/" />} />
 //         <Route path='/add-plan' element={isAuthenticated ? <AddPricingPlans phone={phoneNumber} /> : <App to="/" />} />
 //         <Route path='/about' element={<About />} />
-//         <Route path='/refund-policy' element={< RefundPolicy />} />
+//         <Route path='/refund-policy' element={<RefundPolicy />} />
 //         <Route path='/about-mobile' element={<AboutMobile  />} />
-//         <Route path='/refund-mobile' element={< RefundMobile/>} />
-//         <Route path='/privacy-policy' element={< PrivacyPolicy/>} />
+//         <Route path='/refund-mobile' element={<RefundMobile/>} />
+//         <Route path='/privacy-policy' element={<PrivacyPolicy/>} />
 //         <Route path='/interest' element={isAuthenticated ? <InterestStatus phone={phoneNumber} /> : <App to="/" />} />
-//         <Route path='/business' element={< BusinessOpportunity />} />
-//         <Route path='/our-support' element={< OurSupport  />} />
+//         <Route path='/business' element={<BusinessOpportunity />} />
+//         <Route path='/our-support' element={<OurSupport  />} />
 //         <Route path='/my-profile/:phoneNumber' element={isAuthenticated ? <MyProfile phone={phoneNumber} /> : <App to="/" />} />
 //         <Route path='/my-plan' element={isAuthenticated ? <MyPlan phone={phoneNumber} /> : <App to="/" />} />
-//         <Route path='/expired-plans' element={< ExpiredPlans  />} />
-//         <Route path='/pricing-plans' element={< AddPlan  />} />
-//         <Route path='/shiping-delivery' element={< ShippingAndDelivery  />} />
-//         <Route path='/contact-web' element={< ContactUs   />} />
-//         {/* <Route path='/py-property' element={< PyProperty  {isAuthenticated ? <MobileViews phone={phoneNumber} /> : <App to="/" />} /> */}
-//         <Route path='/contactus' element={< ContactedPage />} />
-//         <Route path='/leads' element={< LeadsCenter />} />
+//         <Route path='/expired-plans' element={<ExpiredPlans  />} />
+//         <Route path='/pricing-plans' element={<AddPlan  />} />
+//         <Route path='/shiping-delivery' element={<ShippingAndDelivery  />} />
+//         <Route path='/contact-web' element={<ContactUs   />} />
+//         {/* <Route path='/py-property' element={<PyProperty  {isAuthenticated ? <MobileViews phone={phoneNumber} /> : <App to="/" />} /> */}
+//         <Route path='/contactus' element={<ContactedPage />} />
+//         <Route path='/leads' element={<LeadsCenter />} />
 //         <Route path='/matched-buyers' element={isAuthenticated ? <MatchedBuyers phone={phoneNumber} /> : <App to="/" />} />
-//         <Route path='/my-call' element={< MyCalledList  />} />
-//         <Route path='/my-interest-buyer' element={< MyInterestBuyers/>} />
-//         <Route path='/my-photo' element={< MyPhotoRequest  />} />
-//         <Route path='/my-offers' element={< MyOffers />} />
-//         <Route path='/my-last-property' element={< MyLastViewProperty />} />
-//         <Route path='/my-sent-interest' element={< MySentInterest />} />
-//         <Route path='/my-short-property' element={< MyShortlistedProperty />} />
-//         <Route path='/my-sent-interest' element={< MySentInterest />} />
-//         <Route path='/shortlist-buyer' element={< ShortListedBuyers />} />
-//         <Route path='/view-buyers' element={< ViewedBuyers />} />
-//         {/* <Route path='/buyer-lists' element={< BuyerList />} /> */}
-//         <Route path='/buyer-lists' element={< BuyerLists/>} />
-//         <Route path='/buyer-list' element={< BuyerList/>} />
-//         <Route path='/FormComponent' element={< FormComponent/>} />
-//         <Route path='/cards' element={< CardsComponent/>} />
-//         <Route path='/Buyer-List-Filter' element={< BuyerListFilter/>} />
-//         <Route path='/Property-Assistance-Search/:phoneNumber' element={< PropertyAssistanceSearch/>} />
-//         <Route path='/Sort-Property' element={< SortProperty/>} />
-//         <Route path='/sort/old-to-new' element={< OldDate/>} />
-//         <Route path='/sort/new-to-old' element={< NewDate/>} />
-//         <Route path='/sort/low-to-high' element={< LowtoHigh/>} />
-//         <Route path='/sort/high-to-low' element={< HightoLow/>} />
-//         <Route path='/sort/with-image' element={< PhotosWith/>} />
-//                 <Route path='/sort/with-image' element={< PhotosWith/>} />
-//                 <Route path='/expire-property' element={< ExpireProperty/>} />
-//                 <Route path='/Mapp' element={< Mapp/>} />
+//         <Route path='/my-call' element={<MyCalledList  />} />
+//         <Route path='/my-interest-buyer' element={<MyInterestBuyers/>} />
+//         <Route path='/my-photo' element={<MyPhotoRequest  />} />
+//         <Route path='/my-offers' element={<MyOffers />} />
+//         <Route path='/my-last-property' element={<MyLastViewProperty />} />
+//         <Route path='/my-sent-interest' element={<MySentInterest />} />
+//         <Route path='/my-short-property' element={<MyShortlistedProperty />} />
+//         <Route path='/my-sent-interest' element={<MySentInterest />} />
+//         <Route path='/shortlist-buyer' element={<ShortListedBuyers />} />
+//         <Route path='/view-buyers' element={<ViewedBuyers />} />
+//         {/* <Route path='/buyer-lists' element={<BuyerList />} /> */}
+//         <Route path='/buyer-lists' element={<BuyerLists/>} />
+//         <Route path='/buyer-list' element={<BuyerList/>} />
+//         <Route path='/FormComponent' element={<FormComponent/>} />
+//         <Route path='/cards' element={<CardsComponent/>} />
+//         <Route path='/Buyer-List-Filter' element={<BuyerListFilter/>} />
+//         <Route path='/Property-Assistance-Search/:phoneNumber' element={<PropertyAssistanceSearch/>} />
+//         <Route path='/Sort-Property' element={<SortProperty/>} />
+//         <Route path='/sort/old-to-new' element={<OldDate/>} />
+//         <Route path='/sort/new-to-old' element={<NewDate/>} />
+//         <Route path='/sort/low-to-high' element={<LowtoHigh/>} />
+//         <Route path='/sort/high-to-low' element={<HightoLow/>} />
+//         <Route path='/sort/with-image' element={<PhotosWith/>} />
+//                 <Route path='/sort/with-image' element={<PhotosWith/>} />
+//                 <Route path='/expire-property' element={<ExpireProperty/>} />
+//                 <Route path='/Mapp' element={<Mapp/>} />
 
 
-//                 <Route path='/edit-prop' element={< EditProperty/>} />
+//                 <Route path='/edit-prop' element={<EditProperty/>} />
 
 
-//         <Route path='/more' element={< MoreSidebar/>} />
-//         <Route path='/details/:ppcId' element={< DetailProperty/>} />
+//         <Route path='/more' element={<MoreSidebar/>} />
+//         <Route path='/details/:ppcId' element={<DetailProperty/>} />
 
 
 
 //         {/* <Route path='/details/:ppcId' element={isAuthenticated ? <DetailProperty phone={phoneNumber} /> : <App to="/" />} /> */}
 
-//         <Route path='/owner' element={< Owner />} />
-//         <Route path='/RefundPolicy' element={< RefundPolicy />} />
-//         <Route path='/buyer-assistance/:phoneNumber' element={isAuthenticated ? <PropertyAssistance phone={phoneNumber} /> : <App to="/" />} />
-
-//         <Route path='/matched-owner/:phoneNumber' element={isAuthenticated ? <MatchedOwner phone={phoneNumber} /> : <App to="/" />} />
-//         <Route path='/matched-buyer/:phoneNumber' element={isAuthenticated ? <MatchedBuyer phone={phoneNumber} /> : <App to="/" />} />
-//         <Route path='/more-component' element={isAuthenticated ? <MoreComponent phone={phoneNumber} /> : <App to="/" />} />
-
-
-//         <Route path='/terms-conditions' element={<TermsAndCondition />} />
-
+//         <Route path='/owner' element={<Owner />} />
+//         <Route path='/RefundPolicy' element={<RefundPolicy />} />
 //         <Route path='/terms-conditions-web' element={<TermsAndConditionWeb />} />
 
 //         <Route path='/leads' element={<LeadsDownload />} />

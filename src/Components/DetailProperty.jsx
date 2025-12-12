@@ -449,6 +449,7 @@ const ReporthandleSubmit = async () => {
     setImageError((prev) => ({ ...prev, [index]: true }));
   };
   const [videoUrl, setVideoUrl] = useState(null);
+  const [videoUrls, setVideoUrls] = useState([]);
   const [showPopup, setShowPopup] = useState(false);  // State for controlling the popup/modal
   const [Popup, setPopup] = useState(false);  // State for controlling the popup/modal
 const [ownerDetails, setOwnerDetails] = useState(null);
@@ -830,9 +831,16 @@ const fetchImageCount = async () => {
 
 const fetchPropertyDetails = async (rentId) => {
   try {
-    const response = await axios.get(`${process.env.REACT_APP_API_URL}/property/${rentId}`);
+    const endpoint = `${process.env.REACT_APP_API_URL}/property/${rentId}`;
+    console.log("Fetching from:", endpoint);
+    const response = await axios.get(endpoint);
+    console.log("Server response:", response.data);
+    console.log("Video in response:", response.data?.video || response.data?.videos || "NOT FOUND");
     setProperty(response.data);
+    // Also set propertyDetails for video display
+    setPropertyDetails(response.data);
   } catch (error) {
+    console.error("Fetch error:", error);
   }
 };
 
@@ -974,9 +982,15 @@ const handleSubmit = async ({ offeredPrice, rentId }) => {
   useEffect(() => {
     const fetchPropertyData = async () => {
       try {
-        const response = await axios.get(`${process.env.REACT_APP_API_URL}/fetch-data-on-demand-rent?rentId=${rentId}`);
+        const endpoint = `${process.env.REACT_APP_API_URL}/fetch-data-on-demand-rent?rentId=${rentId}`;
+        console.log("Fetching property data from:", endpoint);
+        const response = await axios.get(endpoint);
+        console.log("Property data response:", response.data);
+        console.log("Video in property data:", response.data?.user?.video || response.data?.user?.videos || "NOT FOUND");
+        console.log("Complete user object:", response.data?.user);
         setPropertyDetails(response.data.user);
       } catch (err) {
+        console.error("Fetch error:", err);
         setError("Failed to fetch property details.");
       } finally {
         setLoading(false);
@@ -1010,15 +1024,37 @@ const handleSubmit = async ({ offeredPrice, rentId }) => {
   // }, [propertyDetails?.video]);
 
 useEffect(() => {
-  const video = propertyDetails?.video;
+  // Handle both single video and multiple videos
+  const videoData = propertyDetails?.video || propertyDetails?.videos;
+  console.log("DetailProperty - propertyDetails:", propertyDetails);
+  console.log("DetailProperty - Video data from server:", videoData);
+  console.log("DetailProperty - Is array?:", Array.isArray(videoData));
+  console.log("DetailProperty - Video type:", typeof videoData);
 
-  if (typeof video === "string" && video.trim() !== "") {
-    const normalizedVideoPath = video.replace(/\\/g, "/").replace(/^\/+/, "").trim();
-    setVideoUrl(`https://rentpondy.com/PPC/${normalizedVideoPath}`);
+  if (Array.isArray(videoData)) {
+    // Multiple videos (array)
+    const urls = videoData
+      .filter(v => typeof v === "string" && v.trim() !== "")
+      .map(v => {
+        const normalizedPath = v.replace(/\\/g, "/").replace(/^\/+/, "").trim();
+        return `https://rentpondy.com/PPC/${normalizedPath}`;
+      });
+    console.log("DetailProperty - Setting multiple video URLs:", urls);
+    setVideoUrls(urls);
+    setVideoUrl(null);
+  } else if (typeof videoData === "string" && videoData.trim() !== "") {
+    // Single video (string)
+    const normalizedVideoPath = videoData.replace(/\\/g, "/").replace(/^\/+/, "").trim();
+    const fullVideoUrl = `https://rentpondy.com/PPC/${normalizedVideoPath}`;
+    console.log("DetailProperty - Setting single video URL:", fullVideoUrl);
+    setVideoUrl(fullVideoUrl);
+    setVideoUrls([]);
   } else {
-    setVideoUrl("https://rentpondy.com/PPC/default-video-url.mp4");
+    console.log("DetailProperty - No video found");
+    setVideoUrl(null);
+    setVideoUrls([]);
   }
-}, [propertyDetails?.video]);
+}, [propertyDetails?.video, propertyDetails?.videos]);
 
   
   // Runs when `propertyDetails.video` changes
@@ -1853,6 +1889,41 @@ const confirmPhotoRequest = async () => {
 
 const currentUrl = `${window.location.origin}${location.pathname}`; // <- Works for localhost or live
 
+// Filter valid videos
+const validVideoUrls = videoUrls.filter(url => url && url.trim() !== "");
+const validVideoValue = videoUrl && videoUrl.trim() !== "" ? videoUrl : null;
+
+// Don't include default fallback video - only include real videos from server
+const isDefaultFallback = validVideoValue && validVideoValue.includes("default-video-url");
+
+console.log("=== MEDIA DEBUG ===");
+console.log("validVideoValue:", validVideoValue);
+console.log("isDefaultFallback:", isDefaultFallback);
+console.log("validVideoUrls:", validVideoUrls);
+console.log("images.length:", images.length);
+
+// Create combined media array (images + videos)
+// Only add validVideoValue if it's NOT the default fallback URL and there are no validVideoUrls
+const allMedia = [
+  ...images.map(img => ({ type: 'image', src: img })),
+  ...(!isDefaultFallback && validVideoValue && validVideoUrls.length === 0 ? [{ type: 'video', src: validVideoValue }] : []),
+  ...validVideoUrls.map(url => ({ type: 'video', src: url }))
+];
+
+console.log("allMedia:", allMedia);
+
+// Navigation functions for modal
+const handleNextMedia = () => {
+  setCurrentImageIndex((prevIndex) => (prevIndex + 1) % allMedia.length);
+};
+
+const handlePrevMedia = () => {
+  setCurrentImageIndex((prevIndex) => (prevIndex - 1 + allMedia.length) % allMedia.length);
+};
+
+// Calculate total media (images + videos)
+const totalMediaCount = images.length + validVideoUrls.length + (validVideoValue ? 1 : 0);
+
   return (
     <div className="container d-flex align-items-center justify-content-center p-0">
 
@@ -2134,7 +2205,8 @@ fontSize:"13px",
         </SwiperSlide>,
       ]}
 
-      {/* Video Slide */}
+      {/* Single Video Slide - Only show if single video exists */}
+      {videoUrl && (
       <SwiperSlide>
         <div
           className="d-flex justify-content-center align-items-center"
@@ -2155,6 +2227,33 @@ fontSize:"13px",
           </video>
         </div>
       </SwiperSlide>
+      )}
+
+      {/* Multiple Videos Slides - Show each video in separate slides */}
+      {videoUrls.length > 0 && (
+        videoUrls.map((url, index) => (
+          <SwiperSlide key={index}>
+            <div
+              className="d-flex justify-content-center align-items-center"
+              style={{
+                height: "200px",
+                width: "100%",
+                overflow: "hidden",
+                borderRadius: "8px",
+                margin: "auto",
+                boxShadow: "0 4px 8px rgba(0, 0, 0, 0.1)",
+                cursor: "pointer",
+              }}
+            >
+              <video controls style={{ height: "100%", width: "100%", objectFit: "cover" }}>
+                <source src={url} type="video/mp4" />
+                <source src={url.replace(".mp4", ".webm")} type="video/webm" />
+                Your browser does not support the video tag.
+              </video>
+            </div>
+          </SwiperSlide>
+        ))
+      )}
     </Swiper>
   <style>
     {`
@@ -2193,7 +2292,7 @@ fontSize:"13px",
     </div>
   {/* </div> */}
 <div className="position-absolute bottom-0 start-50 translate-middle-x text-center mt-2" style={{ zIndex: 1050 , color:"white"}}>
-    {Math.min(currentIndex, images.length)}/{maxImages}
+    {currentIndex}/{totalMediaCount > 0 ? totalMediaCount - 1 : 0}
   </div>
 </div>
        <span
@@ -2402,7 +2501,7 @@ paddingLeft:"10px"
                      <input 
                         type="number" 
                         className="w-75 me-2 m-0 ms-2" 
-                        placeholder="Make an offer" 
+                        placeholder="Make An Offer" 
                         value={offeredPrice}
                         onChange={(e) => setOfferedPrice(e.target.value)}
                         style={{ padding: "8px 12px 8px 30px", borderRadius: "4px", border: "1px solid #4F4B7E", marginRight: "10px", width: "100%" }} 
@@ -2563,20 +2662,16 @@ const isMatched = isFieldMatched(detail.label, detail.value, matchedFields);
             borderRadius: "5px",
             width: "100%",
             cursor: "pointer",
-            whiteSpace: "nowrap",
-            overflow: "hidden",
-            textOverflow: "ellipsis"
+            whiteSpace: isDescription ? "normal" : "normal",
+            overflow: "visible",
+            textOverflow: "unset",
+            wordBreak: "break-word",
+            overflowWrap: "break-word"
           }} title={detail.value ? (typeof detail.value === "string" ? detail.value : JSON.stringify(detail.value)) : "N/A"}>
             {detail.value
-              ? [
-                  "Country", "State", "City", "District",
-                  "Nagar", "Area", "Street Name", "Door Number",
-                  "pinCode", "location Coordinates",
-                ].includes(detail.label)
-                ? typeof detail.value === "string"
-                  ? `${detail.value.slice(0, 8)}...`
-                  : JSON.stringify(detail.value)
-                : detail.value
+              ? typeof detail.value === "string"
+                ? detail.value
+                : JSON.stringify(detail.value)
               : "N/A"}
           </p>
         </div>
@@ -2640,18 +2735,19 @@ const isMatched = isFieldMatched(detail.label, detail.value, matchedFields);
   <FaPhoneAlt style={{ fontSize: "16px", color: "#4F4B7E", marginRight: "10px" }} />
   <div>
     <div style={{ fontSize: "13px", color: "grey" }}>Mobile</div>
-    <div
+    <a
+      href={`tel:${finalContactNumber}`}
       style={{
         fontSize: "15px",
         fontWeight: 600,
         color: "#4F4B7E",
         cursor: "pointer",
-        textDecoration: "none"
+        textDecoration: "none",
+        display: "block"
       }}
-      onClick={() => window.location.href = `tel:${finalContactNumber}`}
     >
       {finalContactNumber || "N/A"}
-    </div>
+    </a>
   </div>
 </div>
 
@@ -2661,18 +2757,23 @@ const isMatched = isFieldMatched(detail.label, detail.value, matchedFields);
   <FaPhoneAlt style={{ fontSize: "16px", color: "#4F4B7E", marginRight: "10px" }} />
   <div>
     <div style={{ fontSize: "13px", color: "grey" }}>Alternate Phone</div>
-    <div style={{ fontSize: "15px", fontWeight: 600, color: "grey" }}>
-      {/* {propertyDetails.alternatePhone || "N/A"} */}
-         <a
-                            href={`tel:${propertyDetails.alternatePhone}`}
-                            style={{
-                              textDecoration: "none",
-                              color: "#2E7480",
-                            }}
-                          >
-                            {propertyDetails.alternatePhone || "N/A"}
-                            </a>
-    </div>
+    {propertyDetails.alternatePhone ? (
+      <a
+        href={`tel:${propertyDetails.alternatePhone}`}
+        style={{
+          fontSize: "15px",
+          fontWeight: 600,
+          color: "#4F4B7E",
+          textDecoration: "none",
+          display: "block",
+          cursor: "pointer"
+        }}
+      >
+        {propertyDetails.alternatePhone}
+      </a>
+    ) : (
+      <div style={{ fontSize: "15px", fontWeight: 600, color: "grey" }}>N/A</div>
+    )}
   </div>
 </div>
 
@@ -2893,7 +2994,7 @@ const isMatched = isFieldMatched(detail.label, detail.value, matchedFields);
     <input
       className="form-control mb-3"
       type="text"
-      placeholder="Search nearby places"
+      placeholder="Search Nearby Places"
       onChange={(e) => {
         const keyword = e.target.value.toLowerCase();
         setNearbyPlaces(
@@ -2921,7 +3022,7 @@ const isMatched = isFieldMatched(detail.label, detail.value, matchedFields);
           src={
             place.photos?.[0]
               ? place.photos[0].getUrl({ maxWidth: 64, maxHeight: 64 })
-              : "https://via.placeholder.com/64"
+              : "https://via.Placeholder.com/64"
           }
           alt={place.name}
           className="me-2 rounded"
@@ -3009,19 +3110,6 @@ const isMatched = isFieldMatched(detail.label, detail.value, matchedFields);
   
       {/* Image modal */}
       {showModal && (
-        // <div className="modal show d-block" style={{ display: "block", backgroundColor: "rgba(0, 0, 0, 0.5)" }} onClick={closeModal}>
-        //   <div className="modal-dialog">
-        //     <div className="modal-content">
-        //       <div className="modal-body">
-        //         <img src={images[currentImageIndex]} alt={`Large Property Image`} style={{ width: "100%", height: "auto" }} />
-        //       </div>
-        //       <div className="modal-footer">
-        //         <p className="text-muted">Total Images: {images.length}</p>
-        //         <button type="button" className="btn btn-secondary" onClick={closeModal}>Close</button>
-        //       </div>
-        //     </div>
-        //   </div>
-        // </div>
         <div
   className="modal show d-flex justify-content-center align-items-center"
   style={{
@@ -3035,24 +3123,119 @@ const isMatched = isFieldMatched(detail.label, detail.value, matchedFields);
   <div
     className="modal-dialog modal-dialog-centered"
     style={{
-      maxWidth: "90%", // ✅ makes it responsive
-      width: "600px",  // ✅ default width for larger screens
+      maxWidth: "90%",
+      width: "600px",
+      position: "relative",
     }}
-    onClick={(e) => e.stopPropagation()} // prevent closing when clicking inside
+    onClick={(e) => e.stopPropagation()}
   >
     <div className="modal-content border-0 rounded-3 shadow-lg">
-      <div className="modal-body p-0">
-        <img
-          src={images[currentImageIndex]}
-          alt="Large Property"
-          style={{
-            width: "100%",
-            height: "auto",
-            borderRadius: "8px",
-            maxHeight: "80vh", // ✅ prevents overflow on smaller screens
-            objectFit: "contain",
-          }}
-        />
+      <div className="modal-body p-0" style={{ position: "relative" }}>
+        {allMedia[currentImageIndex]?.type === 'image' ? (
+          <img
+            src={allMedia[currentImageIndex]?.src}
+            alt="Large Property"
+            style={{
+              width: "100%",
+              height: "auto",
+              borderRadius: "8px",
+              maxHeight: "80vh",
+              objectFit: "contain",
+              transition: "opacity 0.3s ease-in-out",
+            }}
+          />
+        ) : (
+          <>
+            <video
+              controls
+              crossOrigin="anonymous"
+              preload="metadata"
+              onLoadedMetadata={() => console.log("Video loaded:", allMedia[currentImageIndex]?.src)}
+              onError={(e) => {
+                console.error("Video failed to load:", allMedia[currentImageIndex]?.src);
+                console.error("Error details:", e.target.error);
+              }}
+              style={{
+                width: "100%",
+                height: "auto",
+                borderRadius: "8px",
+                maxHeight: "80vh",
+                objectFit: "contain",
+                transition: "opacity 0.3s ease-in-out",
+                backgroundColor: "#000",
+              }}
+            >
+              <source src={allMedia[currentImageIndex]?.src} type="video/mp4" />
+              <source src={allMedia[currentImageIndex]?.src.replace(".mp4", ".webm")} type="video/webm" />
+              Your browser does not support the video tag.
+            </video>
+            {allMedia[currentImageIndex]?.src && (
+              <div style={{ fontSize: "12px", color: "#666", marginTop: "5px", padding: "5px", textAlign: "center" }}>
+                <small>Video: {allMedia[currentImageIndex]?.src.substring(allMedia[currentImageIndex]?.src.lastIndexOf('/') + 1)}</small>
+              </div>
+            )}
+          </>
+        )}
+
+        {/* Left Arrow Button */}
+        {allMedia.length > 1 && (
+          <button
+            onClick={handlePrevMedia}
+            style={{
+              position: "absolute",
+              left: "-50px",
+              top: "50%",
+              transform: "translateY(-50%)",
+              width: "40px",
+              height: "40px",
+              borderRadius: "50%",
+              backgroundColor: "rgba(255, 255, 255, 0.7)",
+              border: "none",
+              cursor: "pointer",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              fontSize: "20px",
+              color: "#000",
+              transition: "background-color 0.3s ease",
+            }}
+            onMouseEnter={(e) => e.target.style.backgroundColor = "rgba(255, 255, 255, 1)"}
+            onMouseLeave={(e) => e.target.style.backgroundColor = "rgba(255, 255, 255, 0.7)"}
+            title="Previous media"
+          >
+            ❮
+          </button>
+        )}
+
+        {/* Right Arrow Button */}
+        {allMedia.length > 1 && (
+          <button
+            onClick={handleNextMedia}
+            style={{
+              position: "absolute",
+              right: "-50px",
+              top: "50%",
+              transform: "translateY(-50%)",
+              width: "40px",
+              height: "40px",
+              borderRadius: "50%",
+              backgroundColor: "rgba(255, 255, 255, 0.7)",
+              border: "none",
+              cursor: "pointer",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              fontSize: "20px",
+              color: "#000",
+              transition: "background-color 0.3s ease",
+            }}
+            onMouseEnter={(e) => e.target.style.backgroundColor = "rgba(255, 255, 255, 1)"}
+            onMouseLeave={(e) => e.target.style.backgroundColor = "rgba(255, 255, 255, 0.7)"}
+            title="Next media"
+          >
+            ❯
+          </button>
+        )}
       </div>
 
       <div
@@ -3060,7 +3243,7 @@ const isMatched = isFieldMatched(detail.label, detail.value, matchedFields);
         style={{ backgroundColor: "#f8f9fa" }}
       >
         <p className="text-muted mb-0" style={{ fontSize: "14px" }}>
-          Total Images: {images.length}
+          {currentImageIndex + 1} / {allMedia.length}
         </p>
         <button
           type="button"
@@ -3073,7 +3256,6 @@ const isMatched = isFieldMatched(detail.label, detail.value, matchedFields);
     </div>
   </div>
 </div>
-
       )}
 
 
