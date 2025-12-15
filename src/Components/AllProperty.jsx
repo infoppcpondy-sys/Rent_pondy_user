@@ -3492,7 +3492,11 @@ const AllProperty = () => {
 
   });
   const [hoverSearch, setHoverSearch] = useState(false);
+  const [hoverClear, setHoverClear] = useState(false);
   const [hoverAdvance, setHoverAdvance] = useState(false);
+  const [showNoDataModal, setShowNoDataModal] = useState(false);
+  const [searchPerformed, setSearchPerformed] = useState(false);
+
   const [imageCounts, setImageCounts] = useState({}); // Store image count for each property
   const [loading, setLoading] = useState(true); 
     const [uploads, setUploads] = useState([]);
@@ -3532,7 +3536,7 @@ const AllProperty = () => {
     negotiation: '', length: '', breadth: '', totalArea: '', minTotalArea: '', ownership: '', bedrooms: '',
     minBedrooms: '', kitchen: '', kitchenType: '', balconies: '', floorNo: '', areaUnit: '', propertyApproved: '',
     facing: '', postedBy: '', furnished: '', lift: '', attachedBathrooms: '', minAttachedBathrooms: '',
-    western: '', minWestern: '', rentType: '', carParking: '', city: '', phoneNumber: '', state:""
+    western: '', minWestern: '', rentType: '', carParking: '', city: '', phoneNumber: '', state: '', wheelChairAvailable: ''
   });
     const activeFilterCount = [
     ...Object.values(filters),
@@ -3588,6 +3592,7 @@ const AllProperty = () => {
   const [isFilterPopupOpen, setIsFilterPopupOpen] = useState(false);
   const [isAdvancedPopupOpen, setIsAdvancedPopupOpen] = useState(false);
   const navigate = useNavigate();
+  const filterPopupTriggerRef = useRef(null);
 
 
     const fetchImageCount = async (rentId) => {
@@ -4185,10 +4190,10 @@ const fieldLabels = {
       if (!advancedFilters[key]) return true;
   
       if (key === "minPrice") {
-        return property.price >= Number(advancedFilters[key]);
+        return property.rentalAmount >= Number(advancedFilters[key]);
       }
       if (key === "maxPrice") {
-        return property.price <= Number(advancedFilters[key]);
+        return property.rentalAmount <= Number(advancedFilters[key]);
       }
       if (key === "minTotalArea") {
         return property.totalArea >= Number(advancedFilters[key]);
@@ -4209,6 +4214,19 @@ const fieldLabels = {
   
     return basicFilterMatch && priceMatch && advancedFilterMatch;
   });
+  
+  // Show no data modal when results are empty and filters are applied after search
+  useEffect(() => {
+    const hasActiveFilters = Object.values(filters).some(val => val !== '') || 
+                             Object.values(advancedFilters).some(val => val !== '');
+    
+    // Only show modal if user has performed a search and no results found
+    if (searchPerformed && filteredProperties.length === 0 && hasActiveFilters) {
+      setShowNoDataModal(true);
+    } else {
+      setShowNoDataModal(false);
+    }
+  }, [filteredProperties, filters, advancedFilters, searchPerformed]);
   
   useEffect(() => {
     const backdrop = document.querySelector('.modal-backdrop');
@@ -4242,12 +4260,15 @@ const totalUploads = useMemo(() => {
 }, [uploads]);
 
 useEffect(() => {
-  // Avoid running logic if both sources are empty
-  if (!filteredProperties?.length && !totalUploads?.length) return;
-
   const merged = [];
   let propertyCounter = 0;
   let uploadIndex = 0;
+
+  // If both sources are empty, set mergedData to empty array
+  if (!filteredProperties?.length && !totalUploads?.length) {
+    setMergedData([]);
+    return;
+  }
 
   for (let i = 0; i < filteredProperties.length; i++) {
     merged.push({ ...filteredProperties[i], type: 'property' });
@@ -4285,9 +4306,17 @@ useEffect(() => {
       <Helmet>
         <title>Rental Property | Properties</title>
       </Helmet>
+      
+      {/* Hidden trigger button for filter popup */}
+      <button
+        ref={filterPopupTriggerRef}
+        data-bs-toggle="modal"
+        data-bs-target="#filterPopup"
+        style={{ display: 'none' }}
+      />
+      
       <Row className="g-3 w-100 ">
         <Col lg={12} className="d-flex align-items-center justify-content-center pt-2 m-0">
-        
       <div
   className="d-flex flex-column justify-content-center align-items-center"
   data-bs-toggle="modal"
@@ -5058,20 +5087,61 @@ useEffect(() => {
        </div>
      {/* Advance Filter Button */}
         <div className="text-center mt-3 ">
-        <button  aria-label="Close"  data-bs-dismiss="modal"
-        type="button"
-        className="btn w-100"
-        style={{
-          backgroundColor: hoverSearch ? '#4F4B7E' : '#4F4B7E',
-          color: '#fff',
-          border: 'none',
-        }}
-        onMouseEnter={() => setHoverSearch(true)}
-        onMouseLeave={() => setHoverSearch(false)}
-        // onClick={applyFilters}
-      >
-        SEARCH
-      </button>
+        <div style={{ display: 'flex', gap: '10px', marginBottom: '10px' }}>
+          {/* Clear Button */}
+          <button
+            type="button"
+            style={{
+              flex: 1,
+              backgroundColor: hoverClear ? '#dc3545' : 'transparent',
+              color: hoverClear ? '#fff' : '#dc3545',
+              border: `1px solid #dc3545`,
+              padding: '10px 20px',
+              borderRadius: '4px',
+              cursor: 'pointer',
+              fontWeight: 'bold',
+            }}
+            onMouseEnter={() => setHoverClear(true)}
+            onMouseLeave={() => setHoverClear(false)}
+            onClick={() => {
+              setFilters({
+                id: '',
+                minPrice: '',
+                maxPrice: '',
+                propertyMode: '',
+                propertyType: '',
+                bhk: '',
+                facing: '',
+                city: '',
+                state: '',
+              });
+            }}
+          >
+            CLEAR
+          </button>
+
+          {/* Search Button */}
+          <button
+            aria-label="Close"
+            data-bs-dismiss="modal"
+            type="button"
+            style={{
+              flex: 1,
+              backgroundColor: hoverSearch ? '#4F4B7E' : '#4F4B7E',
+              color: '#fff',
+              border: 'none',
+              padding: '10px 20px',
+              borderRadius: '4px',
+              cursor: 'pointer',
+              fontWeight: 'bold',
+            }}
+            onMouseEnter={() => setHoverSearch(true)}
+            onMouseLeave={() => setHoverSearch(false)}
+            onClick={() => setSearchPerformed(true)}
+          >
+            SEARCH
+          </button>
+        </div>
 
       <button
         type="button"
@@ -5114,7 +5184,7 @@ useEffect(() => {
           aria-label="Close"
         ></button>
       </div>
-  <div className="modal-body">
+  <div className="modal-body" style={{ overflowY: 'auto', maxHeight: '80vh' }}>
  
           <div className="form-group">
        <div className="input-card p-0 rounded-2" style={{ 
@@ -6313,21 +6383,84 @@ useEffect(() => {
        </div>
       {/* )}  */}
     <div className="text-center mt-3 ">
-        <button
-                  data-bs-dismiss="modal"
+        <div style={{ display: 'flex', gap: '10px', marginBottom: '10px' }}>
+          {/* Clear Button */}
+          <button
+            type="button"
+            style={{
+              flex: 1,
+              backgroundColor: hoverClear ? '#dc3545' : 'transparent',
+              color: hoverClear ? '#fff' : '#dc3545',
+              border: `1px solid #dc3545`,
+              padding: '10px 20px',
+              borderRadius: '4px',
+              cursor: 'pointer',
+              fontWeight: 'bold',
+              pointerEvents: 'auto',
+            }}
+            onMouseEnter={() => setHoverClear(true)}
+            onMouseLeave={() => setHoverClear(false)}
+            onClick={(e) => {
+              e.preventDefault();
+              e.stopPropagation();
+              setAdvancedFilters({
+                propertyMode: '', propertyType: '', minPrice: '', maxPrice: '', propertyAge: '', bankLoan: '',
+                negotiation: '', length: '', breadth: '', totalArea: '', minTotalArea: '', ownership: '', bedrooms: '',
+                minBedrooms: '', kitchen: '', kitchenType: '', balconies: '', floorNo: '', areaUnit: '', propertyApproved: '',
+                facing: '', postedBy: '', furnished: '', lift: '', attachedBathrooms: '', minAttachedBathrooms: '',
+                western: '', minWestern: '', rentType: '', carParking: '', city: '', phoneNumber: '', state: '', wheelChairAvailable: ''
+              });
+              setFilters({
+                id: '',
+                minPrice: '',
+                maxPrice: '',
+                propertyMode: '',
+                propertyType: '',
+                bhk: '',
+                facing: '',
+                bedrooms: '',
+                floorNo: '',
+                city: '',
+                state: '',
+              });
+              setDropdownState({ activeDropdown: null, filterText: '', position: { top: 0, left: 0 } });
+              // Scroll the modal body to top
+              setTimeout(() => {
+                const modalBody = document.querySelector('#advancedFilterPopup .modal-body');
+                const modalDialog = document.querySelector('#advancedFilterPopup .modal-dialog');
+                if (modalBody) {
+                  modalBody.scrollTop = 0;
+                }
+                if (modalDialog) {
+                  modalDialog.scrollTop = 0;
+                }
+              }, 100);
+            }}
+          >
+            CLEAR
+          </button>
 
-          type="button"
-          className="btn w-100"
-          style={{
-            backgroundColor: hoverSearch ? '#4F4B7E' : '#4F4B7E',
-            color: '#fff',
-            border: 'none',
-          }}
-          onMouseEnter={() => setHoverSearch(true)}
-          onMouseLeave={() => setHoverSearch(false)}          // onClick={applyAdvancedFilters}
-        >
-          SEARCH
-        </button>
+          {/* Search Button */}
+          <button
+            data-bs-dismiss="modal"
+            type="button"
+            style={{
+              flex: 1,
+              backgroundColor: hoverSearch ? '#4F4B7E' : '#4F4B7E',
+              color: '#fff',
+              border: 'none',
+              padding: '10px 20px',
+              borderRadius: '4px',
+              cursor: 'pointer',
+              fontWeight: 'bold',
+            }}
+            onMouseEnter={() => setHoverSearch(true)}
+            onMouseLeave={() => setHoverSearch(false)}
+            onClick={() => setSearchPerformed(true)}
+          >
+            SEARCH
+          </button>
+        </div>
       <button
           type="button"
           className="btn w-100 mt-3"
@@ -6358,6 +6491,100 @@ useEffect(() => {
 
 
 
+          {/* No Data Modal - Show when filters applied but no results */}
+          {showNoDataModal && (
+            <div
+              style={{
+                position: 'fixed',
+                top: 0,
+                left: 0,
+                width: '100%',
+                height: '100%',
+                backgroundColor: 'rgba(0, 0, 0, 0.5)',
+                display: 'flex',
+                justifyContent: 'center',
+                alignItems: 'center',
+                zIndex: 9999,
+              }}
+            >
+              <div
+                style={{
+                  backgroundColor: '#fff',
+                  borderRadius: '15px',
+                  padding: '30px',
+                  width: '90%',
+                  maxWidth: '400px',
+                  boxShadow: '0 4px 12px rgba(0, 0, 0, 0.15)',
+                }}
+              >
+                <div className="text-center mb-3">
+                  <img src={NoData} alt="No data" width={80} />
+                </div>
+                <h5 className="text-center mb-3" style={{ color: '#4F4B7E', fontWeight: 600 }}>
+                  No Properties Found
+                </h5>
+                <p className="text-center text-muted mb-4" style={{ fontSize: '14px' }}>
+                  No properties match your search criteria. Would you like to continue searching with different filters?
+                </p>
+                <div className="d-flex gap-2 justify-content-center">
+                  <button
+                    type="button"
+                    className="btn rounded-2 px-4"
+                    style={{ backgroundColor: '#4F4B7E', color: '#fff', fontWeight: 500 }}
+                    onClick={() => {
+                      setShowNoDataModal(false);
+                      setSearchPerformed(false);  // Reset search flag
+                      // Trigger filter popup after modal closes
+                      setTimeout(() => {
+                        if (filterPopupTriggerRef.current) {
+                          filterPopupTriggerRef.current.click();
+                        }
+                      }, 300);
+                    }}
+                  >
+                    Yes, Search Again
+                  </button>
+                  <button
+                    type="button"
+                    className="btn rounded-2 px-4"
+                    style={{
+                      backgroundColor: 'transparent',
+                      color: '#4F4B7E',
+                      border: '1px solid #4F4B7E',
+                      fontWeight: 500,
+                    }}
+                    onClick={() => {
+                      setShowNoDataModal(false);
+                      setSearchPerformed(false);
+                      setFilters({ 
+                        id: '', 
+                        minPrice: '', 
+                        maxPrice: '', 
+                        propertyMode: '', 
+                        city: '' ,
+                        propertyType: '',
+                        rentType: '',
+                        bedrooms: '',
+                        floorNo: '',
+                        state:""
+                      });
+                      setAdvancedFilters({
+                        propertyMode: '', propertyType: '', minPrice: '', maxPrice: '', propertyAge: '', bankLoan: '',
+                        negotiation: '', length: '', breadth: '', totalArea: '', minTotalArea: '', ownership: '', bedrooms: '',
+                        minBedrooms: '', kitchen: '', kitchenType: '', balconies: '', floorNo: '', areaUnit: '', propertyApproved: '',
+                        facing: '', postedBy: '', furnished: '', lift: '', attachedBathrooms: '', minAttachedBathrooms: '',
+                        western: '', minWestern: '', rentType: '', carParking: '', city: '', phoneNumber: '', state:""
+                      });
+                      window.scrollTo(0, 0);
+                    }}
+                  >
+                    No, Go Home
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
+
           <div className="w-100">
             <div style={{ overflowY: 'auto', fontFamily:"Inter, sans-serif" }}>
          {loading ? (
@@ -6375,18 +6602,20 @@ useEffect(() => {
     <p className="mt-2">Loading properties...</p>
   </div>
 ) : mergedData.length === 0 ? (
-  <div
-    className="text-center my-4"
-    style={{
-      position: 'fixed',
-      top: '50%',
-      left: '50%',
-      transform: 'translate(-50%, -50%)',
-    }}
-  >
-    <img src={NoData} alt="No data" width={100} />
-    <p>No properties found.</p>
-  </div>
+  <>
+    <div
+      className="text-center my-4"
+      style={{
+        position: 'fixed',
+        top: '50%',
+        left: '50%',
+        transform: 'translate(-50%, -50%)',
+      }}
+    >
+      <img src={NoData} alt="No data" width={100} />
+      <p>No properties found.</p>
+    </div>
+  </>
 ) : (
   <div className="col-12">
     {mergedData.map((property, index) => {
