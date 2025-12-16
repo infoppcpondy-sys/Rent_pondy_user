@@ -2193,6 +2193,7 @@ import moment from "moment";
 import { useSelector } from "react-redux";
 import { FcSearch } from "react-icons/fc";
 import { toWords } from 'number-to-words';
+import { compressImage, applyImageWatermark } from '../utils/propertyUtils';
 
 function EditProperty() {
   const location = useLocation();
@@ -2257,7 +2258,24 @@ locationCoordinates:""
   const [photos, setPhotos] = useState([]);
   const [selectedPhotoIndex, setSelectedPhotoIndex] = useState(0);
   const [video, setVideo] = useState(null);
-const [coordinateInput, setCoordinateInput] = useState('');
+  const [coordinateInput, setCoordinateInput] = useState('');
+  const [isCompressing, setIsCompressing] = useState(false);
+  const [compressionProgress, setCompressionProgress] = useState(0);
+  const [compressionMessage, setCompressionMessage] = useState('');
+  const [isUploading, setIsUploading] = useState(false);
+  const [uploadProgress, setUploadProgress] = useState(0);
+  const [message, setMessage] = useState({ text: "", type: "" });
+  const navigate = useNavigate();
+
+  // Auto-clear message after 3 seconds
+  useEffect(() => {
+    if (message.text) {
+      const timer = setTimeout(() => {
+        setMessage({ text: "", type: "" });
+      }, 3000);
+      return () => clearTimeout(timer);
+    }
+  }, [message]);
 
   useEffect(() => {
     if (!window.google) return;
@@ -2706,20 +2724,82 @@ const handleClear = () => {
   
 
   
-  const handlePhotoUpload = (e) => {
+  const handlePhotoUpload = async (e) => {
+    console.log('📸 handlePhotoUpload triggered with files:', e.target.files.length);
     const files = Array.from(e.target.files);
-    const maxSize = 10 * 1024 * 1024; 
+    const maxSize = 10 * 1024 * 1024; // 10MB
+
+    if (files.length === 0) return;
+
     for (let file of files) {
       if (file.size > maxSize) {
         alert('File size exceeds the 10MB limit');
+        e.target.value = ''; // Reset input
         return;
       }
     }
-    if (photos.length + files.length <= 15) {
-      setPhotos([...photos, ...files]);
-      setSelectedPhotoIndex(0); 
-    } else {
+
+    if (photos.length + files.length > 15) {
       alert('Maximum 15 photos can be uploaded.');
+      e.target.value = ''; // Reset input
+      return;
+    }
+
+    setIsCompressing(true);
+    setCompressionProgress(0);
+    const totalFiles = files.length;
+    let compressedImages = [];
+
+    try {
+      console.log('🔄 Starting compression of', totalFiles, 'images');
+      for (let i = 0; i < files.length; i++) {
+        setCompressionMessage(`Compressing image ${i + 1} of ${totalFiles}...`);
+        // Show 0% progress for this image
+        setCompressionProgress(Math.round((i / totalFiles) * 100));
+        
+        try {
+          const compressed = await compressImage(files[i], 30);
+          console.log(`✅ Image ${i + 1} compressed: ${files[i].size} → ${compressed.size} bytes`);
+          compressedImages.push(compressed);
+        } catch (err) {
+          console.error(`❌ Failed to compress image ${i + 1}`, err);
+          compressedImages.push(files[i]); // Fallback to original
+        }
+        
+        // Show 100% progress for this image before moving to next
+        setCompressionProgress(Math.round(((i + 1) / totalFiles) * 100));
+        
+        // Small delay to allow progress bar animation to be visible
+        await new Promise(resolve => setTimeout(resolve, 300));
+      }
+
+      setCompressionMessage('Applying watermark...');
+      setCompressionProgress(95); // Show 95% while watermarking
+      
+      const watermarkedImages = await Promise.all(
+        compressedImages.map((file) => applyImageWatermark(file))
+      );
+
+      console.log('✨ All images watermarked and ready');
+      setCompressionProgress(100); // Show 100% complete
+      setCompressionMessage('All images compressed and ready!');
+      setPhotos([...photos, ...watermarkedImages]);
+      setSelectedPhotoIndex(0);
+
+      // Reset file input so same file can be uploaded again
+      e.target.value = '';
+
+      // Show completion message for longer so user can see progress
+      setTimeout(() => {
+        setIsCompressing(false);
+        setCompressionProgress(0);
+        setCompressionMessage('');
+      }, 3000);
+    } catch (err) {
+      console.error('❌ Photo upload error:', err);
+      alert('Error processing photos. Please try again.');
+      setIsCompressing(false);
+      e.target.value = ''; // Reset input on error
     }
   };
 
@@ -2746,13 +2826,33 @@ const handleClear = () => {
       });
     };
   }, [photos]);
-  const navigate = useNavigate();
 
   const handleSubmit = async (e) => {
     e.preventDefault();
 
+    // Check character limit for Property Description
+    if (formData.description && formData.description.length > 200) {
+      setMessage({ text: `Property description exceeds 200 characters. Current: ${formData.description.length} characters. Please reduce it before proceeding.`, type: "error" });
+      
+      // Scroll to description field to show error message
+      setTimeout(() => {
+        const descriptionElement = document.querySelector('textarea[name="description"]');
+        if (descriptionElement) {
+          descriptionElement.scrollIntoView({ behavior: "smooth", block: "center" });
+        }
+      }, 100);
+      
+      setTimeout(() => {
+        setMessage({ text: "", type: "" });
+      }, 8000);
+      return;
+    }
+
     if (!rentId) {
-      alert("RENT-ID is required. Please refresh or try again.");
+      setMessage({ text: "RENT-ID is required. Please refresh or try again.", type: "error" });
+      setTimeout(() => {
+        setMessage({ text: "", type: "" });
+      }, 5000);
       return;
     }
 
@@ -2772,18 +2872,71 @@ const handleClear = () => {
     }
 
     try {
+      setIsUploading(true);
+      setUploadProgress(0);
+
       const response = await axios.post(
         `${process.env.REACT_APP_API_URL}/update-rent-property`,
         formDataToSend,
-        { headers: { "Content-Type": "multipart/form-data" } }
+        { 
+          headers: { "Content-Type": "multipart/form-data" },
+          onUploadProgress: (progressEvent) => {
+            if (progressEvent.total) {
+              const percentCompleted = Math.round(
+                (progressEvent.loaded * 100) / progressEvent.total
+              );
+              setUploadProgress(percentCompleted);
+              console.log(`Upload progress: ${percentCompleted}%`);
+            }
+          }
+        }
       );
-      alert(response.data.message);
+
+      setUploadProgress(100);
+      setMessage({ text: response.data.message, type: "success" });
+      
+      setTimeout(() => {
+        setIsUploading(false);
+        setUploadProgress(0);
+        navigate(-1);
+      }, 2000);
     } catch (error) {
+      setIsUploading(false);
+      setUploadProgress(0);
+      setMessage({ text: "Error saving property data.", type: "error" });
+      setTimeout(() => {
+        setMessage({ text: "", type: "" });
+      }, 5000);
     }
-       setTimeout(() => {
-      navigate(-1);
+  };
+
+  const handlePreview = () => {
+    // Check character limit for Property Description
+    if (formData.description && formData.description.length > 200) {
+      setMessage({ text: `Property description exceeds 200 characters. Current: ${formData.description.length} characters. Please reduce it before previewing.`, type: "error" });
+      
+      // Scroll to description field to show error message
+      setTimeout(() => {
+        const descriptionElement = document.querySelector('textarea[name="description"]');
+        if (descriptionElement) {
+          descriptionElement.scrollIntoView({ behavior: "smooth", block: "center" });
+        }
+      }, 100);
+      
+      // Keep error message visible longer for user to read
+      setTimeout(() => {
+        setMessage({ text: "", type: "" });
+      }, 8000);
+      return;
+    }
+    
+    // If validation passes, proceed with preview (you can add preview modal logic here)
+    setMessage({ text: "Preview feature coming soon!", type: "info" });
+    setTimeout(() => {
+      setMessage({ text: "", type: "" });
     }, 3000);
   };
+
      const fieldIcons = {
         phoneNumber: <FaPhone color="#4F4B7E" />,
         rentalPropertyAddress: <MdLocationCity color="#4F4B7E" />,
@@ -2989,6 +3142,20 @@ const handleClear = () => {
        <form  onSubmit={handleSubmit} className="addForm w-100">
         <p className="p-3" style={{ color: "white", backgroundColor: "rgb(47,116,127)" }}>RENT ID : {rentId}</p>
 
+        {message.text && message.type === "error" && (
+          <div
+            style={{
+              padding: "10px",
+              backgroundColor: "lightcoral",
+              color: "black",
+              margin: "10px 0",
+              borderRadius: "5px"
+            }}
+          >
+            {message.text}
+          </div>
+        )}
+
 
          {/* Upload Photos
          <div className="form-group photo-upload-container mt-2">
@@ -3072,6 +3239,56 @@ const handleClear = () => {
     Upload Your Property Images
   </label>
 </div>
+
+        {/* Compression Progress Bar - Inline Style */}
+        {isCompressing && (
+          <div style={{
+            width: '100%',
+            padding: '20px',
+            backgroundColor: '#f0f4f8',
+            borderRadius: '8px',
+            marginBottom: '20px',
+            border: '1px solid #d0dce6'
+          }}>
+            <div style={{
+              width: '100%',
+              height: '12px',
+              backgroundColor: '#cbd5e0',
+              borderRadius: '6px',
+              overflow: 'hidden',
+              marginBottom: '12px'
+            }}>
+              <div style={{
+                height: '100%',
+                backgroundColor: '#4F4B7E',
+                width: `${compressionProgress}%`,
+                transition: 'width 0.3s ease',
+              }}></div>
+            </div>
+            <div style={{
+              display: 'flex',
+              justifyContent: 'space-between',
+              alignItems: 'center'
+            }}>
+              <p style={{
+                margin: '0',
+                color: '#4F4B7E',
+                fontSize: '13px',
+                fontWeight: '600'
+              }}>
+                {compressionMessage}
+              </p>
+              <p style={{
+                margin: '0',
+                color: '#4F4B7E',
+                fontSize: '13px',
+                fontWeight: 'bold'
+              }}>
+                {compressionProgress}%
+              </p>
+            </div>
+          </div>
+        )}
 
         {photos.length > 0 && (
           <div className="uploaded-photos">
@@ -4118,7 +4335,49 @@ const handleClear = () => {
   {/* Description */}
   <div className="form-group">
     <label>Description:</label>
-    <textarea name="description"   value={formData.description || ""} onChange={handleFieldChange} className="form-control" placeholder="Enter Description"></textarea>
+    <div className="input-card p-0 rounded-2" style={{ 
+      display: 'flex', 
+      alignItems: 'center', 
+      justifyContent: 'space-between', 
+      width: '100%',  
+      boxShadow: '0 4px 10px rgba(38, 104, 190, 0.1)',
+      background: "#fff",
+      paddingRight: "10px"
+    }}>
+      <div style={{ width: '100%', position: 'relative' }}>
+        <textarea 
+          name="description"   
+          value={formData.description || ""} 
+          onChange={handleFieldChange} 
+          className="form-control" 
+          placeholder="Enter Description (Maximum 200 Characters)"
+          style={{ flex: '1', padding: '12px', fontSize: '14px', border: 'none', outline: 'none', color:"grey", width: '100%', boxSizing: 'border-box' }}
+        ></textarea>
+        <div style={{
+          position: 'absolute',
+          bottom: '8px',
+          right: '12px',
+          fontSize: '12px',
+          fontWeight: 'bold',
+          color: formData.description.length > 200 ? '#dc3545' : formData.description.length >= 150 ? '#ff9800' : '#28a745'
+        }}>
+          {formData.description ? formData.description.length : 0}/200
+        </div>
+      </div>
+    </div>
+    {message.text && message.type === "error" && (  
+      <div
+        style={{
+          padding: "10px",
+          backgroundColor: "lightcoral",
+          color: "black",
+          margin: "10px 0",
+          borderRadius: "5px"
+        }}
+      >
+        {message.text}
+      </div>
+    )}
   </div>
 
   {/* furnished */}
@@ -4881,11 +5140,77 @@ const handleClear = () => {
 
 
                 <Button
+                  type="button"
+                  onClick={handlePreview}
+                  style={{ marginTop: '15px', marginRight: '10px', backgroundColor: "#4F4B7E", border:"none", color: "white" }}
+                >
+                  Preview
+                </Button>
+
+                <Button
                   type="submit"
                   style={{ marginTop: '15px', backgroundColor: "rgb(47,116,127)", border:"none" }}
                 >
                   update property
                 </Button>
+
+                {/* Upload Progress Overlay */}
+                {isUploading && (
+                  <div
+                    style={{
+                      position: 'fixed',
+                      top: 0,
+                      left: 0,
+                      width: '100vw',
+                      height: '100vh',
+                      backgroundColor: 'rgba(0, 0, 0, 0.5)',
+                      display: 'flex',
+                      justifyContent: 'center',
+                      alignItems: 'center',
+                      zIndex: 9999,
+                    }}
+                  >
+                    <div
+                      style={{
+                        backgroundColor: 'white',
+                        padding: '30px',
+                        borderRadius: '10px',
+                        boxShadow: '0 0 15px rgba(0, 0, 0, 0.2)',
+                        textAlign: 'center',
+                        minWidth: '300px',
+                      }}
+                    >
+                      <h5 style={{ color: 'blue', fontWeight: 'bold', marginBottom: '15px' }}>
+                        Uploading Property Data
+                      </h5>
+                      <div
+                        style={{
+                          width: '100%',
+                          height: '8px',
+                          backgroundColor: '#e0e0e0',
+                          borderRadius: '4px',
+                          overflow: 'hidden',
+                          marginBottom: '10px',
+                        }}
+                      >
+                        <div
+                          style={{
+                            height: '100%',
+                            backgroundColor: '#4F4B7E',
+                            width: `${uploadProgress}%`,
+                            transition: 'width 0.3s ease',
+                          }}
+                        />
+                      </div>
+                      <p style={{ color: 'black', fontWeight: 'bold', margin: '0' }}>
+                        {uploadProgress}% Complete
+                      </p>
+                      <p style={{ color: '#666', fontSize: '12px', margin: '5px 0 0 0' }}>
+                        {video ? 'Uploading video and images...' : 'Processing...'}
+                      </p>
+                    </div>
+                  </div>
+                )}
        
       </form>
     </div>

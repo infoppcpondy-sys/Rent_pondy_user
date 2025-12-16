@@ -233,7 +233,7 @@
 //     negotiation: '', length: '', breadth: '', totalArea: '', minTotalArea: '', ownership: '', bedrooms: '',
 //     minBedrooms: '', kitchen: '', kitchenType: '', balconies: '', floorNo: '', areaUnit: '', propertyApproved: '',
 //     facing: '', postedBy: '', furnished: '', lift: '', attachedBathrooms: '', minAttachedBathrooms: '',
-//     western: '', minWestern: '', rentType: '', carParking: '', city: '', phoneNumber: '', state:""
+//     western: '', minWestern: '', rentType: '', carParking: '', area: '', nagar: '', streetName: '', pinCode: '', phoneNumber: '', state:""
 //   });
 //     const activeFilterCount = [
 //     ...Object.values(filters),
@@ -2810,10 +2810,10 @@
 //            <GoCheckCircleFill style={{ color: "green", margin: "5px" }} />
 //          )}
 //      </div></div>
-//        {/* City */}
+//        {/* Area */}
      
 //      <div className="form-group">
-//        {/* <label>City:</label> */}
+//        {/* <label>Area:</label> */}
 //        <div className="input-card p-0 rounded-2" style={{ 
 //          display: 'flex', 
 //          alignItems: 'center', 
@@ -2842,19 +2842,166 @@
 //            background: "#fff", // optional
 //          }}
 //        >
-//           {fieldIcons.city || <FaHome />} 
+//           {fieldIcons.area || <FaHome />} 
 //        </span>
 //        <input
 //            type="text"
-//            name="city"
-//            value={advancedFilters.city}
+//            name="area"
+//            value={advancedFilters.area}
 //            onChange={handleAdvancedFilterChange}
 //            className="form-input m-0"
-//            placeholder="City"
+//            placeholder="Area"
 //              style={{ flex: '1', padding: '12px', fontSize: '14px', border: 'none', outline: 'none' , color:"grey"}}
 //          />
 //        </div>
-//         {advancedFilters.city && (
+//         {advancedFilters.area && (
+//            <GoCheckCircleFill style={{ color: "green", margin: "5px" }} />
+//          )}
+//      </div></div>
+//      
+//        {/* Nagar */}
+     
+//      <div className="form-group">
+//        {/* <label>Nagar:</label> */}
+//        <div className="input-card p-0 rounded-2" style={{ 
+//          display: 'flex', 
+//          alignItems: 'center', 
+//          justifyContent: 'space-between', 
+//          width: '100%',  
+//          boxShadow: '0 4px 10px rgba(38, 104, 190, 0.1)',
+//          background: "#fff",
+//          paddingRight: "10px"
+//        }}>
+         
+       
+//          <div
+//        style={{
+//          display: "flex",
+//          alignItems: "stretch", // <- Stretch children vertically
+//          width: "100%",
+//        }}
+//      > 
+//           <span
+//          style={{
+//            display: "flex",
+//            alignItems: "center",
+//            justifyContent: "center",
+//            padding: "0 14px",
+//            borderRight: "1px solid #4F4B7E",
+//            background: "#fff", // optional
+//          }}
+//        >
+//           {fieldIcons.nagar || <FaHome />} 
+//        </span>
+//        <input
+//            type="text"
+//            name="nagar"
+//            value={advancedFilters.nagar}
+//            onChange={handleAdvancedFilterChange}
+//            className="form-input m-0"
+//            placeholder="Nagar"
+//              style={{ flex: '1', padding: '12px', fontSize: '14px', border: 'none', outline: 'none' , color:"grey"}}
+//          />
+//        </div>
+//         {advancedFilters.nagar && (
+//            <GoCheckCircleFill style={{ color: "green", margin: "5px" }} />
+//          )}
+//      </div></div>
+//      
+//        {/* Street Name */}
+     
+//      <div className="form-group">
+//        {/* <label>Street Name:</label> */}
+//        <div className="input-card p-0 rounded-2" style={{ 
+//          display: 'flex', 
+//          alignItems: 'center', 
+//          justifyContent: 'space-between', 
+//          width: '100%',  
+//          boxShadow: '0 4px 10px rgba(38, 104, 190, 0.1)',
+//          background: "#fff",
+//          paddingRight: "10px"
+//        }}>
+         
+       
+//          <div
+//        style={{
+//          display: "flex",
+//          alignItems: "stretch", // <- Stretch children vertically
+//          width: "100%",
+//        }}
+//      > 
+//           <span
+//          style={{
+//            display: "flex",
+//            alignItems: "center",
+//            justifyContent: "center",
+//            padding: "0 14px",
+//            borderRight: "1px solid #4F4B7E",
+//            background: "#fff", // optional
+//          }}
+//        >
+//           {fieldIcons.streetName || <FaHome />} 
+//        </span>
+//        <input
+//            type="text"
+//            name="streetName"
+//            value={advancedFilters.streetName}
+//            onChange={handleAdvancedFilterChange}
+//            className="form-input m-0"
+//            placeholder="Street Name"
+//              style={{ flex: '1', padding: '12px', fontSize: '14px', border: 'none', outline: 'none' , color:"grey"}}
+//          />
+//        </div>
+//         {advancedFilters.streetName && (
+//            <GoCheckCircleFill style={{ color: "green", margin: "5px" }} />
+//          )}
+//      </div></div>
+//      
+//        {/* Pincode */}
+     
+//      <div className="form-group">
+//        {/* <label>Pincode:</label> */}
+//        <div className="input-card p-0 rounded-2" style={{ 
+//          display: 'flex', 
+//          alignItems: 'center', 
+//          justifyContent: 'space-between', 
+//          width: '100%',  
+//          boxShadow: '0 4px 10px rgba(38, 104, 190, 0.1)',
+//          background: "#fff",
+//          paddingRight: "10px"
+//        }}>
+         
+       
+//          <div
+//        style={{
+//          display: "flex",
+//          alignItems: "stretch", // <- Stretch children vertically
+//          width: "100%",
+//        }}
+//      > 
+//           <span
+//          style={{
+//            display: "flex",
+//            alignItems: "center",
+//            justifyContent: "center",
+//            padding: "0 14px",
+//            borderRight: "1px solid #4F4B7E",
+//            background: "#fff", // optional
+//          }}
+//        >
+//           {fieldIcons.pinCode || <FaHome />} 
+//        </span>
+//        <input
+//            type="text"
+//            name="pinCode"
+//            value={advancedFilters.pinCode}
+//            onChange={handleAdvancedFilterChange}
+//            className="form-input m-0"
+//            placeholder="Pincode"
+//              style={{ flex: '1', padding: '12px', fontSize: '14px', border: 'none', outline: 'none' , color:"grey"}}
+//          />
+//        </div>
+//         {advancedFilters.pinCode && (
 //            <GoCheckCircleFill style={{ color: "green", margin: "5px" }} />
 //          )}
 //      </div></div>
@@ -3481,7 +3628,10 @@ const AllProperty = () => {
     minPrice: '', 
     maxPrice: '', 
     propertyMode: '', 
-    city: '' ,
+    area: '' ,
+    nagar: '',
+    streetName: '',
+    pinCode: '',
      propertyType: '',
       rentType: '',
      propertyType: '',
@@ -4179,7 +4329,10 @@ const fieldLabels = {
       (filters.rentType ? property.rentType?.toLowerCase().includes(filters.rentType.toLowerCase()) : true) &&
       (filters.bedrooms ? property.bedrooms?.toLowerCase().includes(filters.bedrooms.toLowerCase()) : true) &&
       (filters.floorNo ? property.floorNo?.toLowerCase().includes(filters.floorNo.toLowerCase()) : true) &&
-      (filters.city ? property.city?.toLowerCase().includes(filters.city.toLowerCase()) : true) &&
+      (filters.area ? property.area?.toLowerCase().includes(filters.area.toLowerCase()) : true) &&
+      (filters.nagar ? property.nagar?.toLowerCase().includes(filters.nagar.toLowerCase()) : true) &&
+      (filters.streetName ? property.streetName?.toLowerCase().includes(filters.streetName.toLowerCase()) : true) &&
+      (filters.pinCode ? property.pinCode?.toLowerCase().includes(filters.pinCode.toLowerCase()) : true) &&
       (filters.state ? property.state?.toLowerCase().includes(filters.state.toLowerCase()) : true);
 
     const priceMatch = 
@@ -5031,10 +5184,10 @@ useEffect(() => {
            <GoCheckCircleFill style={{ color: "green", margin: "5px" }} />
          )}
      </div></div>
-       {/* City */}
+       {/* Area */}
      
      <div className="form-group">
-       {/* <label>City:</label> */}
+       {/* <label>Area:</label> */}
        <div className="input-card p-0 rounded-2" style={{ 
          display: 'flex', 
          alignItems: 'center', 
@@ -5063,19 +5216,166 @@ useEffect(() => {
            background: "#fff", // optional
          }}
        >
-          {fieldIcons.city || <FaHome />} 
+          {fieldIcons.area || <FaHome />} 
        </span>
        <input
            type="text"
-           name="city"
-           value={filters.city}
+           name="area"
+           value={filters.area}
            onChange={handleFilterChange}
            className="form-input m-0"
-           placeholder="City"
+           placeholder="Area"
              style={{ flex: '1', padding: '12px', fontSize: '14px', border: 'none', outline: 'none' , color:"grey"}}
          />
        </div>
-        {filters.city && (
+        {filters.area && (
+           <GoCheckCircleFill style={{ color: "green", margin: "5px" }} />
+         )}
+     </div></div>
+     
+       {/* Nagar */}
+     
+     <div className="form-group">
+       {/* <label>Nagar:</label> */}
+       <div className="input-card p-0 rounded-2" style={{ 
+         display: 'flex', 
+         alignItems: 'center', 
+         justifyContent: 'space-between', 
+         width: '100%',  
+         boxShadow: '0 4px 10px rgba(38, 104, 190, 0.1)',
+         background: "#fff",
+         paddingRight: "10px"
+       }}>
+         
+       
+         <div
+       style={{
+         display: "flex",
+         alignItems: "stretch", // <- Stretch children vertically
+         width: "100%",
+       }}
+     > 
+          <span
+         style={{
+           display: "flex",
+           alignItems: "center",
+           justifyContent: "center",
+           padding: "0 14px",
+           borderRight: "1px solid #4F4B7E",
+           background: "#fff", // optional
+         }}
+       >
+          {fieldIcons.nagar || <FaHome />} 
+       </span>
+       <input
+           type="text"
+           name="nagar"
+           value={filters.nagar}
+           onChange={handleFilterChange}
+           className="form-input m-0"
+           placeholder="Nagar"
+             style={{ flex: '1', padding: '12px', fontSize: '14px', border: 'none', outline: 'none' , color:"grey"}}
+         />
+       </div>
+        {filters.nagar && (
+           <GoCheckCircleFill style={{ color: "green", margin: "5px" }} />
+         )}
+     </div></div>
+     
+       {/* Street Name */}
+     
+     <div className="form-group">
+       {/* <label>Street Name:</label> */}
+       <div className="input-card p-0 rounded-2" style={{ 
+         display: 'flex', 
+         alignItems: 'center', 
+         justifyContent: 'space-between', 
+         width: '100%',  
+         boxShadow: '0 4px 10px rgba(38, 104, 190, 0.1)',
+         background: "#fff",
+         paddingRight: "10px"
+       }}>
+         
+       
+         <div
+       style={{
+         display: "flex",
+         alignItems: "stretch", // <- Stretch children vertically
+         width: "100%",
+       }}
+     > 
+          <span
+         style={{
+           display: "flex",
+           alignItems: "center",
+           justifyContent: "center",
+           padding: "0 14px",
+           borderRight: "1px solid #4F4B7E",
+           background: "#fff", // optional
+         }}
+       >
+          {fieldIcons.streetName || <FaHome />} 
+       </span>
+       <input
+           type="text"
+           name="streetName"
+           value={filters.streetName}
+           onChange={handleFilterChange}
+           className="form-input m-0"
+           placeholder="Street Name"
+             style={{ flex: '1', padding: '12px', fontSize: '14px', border: 'none', outline: 'none' , color:"grey"}}
+         />
+       </div>
+        {filters.streetName && (
+           <GoCheckCircleFill style={{ color: "green", margin: "5px" }} />
+         )}
+     </div></div>
+     
+       {/* Pincode */}
+     
+     <div className="form-group">
+       {/* <label>Pincode:</label> */}
+       <div className="input-card p-0 rounded-2" style={{ 
+         display: 'flex', 
+         alignItems: 'center', 
+         justifyContent: 'space-between', 
+         width: '100%',  
+         boxShadow: '0 4px 10px rgba(38, 104, 190, 0.1)',
+         background: "#fff",
+         paddingRight: "10px"
+       }}>
+         
+       
+         <div
+       style={{
+         display: "flex",
+         alignItems: "stretch", // <- Stretch children vertically
+         width: "100%",
+       }}
+     > 
+          <span
+         style={{
+           display: "flex",
+           alignItems: "center",
+           justifyContent: "center",
+           padding: "0 14px",
+           borderRight: "1px solid #4F4B7E",
+           background: "#fff", // optional
+         }}
+       >
+          {fieldIcons.pinCode || <FaHome />} 
+       </span>
+       <input
+           type="text"
+           name="pinCode"
+           value={filters.pinCode}
+           onChange={handleFilterChange}
+           className="form-input m-0"
+           placeholder="Pincode"
+             style={{ flex: '1', padding: '12px', fontSize: '14px', border: 'none', outline: 'none' , color:"grey"}}
+         />
+       </div>
+        {filters.pinCode && (
            <GoCheckCircleFill style={{ color: "green", margin: "5px" }} />
          )}
      </div></div>
@@ -5112,7 +5412,10 @@ useEffect(() => {
                 propertyType: '',
                 bhk: '',
                 facing: '',
-                city: '',
+                area: '',
+                nagar: '',
+                streetName: '',
+                pinCode: '',
                 state: '',
               });
             }}
@@ -6282,10 +6585,10 @@ useEffect(() => {
            <GoCheckCircleFill style={{ color: "green", margin: "5px" }} />
          )}
      </div></div>
-       {/* City */}
+       {/* Area */}
      
      <div className="form-group">
-       {/* <label>City:</label> */}
+       {/* <label>Area:</label> */}
        <div className="input-card p-0 rounded-2" style={{ 
          display: 'flex', 
          alignItems: 'center', 
@@ -6314,19 +6617,163 @@ useEffect(() => {
            background: "#fff", // optional
          }}
        >
-          {fieldIcons.city || <FaHome />} 
+          {fieldIcons.area || <FaHome />} 
        </span>
        <input
            type="text"
-           name="city"
-           value={advancedFilters.city}
+           name="area"
+           value={advancedFilters.area}
            onChange={handleAdvancedFilterChange}
            className="form-input m-0"
-           placeholder="City"
+           placeholder="Area"
              style={{ flex: '1', padding: '12px', fontSize: '14px', border: 'none', outline: 'none' , color:"grey"}}
          />
        </div>
-        {advancedFilters.city && (
+        {advancedFilters.area && (
+           <GoCheckCircleFill style={{ color: "green", margin: "5px" }} />
+         )}
+     </div></div>
+       {/* Nagar */}
+     
+     <div className="form-group">
+       {/* <label>Nagar:</label> */}
+       <div className="input-card p-0 rounded-2" style={{ 
+         display: 'flex', 
+         alignItems: 'center', 
+         justifyContent: 'space-between', 
+         width: '100%',  
+         boxShadow: '0 4px 10px rgba(38, 104, 190, 0.1)',
+         background: "#fff",
+         paddingRight: "10px"
+       }}>
+         
+       
+         <div
+       style={{
+         display: "flex",
+         alignItems: "stretch", // <- Stretch children vertically
+         width: "100%",
+       }}
+     > 
+          <span
+         style={{
+           display: "flex",
+           alignItems: "center",
+           justifyContent: "center",
+           padding: "0 14px",
+           borderRight: "1px solid #4F4B7E",
+           background: "#fff", // optional
+         }}
+       >
+          {fieldIcons.nagar || <FaHome />} 
+       </span>
+       <input
+           type="text"
+           name="nagar"
+           value={advancedFilters.nagar}
+           onChange={handleAdvancedFilterChange}
+           className="form-input m-0"
+           placeholder="Nagar"
+             style={{ flex: '1', padding: '12px', fontSize: '14px', border: 'none', outline: 'none' , color:"grey"}}
+         />
+       </div>
+        {advancedFilters.nagar && (
+           <GoCheckCircleFill style={{ color: "green", margin: "5px" }} />
+         )}
+     </div></div>
+       {/* Street Name */}
+     
+     <div className="form-group">
+       {/* <label>Street Name:</label> */}
+       <div className="input-card p-0 rounded-2" style={{ 
+         display: 'flex', 
+         alignItems: 'center', 
+         justifyContent: 'space-between', 
+         width: '100%',  
+         boxShadow: '0 4px 10px rgba(38, 104, 190, 0.1)',
+         background: "#fff",
+         paddingRight: "10px"
+       }}>
+         
+       
+         <div
+       style={{
+         display: "flex",
+         alignItems: "stretch", // <- Stretch children vertically
+         width: "100%",
+       }}
+     > 
+          <span
+         style={{
+           display: "flex",
+           alignItems: "center",
+           justifyContent: "center",
+           padding: "0 14px",
+           borderRight: "1px solid #4F4B7E",
+           background: "#fff", // optional
+         }}
+       >
+          {fieldIcons.streetName || <FaHome />} 
+       </span>
+       <input
+           type="text"
+           name="streetName"
+           value={advancedFilters.streetName}
+           onChange={handleAdvancedFilterChange}
+           className="form-input m-0"
+           placeholder="Street Name"
+             style={{ flex: '1', padding: '12px', fontSize: '14px', border: 'none', outline: 'none' , color:"grey"}}
+         />
+       </div>
+        {advancedFilters.streetName && (
+           <GoCheckCircleFill style={{ color: "green", margin: "5px" }} />
+         )}
+     </div></div>
+       {/* Pincode */}
+     
+     <div className="form-group">
+       {/* <label>Pincode:</label> */}
+       <div className="input-card p-0 rounded-2" style={{ 
+         display: 'flex', 
+         alignItems: 'center', 
+         justifyContent: 'space-between', 
+         width: '100%',  
+         boxShadow: '0 4px 10px rgba(38, 104, 190, 0.1)',
+         background: "#fff",
+         paddingRight: "10px"
+       }}>
+         
+       
+         <div
+       style={{
+         display: "flex",
+         alignItems: "stretch", // <- Stretch children vertically
+         width: "100%",
+       }}
+     > 
+          <span
+         style={{
+           display: "flex",
+           alignItems: "center",
+           justifyContent: "center",
+           padding: "0 14px",
+           borderRight: "1px solid #4F4B7E",
+           background: "#fff", // optional
+         }}
+       >
+          {fieldIcons.pinCode || <FaHome />} 
+       </span>
+       <input
+           type="text"
+           name="pinCode"
+           value={advancedFilters.pinCode}
+           onChange={handleAdvancedFilterChange}
+           className="form-input m-0"
+           placeholder="Pincode"
+             style={{ flex: '1', padding: '12px', fontSize: '14px', border: 'none', outline: 'none' , color:"grey"}}
+         />
+       </div>
+        {advancedFilters.pinCode && (
            <GoCheckCircleFill style={{ color: "green", margin: "5px" }} />
          )}
      </div></div>

@@ -29,6 +29,7 @@ import { GrSteps } from "react-icons/gr";
 import moment from "moment";
 import { toWords } from 'number-to-words';
 import { FcSearch } from "react-icons/fc";
+import { compressImage, applyImageWatermark } from '../utils/propertyUtils';
 
 // icon
 
@@ -110,7 +111,11 @@ function EditForm() {
   const location = useLocation();
     const [currentStep, setCurrentStep] = useState(1);
         const [isScrolling, setIsScrolling] = useState(false);
-      const [isUploading, setIsUploading] = useState(false); // Add this in your component state
+      const [isUploading, setIsUploading] = useState(false);
+      const [uploadProgress, setUploadProgress] = useState(0);
+      const [isCompressing, setIsCompressing] = useState(false);
+      const [compressionProgress, setCompressionProgress] = useState(0);
+      const [compressionMessage, setCompressionMessage] = useState('');
 
         useEffect(() => {
           let scrollTimeout;
@@ -583,8 +588,23 @@ const handleClear = () => {
   //   setIsPreview(!isPreview);
   // };
   const handlePreview = () => {
+    // Check character limit for Property Description
+    if (formData.description && formData.description.length > 200) {
+      setMessage({ text: `Property description exceeds 200 characters. Current: ${formData.description.length} characters. Please reduce it before previewing.`, type: "error" });
+      
+      // Scroll to description field to show error message
+      setTimeout(() => {
+        const descriptionElement = document.querySelector('textarea[name="description"]');
+        if (descriptionElement) {
+          descriptionElement.scrollIntoView({ behavior: "smooth", block: "center" });
+        }
+      }, 100);
+      return;
+    }
+
+    // If validation passes, toggle preview and scroll
     setIsPreview(!isPreview);
-    setIsPreviewOpen(true); // Open the preview
+    setIsPreviewOpen(true);
   
     // Scroll to the preview section
     setTimeout(() => {
@@ -1086,86 +1106,83 @@ const filteredDetailsList = propertyDetailsList.filter((item) => {
 // };
 
 const handlePhotoUpload = async (e) => {
-  setLoading(true);
+  console.log('📸 handlePhotoUpload triggered with files:', e.target.files.length);
+  const files = Array.from(e.target.files);
+  const maxSize = 10 * 1024 * 1024; // 10MB
 
-  const files = e.target.files ? Array.from(e.target.files) : [];
-  if (!files.length) {
-    setLoading(false);
-    return;
-  }
-
-  const maxSize = 50 * 1024 * 1024; // 50MB
+  if (files.length === 0) return;
 
   for (let file of files) {
     if (file.size > maxSize) {
-      setMessage("File size exceeds the 10MB limit");
-      setLoading(false);
+      setMessage({ text: "File size exceeds the 10MB limit", type: "error" });
+      e.target.value = ''; // Reset input
       return;
     }
   }
 
   if (photos.length + files.length > 15) {
-    setMessage("Maximum 15 photos can be uploaded.");
-    setLoading(false);
+    setMessage({ text: "Maximum 15 photos can be uploaded.", type: "error" });
+    e.target.value = ''; // Reset input
     return;
   }
 
-  const watermarkedImages = await Promise.all(
-    files.map(
-      (file) =>
-        new Promise((resolve) => {
-          const reader = new FileReader();
+  setIsCompressing(true);
+  setCompressionProgress(0);
+  const totalFiles = files.length;
+  let compressedImages = [];
 
-          reader.onload = (event) => {
-            const img = new Image();
-            img.onload = () => {
-              const canvas = document.createElement("canvas");
-              const ctx = canvas.getContext("2d");
+  try {
+    console.log('🔄 Starting compression of', totalFiles, 'images');
+    for (let i = 0; i < files.length; i++) {
+      setCompressionMessage(`Compressing image ${i + 1} of ${totalFiles}...`);
+      // Show 0% progress for this image
+      setCompressionProgress(Math.round((i / totalFiles) * 100));
+      
+      try {
+        const compressed = await compressImage(files[i], 30);
+        console.log(`✅ Image ${i + 1} compressed: ${files[i].size} → ${compressed.size} bytes`);
+        compressedImages.push(compressed);
+      } catch (err) {
+        console.error(`❌ Failed to compress image ${i + 1}`, err);
+        compressedImages.push(files[i]); // Fallback to original
+      }
+      
+      // Show 100% progress for this image before moving to next
+      setCompressionProgress(Math.round(((i + 1) / totalFiles) * 100));
+      
+      // Small delay to allow progress bar animation to be visible
+      await new Promise(resolve => setTimeout(resolve, 300));
+    }
 
-              canvas.width = img.width;
-              canvas.height = img.height;
-              ctx.drawImage(img, 0, 0);
+    setCompressionMessage('Applying watermark...');
+    setCompressionProgress(95); // Show 95% while watermarking
+    
+    const watermarkedImages = await Promise.all(
+      compressedImages.map((file) => applyImageWatermark(file))
+    );
 
-              const watermarkText = "Rent Pondy";
-              const fontSize = Math.max(24, Math.floor(canvas.width / 15));
-              ctx.font = `bold ${fontSize}px Arial`;
-              ctx.textAlign = "center";
-              ctx.textBaseline = "middle";
+    console.log('✨ All images watermarked and ready');
+    setCompressionProgress(100); // Show 100% complete
+    setCompressionMessage('All images compressed and ready!');
+    setPhotos([...photos, ...watermarkedImages]);
+    setSelectedFiles(watermarkedImages);
+    setSelectedPhotoIndex(0);
 
-              const centerX = canvas.width / 2;
-              const centerY = canvas.height / 2;
+    // Reset file input so same file can be uploaded again
+    e.target.value = '';
 
-              ctx.strokeStyle = "rgba(255, 255, 255, 0.9)";
-              ctx.lineWidth = 4;
-              ctx.strokeText(watermarkText, centerX, centerY);
-
-              ctx.fillStyle = "rgba(224, 223, 223, 0.9)";
-              ctx.fillText(watermarkText, centerX, centerY);
-
-              canvas.toBlob((blob) => {
-                const watermarkedFile = new File([blob], file.name, {
-                  type: file.type,
-                });
-                resolve(watermarkedFile);
-              }, file.type);
-            };
-
-            img.src = event.target.result;
-          };
-
-          reader.readAsDataURL(file);
-        })
-    )
-  );
-
-  // ✅ append new images, not overwrite
-  setPhotos((prev) => [...prev, ...watermarkedImages]);
-  setSelectedFiles((prev) => [...prev, ...watermarkedImages]);
-  setSelectedPhotoIndex(0);
-  setLoading(false);
-
-  // Reset input so same file can be picked again if needed
-  e.target.value = "";
+    // Show completion message for longer so user can see progress
+    setTimeout(() => {
+      setIsCompressing(false);
+      setCompressionProgress(0);
+      setCompressionMessage('');
+    }, 3000);
+  } catch (err) {
+    console.error('❌ Photo upload error:', err);
+    setMessage({ text: 'Error processing photos. Please try again.', type: 'error' });
+    setIsCompressing(false);
+    e.target.value = ''; // Reset input on error
+  }
 };
 
 
@@ -1516,8 +1533,26 @@ const shouldHideField = (fieldName) =>
     const handleSubmit = async (e) => {
   e.preventDefault();
 
+  // Check character limit for Property Description
+  if (formData.description && formData.description.length > 200) {
+    setMessage({ text: `Property description exceeds 200 characters. Current: ${formData.description.length} characters. Please reduce it before proceeding.`, type: "error" });
+    
+    // Scroll to description field to show error message
+    setTimeout(() => {
+      const descriptionElement = document.querySelector('textarea[name="description"]');
+      if (descriptionElement) {
+        descriptionElement.scrollIntoView({ behavior: "smooth", block: "center" });
+      }
+    }, 100);
+    
+    setTimeout(() => {
+      setMessage({ text: "", type: "" });
+    }, 8000);
+    return;
+  }
+
   if (!rentId) {
-    setMessage("RENT-ID is required. Please refresh or try again.");
+    setMessage({ text: "RENT-ID is required. Please refresh or try again.", type: "error" });
     return;
   }
 
@@ -1545,14 +1580,14 @@ const shouldHideField = (fieldName) =>
       { headers: { "Content-Type": "multipart/form-data" } }
     );
 
-    setMessage(response.data.message);
+    setMessage({ text: response.data.message, type: "success" });
 
     setTimeout(() => {
       navigate('/my-property');
     }, 2000);
 
   } catch (error) {
-    setMessage("Error saving property data.");
+    setMessage({ text: "Error saving property data.", type: "error" });
   } finally {
     setIsUploading(false); // ✅ Hide loading message
   }
@@ -2085,6 +2120,56 @@ const isReadOnly = true; // set true to make it readonly
         {loading ? "Uploading..." : "Upload Your Property Images max-15"}
                   </label>
                 </div>
+
+                {/* Compression Progress Bar - Inline Style */}
+                {isCompressing && (
+                  <div style={{
+                    width: '100%',
+                    padding: '20px',
+                    backgroundColor: '#f0f4f8',
+                    borderRadius: '8px',
+                    marginBottom: '20px',
+                    border: '1px solid #d0dce6'
+                  }}>
+                    <div style={{
+                      width: '100%',
+                      height: '12px',
+                      backgroundColor: '#cbd5e0',
+                      borderRadius: '6px',
+                      overflow: 'hidden',
+                      marginBottom: '12px'
+                    }}>
+                      <div style={{
+                        height: '100%',
+                        backgroundColor: '#4F4B7E',
+                        width: `${compressionProgress}%`,
+                        transition: 'width 0.3s ease',
+                      }}></div>
+                    </div>
+                    <div style={{
+                      display: 'flex',
+                      justifyContent: 'space-between',
+                      alignItems: 'center'
+                    }}>
+                      <p style={{
+                        margin: '0',
+                        color: '#4F4B7E',
+                        fontSize: '13px',
+                        fontWeight: '600'
+                      }}>
+                        {compressionMessage}
+                      </p>
+                      <p style={{
+                        margin: '0',
+                        color: '#4F4B7E',
+                        fontSize: '13px',
+                        fontWeight: 'bold'
+                      }}>
+                        {compressionProgress}%
+                      </p>
+                    </div>
+                  </div>
+                )}
 
        {photos.length > 0 && (
   <div className="uploaded-photos">
@@ -3737,17 +3822,40 @@ onClick={() => removePhoto(index)}>
     background: "#fff",
     paddingRight: "10px"
   }}>
-  <textarea
-    name="description"
-    value={formData.description}
-    onChange={handleFieldChange}
-    className="form-control"
-    placeholder="what makes you ad unquie(maximum 250 characters)"
-    maxLength={250} // Limits input to 250 characters
-    style={{ flex: '1', padding: '12px', fontSize: '14px', border: 'none', outline: 'none' , color:"grey"}}
-
-  ></textarea>
+  <div style={{ width: '100%', position: 'relative' }}>
+    <textarea
+      name="description"
+      value={formData.description}
+      onChange={handleFieldChange}
+      className="form-control"
+      placeholder="What Makes Your Property Unique (Maximum 200 Characters)"
+      style={{ flex: '1', padding: '12px', fontSize: '14px', border: 'none', outline: 'none' , color:"grey", width: '100%', boxSizing: 'border-box' }}
+    ></textarea>
+    <div style={{
+      position: 'absolute',
+      bottom: '8px',
+      right: '12px',
+      fontSize: '12px',
+      fontWeight: 'bold',
+      color: formData.description.length > 200 ? '#dc3545' : formData.description.length >= 150 ? '#ff9800' : '#28a745'
+    }}>
+      {formData.description.length}/200
+    </div>
+  </div>
 </div>
+{message.text && message.type === "error" && (  
+  <div
+  style={{
+    padding: "10px",
+    backgroundColor: "lightcoral",
+    color: "black",
+    margin: "10px 0",
+    borderRadius: "5px"
+  }}
+>
+  {message.text}
+</div>
+)}
 </div>
 {/* familyMembers */}
     {!shouldHideField("familyMembers") && (
@@ -5363,7 +5471,6 @@ return (
       )}
           <div className="shine-overlay"></div>
         </button>
-
         
       </div>
 

@@ -47,6 +47,71 @@ export function parseLatLngString(input) {
   return { lat, lng };
 }
 
+// Compress image intelligently to target size (<30KB by default)
+export function compressImage(file, targetSizeKB = 30) {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = (event) => {
+      const img = new Image();
+      img.onload = () => {
+        try {
+          const canvas = document.createElement('canvas');
+          let width = img.width;
+          let height = img.height;
+          let quality = 0.8;
+          const targetBytes = targetSizeKB * 1024;
+
+          // Progressive quality reduction
+          const attemptCompress = (currentQuality) => {
+            canvas.width = width;
+            canvas.height = height;
+            const ctx = canvas.getContext('2d');
+            ctx.drawImage(img, 0, 0, width, height);
+
+            return new Promise((resolveBlob) => {
+              canvas.toBlob(
+                (blob) => {
+                  if (!blob) {
+                    reject(new Error('Failed to create blob'));
+                    return;
+                  }
+
+                  if (blob.size <= targetBytes || currentQuality <= 0.1) {
+                    // Compression successful or reached minimum quality
+                    const compressedFile = new File([blob], file.name, {
+                      type: 'image/jpeg',
+                    });
+                    resolve(compressedFile);
+                    resolveBlob();
+                  } else if (currentQuality > 0.1) {
+                    // Try lower quality
+                    attemptCompress(currentQuality - 0.05).then(resolveBlob);
+                  } else {
+                    // If still too large, reduce dimensions
+                    width = Math.floor(width * 0.8);
+                    height = Math.floor(height * 0.8);
+                    attemptCompress(0.8).then(resolveBlob);
+                  }
+                },
+                'image/jpeg',
+                currentQuality
+              );
+            });
+          };
+
+          attemptCompress(quality);
+        } catch (err) {
+          reject(err);
+        }
+      };
+      img.onerror = (err) => reject(err);
+      img.src = event.target.result;
+    };
+    reader.onerror = (err) => reject(err);
+    reader.readAsDataURL(file);
+  });
+}
+
 // Apply a centered watermark text to an image File and return a new File (Promise)
 export function applyImageWatermark(file, watermarkText = 'Rent Pondy') {
   return new Promise((resolve, reject) => {

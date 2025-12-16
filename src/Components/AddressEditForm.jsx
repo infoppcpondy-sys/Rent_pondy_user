@@ -5220,13 +5220,8 @@ return (
             width: "100%", // Ensure the value takes full width
           }}
         >
-{detail.value
-  ? ["Country", "State", "City", "District", "Nagar", "Area", "Street Name", "Door Number", "pinCode", "location Coordinates"].includes(detail.label)
-    ? typeof detail.value === "string"
-        ? `${detail.value.slice(0, 8)}...`
-        : JSON.stringify(detail.value)
-      : detail.value
-    : "N/A"}        </p>
+          {detail.value || "N/A"}
+        </p>
       </div>
     </div>
   </div>

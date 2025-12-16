@@ -35,7 +35,7 @@ import moment from "moment";
 import { useSwipeable } from 'react-swipeable';
 import SuccessIcon from '../Assets/Success.png';
 import { toWords } from 'number-to-words';
-import { convertToIndianRupees as utilConvertToIndianRupees, convertToWords as utilConvertToWords, parseLatLngString, applyImageWatermark } from '../utils/propertyUtils';
+import { convertToIndianRupees as utilConvertToIndianRupees, convertToWords as utilConvertToWords, parseLatLngString, applyImageWatermark, compressImage } from '../utils/propertyUtils';
 import { FcSearch } from "react-icons/fc";
 
 // icon
@@ -685,6 +685,9 @@ const handleClear = () => {
 
   const [photos, setPhotos] = useState([]);
   const [selectedPhotoIndex, setSelectedPhotoIndex] = useState(0);
+  const [compressionProgress, setCompressionProgress] = useState(0);
+  const [isCompressing, setIsCompressing] = useState(false);
+  const [compressionMessage, setCompressionMessage] = useState('');
   const [video, setVideo] = useState(null);
   const [isPreview, setIsPreview] = useState(true);
 
@@ -789,7 +792,10 @@ const formattedCreatedAt = Date.now
       
       if (Object.keys(errorMap).length > 0) {
         setFieldErrors(errorMap);
-        alert(`Please fill in all required fields before previewing: ${missingFields.join(", ")}`);
+        setMessage({ text: `Please fill in all required fields before previewing: ${missingFields.join(", ")}`, type: "error" });
+        setTimeout(() => {
+          setMessage({ text: "", type: "" });
+        }, 5000);
         
         // Focus and scroll to the first missing field
         const firstMissingField = missingFields[0];
@@ -1115,18 +1121,44 @@ const handlePhotoUpload = async (e) => {
     return;
   }
 
-  setLoading(true);
-  await new Promise((resolve) => setTimeout(resolve, 1000)); // Optional delay
+  setIsCompressing(true);
+  setCompressionProgress(0);
+  const totalFiles = files.length;
+  let compressedImages = [];
 
-   const watermarkedImages = await Promise.all(
-    files.map((file) => applyImageWatermark(file))
-  );
+  try {
+    for (let i = 0; i < files.length; i++) {
+      setCompressionMessage(`Compressing image ${i + 1} of ${totalFiles}...`);
+      try {
+        const compressed = await compressImage(files[i], 30);
+        compressedImages.push(compressed);
+      } catch (err) {
+        console.error(`Failed to compress image ${i + 1}`, err);
+        compressedImages.push(files[i]); // Fallback to original
+      }
+      setCompressionProgress(Math.round(((i + 1) / totalFiles) * 100));
+    }
 
-  // Apply watermark to all selected files
-  setPhotos([...photos, ...watermarkedImages]);
-  setSelectedFiles(watermarkedImages);
-  setSelectedPhotoIndex(0);
-  setLoading(false);
+    setCompressionMessage('Applying watermark...');
+    const watermarkedImages = await Promise.all(
+      compressedImages.map((file) => applyImageWatermark(file))
+    );
+
+    setCompressionMessage('All images compressed and ready!');
+    setPhotos([...photos, ...watermarkedImages]);
+    setSelectedFiles(watermarkedImages);
+    setSelectedPhotoIndex(0);
+
+    setTimeout(() => {
+      setIsCompressing(false);
+      setCompressionProgress(0);
+      setCompressionMessage('');
+    }, 1500);
+  } catch (err) {
+    console.error('Photo upload error:', err);
+    alert('Error processing photos. Please try again.');
+    setIsCompressing(false);
+  }
 };
 
   const removePhoto = (index) => {
@@ -1487,6 +1519,18 @@ const dropdownFieldOrder = [
     e.preventDefault();
   }
 
+  // Check character limit for Property Description (Step 3)
+  if (currentStep === 3 && formData.description) {
+    const charCount = formData.description.length;
+    if (charCount > 200) {
+      setMessage({ text: `Property description exceeds 200 characters. Current: ${charCount} characters. Please reduce it before proceeding.`, type: "error" });
+      setTimeout(() => {
+        setMessage({ text: "", type: "" });
+      }, 5000);
+      return;
+    }
+  }
+
   const stepRequiredFields = getRequiredFieldsForStep(currentStep) || [];
   const missingFields = stepRequiredFields.filter(field => !formData[field] || (typeof formData[field] === 'string' && formData[field].trim() === ""));
 
@@ -1521,7 +1565,10 @@ const dropdownFieldOrder = [
   }
 
   if (!rentId) {
-    alert("RENT-ID is required. Please refresh or try again.");
+    setMessage({ text: "RENT-ID is required. Please refresh or try again.", type: "error" });
+    setTimeout(() => {
+      setMessage({ text: "", type: "" });
+    }, 5000);
     return;
   }
 
@@ -1573,7 +1620,10 @@ const dropdownFieldOrder = [
 
   } catch (error) {
     console.error("Failed to update property details:", error);
-    alert("Upload failed. Please check your connection and try again.");
+    setMessage({ text: "Upload failed. Please check your connection and try again.", type: "error" });
+    setTimeout(() => {
+      setMessage({ text: "", type: "" });
+    }, 5000);
     // Optionally set error message here
   } finally {
     setIsUploading(false); // ✅ Stop loading indicator
@@ -2801,6 +2851,26 @@ const handleEdit = () => {
     </button>
   </label>
 </div>
+
+{isCompressing && (
+  <div className="compression-progress-container">
+    <div className="compression-progress-bar">
+      <div style={{width: `${compressionProgress}%`}} 
+           className="compression-progress-fill"></div>
+    </div>
+    <div className="compression-progress-text">
+      <span className="percentage">{compressionProgress}%</span>
+    </div>
+    <div className="compression-message">
+      <span>{compressionMessage}</span>
+      {compressionProgress < 100 && (
+        <span className="compression-dots">
+          <span></span><span></span><span></span>
+        </span>
+      )}
+    </div>
+  </div>
+)}
 
         {photos.length > 0 && (
           <div className="uploaded-photos position-relative">
@@ -4464,17 +4534,40 @@ const handleEdit = () => {
     background: "#fff",
     paddingRight: "10px"
   }}>
-  <textarea
-    name="description"
-    value={formData.description}
-    onChange={handleFieldChange}
-    className="form-control"
-    placeholder="What Makes You Unique (Maximum 250 Characters)"
-    maxLength={250} // Limits input to 250 characters
-    style={{ flex: '1', padding: '12px', fontSize: '14px', border: 'none', outline: 'none' , color:"grey"}}
-
-  ></textarea>
+  <div style={{ width: '100%', position: 'relative' }}>
+    <textarea
+      name="description"
+      value={formData.description}
+      onChange={handleFieldChange}
+      className="form-control"
+      placeholder="What Makes You Unique (Maximum 200 Characters)"
+      style={{ flex: '1', padding: '12px', fontSize: '14px', border: 'none', outline: 'none' , color:"grey", width: '100%', boxSizing: 'border-box' }}
+    ></textarea>
+    <div style={{
+      position: 'absolute',
+      bottom: '8px',
+      right: '12px',
+      fontSize: '12px',
+      fontWeight: 'bold',
+      color: formData.description.length > 200 ? '#dc3545' : formData.description.length >= 150 ? '#ff9800' : '#28a745'
+    }}>
+      {formData.description.length}/200
+    </div>
+  </div>
 </div>
+{message.text && message.type === "error" && (
+  <div
+  style={{
+    padding: "10px",
+    backgroundColor: "lightcoral",
+    color: "black",
+    margin: "10px 0",
+    borderRadius: "5px"
+  }}
+>
+  {message.text}
+</div>
+)}
 </div>
 
 {/* familyMembers */}
@@ -6146,11 +6239,8 @@ width: window.innerWidth < 450 ? '80%' : '70%' ,      height: '50px',
                     whiteSpace: "normal",
                   }}
                 >
-{detail.value
-  ? ["Country", "State", "City", "District", "Nagar", "Area", "Street Name", "Door Number", "pinCode", "location Coordinates"].includes(detail.label)
-    ? `${detail.value.slice(0, 8)}...`
-    : detail.value
-  : "N/A"}                </p>
+                  {detail.value || "N/A"}
+                </p>
               </div>
             </div>
           </div>

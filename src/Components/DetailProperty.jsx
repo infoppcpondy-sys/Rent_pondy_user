@@ -3169,11 +3169,6 @@ const isMatched = isFieldMatched(detail.label, detail.value, matchedFields);
               <source src={allMedia[currentImageIndex]?.src.replace(".mp4", ".webm")} type="video/webm" />
               Your browser does not support the video tag.
             </video>
-            {allMedia[currentImageIndex]?.src && (
-              <div style={{ fontSize: "12px", color: "#666", marginTop: "5px", padding: "5px", textAlign: "center" }}>
-                <small>Video: {allMedia[currentImageIndex]?.src.substring(allMedia[currentImageIndex]?.src.lastIndexOf('/') + 1)}</small>
-              </div>
-            )}
           </>
         )}
 
