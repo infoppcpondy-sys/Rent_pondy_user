@@ -6237,6 +6237,7 @@ width: window.innerWidth < 450 ? '80%' : '70%' ,      height: '50px',
                     wordBreak: "break-word",
                     overflowWrap: "break-word",
                     whiteSpace: "normal",
+                    textAlign: "justify",
                   }}
                 >
                   {detail.value || "N/A"}

@@ -3644,6 +3644,7 @@ const AllProperty = () => {
   const [hoverSearch, setHoverSearch] = useState(false);
   const [hoverClear, setHoverClear] = useState(false);
   const [hoverAdvance, setHoverAdvance] = useState(false);
+  const [hoverHome, setHoverHome] = useState(false);
   const [showNoDataModal, setShowNoDataModal] = useState(false);
   const [searchPerformed, setSearchPerformed] = useState(false);
 
@@ -4427,16 +4428,12 @@ useEffect(() => {
     merged.push({ ...filteredProperties[i], type: 'property' });
     propertyCounter++;
 
-    if (propertyCounter === 8 && uploadIndex < totalUploads.length) {
-      merged.push(totalUploads[uploadIndex]);
+    // Insert ad after every 8 properties and keep repeating (cycle through ads)
+    if (propertyCounter === 8 && totalUploads.length > 0) {
+      merged.push(totalUploads[uploadIndex % totalUploads.length]); // Use modulo to cycle through ads
       uploadIndex++;
-      propertyCounter = 0;
+      propertyCounter = 0; // Reset counter to repeat the pattern
     }
-  }
-
-  // Append remaining uploads
-  if (uploadIndex < totalUploads.length) {
-    merged.push(...totalUploads.slice(uploadIndex));
   }
 
   // Handle case where no filteredProperties, just uploads
@@ -5430,13 +5427,14 @@ useEffect(() => {
             type="button"
             style={{
               flex: 1,
-              backgroundColor: hoverSearch ? '#4F4B7E' : '#4F4B7E',
-              color: '#fff',
-              border: 'none',
+              backgroundColor: hoverSearch ? '#28a745' : '#ffffff',
+              color: hoverSearch ? '#ffffff' : '#28a745',
+              border: '1px solid #28a745',
               padding: '10px 20px',
               borderRadius: '4px',
               cursor: 'pointer',
               fontWeight: 'bold',
+              transition: 'all 0.3s ease',
             }}
             onMouseEnter={() => setHoverSearch(true)}
             onMouseLeave={() => setHoverSearch(false)}
@@ -5460,6 +5458,23 @@ useEffect(() => {
         data-bs-target="#advancedFilterPopup"
       >
         GO TO ADVANCED SEARCH
+      </button>
+
+      <button
+        type="button"
+        className="btn w-100 mt-3"
+        style={{
+          backgroundColor: hoverHome ? '#4F4B7E' : 'transparent',
+          color: hoverHome ? '#fff' : '#4F4B7E',
+          border: `1px solid #4F4B7E`,
+        }}
+        onMouseEnter={() => setHoverHome(true)}
+        onMouseLeave={() => setHoverHome(false)}
+        onClick={() => {
+          navigate('/all-property');
+        }}
+      >
+        HOME
       </button>
         </div>
   </div>
@@ -6893,13 +6908,14 @@ useEffect(() => {
             type="button"
             style={{
               flex: 1,
-              backgroundColor: hoverSearch ? '#4F4B7E' : '#4F4B7E',
-              color: '#fff',
-              border: 'none',
+              backgroundColor: hoverSearch ? '#28a745' : '#ffffff',
+              color: hoverSearch ? '#ffffff' : '#28a745',
+              border: '1px solid #28a745',
               padding: '10px 20px',
               borderRadius: '4px',
               cursor: 'pointer',
               fontWeight: 'bold',
+              transition: 'all 0.3s ease',
             }}
             onMouseEnter={() => setHoverSearch(true)}
             onMouseLeave={() => setHoverSearch(false)}
