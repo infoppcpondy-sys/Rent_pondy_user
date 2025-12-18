@@ -197,7 +197,8 @@
 //   const [hoverSearch, setHoverSearch] = useState(false);
 //   const [hoverAdvance, setHoverAdvance] = useState(false);
 //   const [imageCounts, setImageCounts] = useState({}); // Store image count for each property
-//   const [loading, setLoading] = useState(true); 
+//   const [loading, setLoading] = useState(true);
+//   const [isPropertyLoading, setIsPropertyLoading] = useState(false); // Loading state when clicking property 
 
 
 //   const [showMap, setShowMap] = useState(false);
@@ -3649,7 +3650,8 @@ const AllProperty = () => {
   const [searchPerformed, setSearchPerformed] = useState(false);
 
   const [imageCounts, setImageCounts] = useState({}); // Store image count for each property
-  const [loading, setLoading] = useState(true); 
+  const [loading, setLoading] = useState(true);
+  const [isPropertyLoading, setIsPropertyLoading] = useState(false); // Loading state when clicking property
     const [uploads, setUploads] = useState([]);
   const [mergedData, setMergedData] = useState([]);
 
@@ -4395,14 +4397,23 @@ useEffect(() => {
 }, []);
 
   const handleCardClick = (rentId, phoneNumber) => {
-   const stored = JSON.parse(localStorage.getItem('clickedCar')) || [];
-  if (!stored.includes(rentId)) {
-    stored.push(rentId);
-    localStorage.setItem('clickedCar', JSON.stringify(stored));
-  }
+    setIsPropertyLoading(true); // Show loading overlay
+    const stored = JSON.parse(localStorage.getItem('clickedCar')) || [];
+    if (!stored.includes(rentId)) {
+      stored.push(rentId);
+      localStorage.setItem('clickedCar', JSON.stringify(stored));
+    }
+    
+    // Start fetching property data immediately
+    axios.get(`${process.env.REACT_APP_API_URL}/property-details-rent/${rentId}`)
+      .catch(err => console.log("Prefetch started"));
+    
+    // Keep loading visible for 3.5 seconds to ensure property data fully loads
+    setTimeout(() => {
+      setIsPropertyLoading(false);
       navigate(`/detail/${rentId}`, { state: { phoneNumber } });
-
-};
+    }, 3500);
+  };
 const totalUploads = useMemo(() => {
   return uploads.flatMap(upload =>
     (upload.images || []).map(img => ({
@@ -4456,6 +4467,158 @@ useEffect(() => {
       <Helmet>
         <title>Rental Property | Properties</title>
       </Helmet>
+
+      {/* Loading Popup Modal when clicking property */}
+      {isPropertyLoading && (
+        <div
+          style={{
+            position: 'fixed',
+            top: 0,
+            left: 0,
+            right: 0,
+            bottom: 0,
+            backgroundColor: 'rgba(0, 0, 0, 0.5)',
+            display: 'flex',
+            flexDirection: 'column',
+            justifyContent: 'center',
+            alignItems: 'center',
+            zIndex: 9999,
+          }}
+        >
+          <div
+            style={{
+              backgroundColor: '#fff',
+              borderRadius: '16px',
+              padding: '40px 30px',
+              boxShadow: '0 8px 32px rgba(0, 0, 0, 0.2)',
+              display: 'flex',
+              flexDirection: 'column',
+              justifyContent: 'center',
+              alignItems: 'center',
+              minWidth: '300px',
+              maxWidth: '350px',
+              animation: 'fadeIn 0.3s ease-in-out, pulse 2s ease-in-out infinite',
+            }}
+          >
+            <div
+              className="spinner-border"
+              role="status"
+              style={{
+                width: '50px',
+                height: '50px',
+                borderWidth: '4px',
+                color: '#4F4B7E',
+                animation: 'spin 1s linear infinite',
+              }}
+            />
+            <p
+              style={{
+                color: '#333',
+                marginTop: '20px',
+                fontSize: '16px',
+                fontWeight: '600',
+                textAlign: 'center',
+                animation: 'bounce 1.5s ease-in-out infinite',
+              }}
+            >
+              Loading property details...
+            </p>
+            
+            {/* Progress bar */}
+            <div
+              style={{
+                width: '100%',
+                height: '4px',
+                backgroundColor: '#f0f0f0',
+                borderRadius: '2px',
+                marginTop: '20px',
+                overflow: 'hidden',
+              }}
+            >
+              <div
+                style={{
+                  height: '100%',
+                  backgroundColor: '#4F4B7E',
+                  borderRadius: '2px',
+                  animation: 'progressBar 3.5s ease-in-out forwards',
+                }}
+              />
+            </div>
+
+            <p
+              style={{
+                color: '#666',
+                marginTop: '12px',
+                fontSize: '13px',
+                textAlign: 'center',
+                animation: 'fadeInOut 1.5s ease-in-out infinite',
+              }}
+            >
+              Please wait
+            </p>
+          </div>
+          <style>{`
+            @keyframes fadeIn {
+              from {
+                opacity: 0;
+                transform: scale(0.9);
+              }
+              to {
+                opacity: 1;
+                transform: scale(1);
+              }
+            }
+            
+            @keyframes pulse {
+              0%, 100% {
+                box-shadow: 0 8px 32px rgba(0, 0, 0, 0.2);
+              }
+              50% {
+                box-shadow: 0 8px 40px rgba(79, 75, 126, 0.3);
+              }
+            }
+            
+            @keyframes spin {
+              from {
+                transform: rotate(0deg);
+              }
+              to {
+                transform: rotate(360deg);
+              }
+            }
+            
+            @keyframes bounce {
+              0%, 100% {
+                transform: translateY(0);
+              }
+              50% {
+                transform: translateY(-5px);
+              }
+            }
+            
+            @keyframes fadeInOut {
+              0%, 100% {
+                opacity: 0.5;
+              }
+              50% {
+                opacity: 1;
+              }
+            }
+            
+            @keyframes progressBar {
+              0% {
+                width: 0%;
+              }
+              50% {
+                width: 70%;
+              }
+              100% {
+                width: 100%;
+              }
+            }
+          `}</style>
+        </div>
+      )}
       
       {/* Hidden trigger button for filter popup */}
       <button

@@ -413,8 +413,25 @@ useEffect(() => {
   };
   const navigate = useNavigate();
 const handleCardClick = (rentId) => {
-
   navigate(`/detail/${rentId}`);
+};
+
+const handlePayNow = (user) => {
+  console.log("Pay Now clicked for:", user.rentId, "Status:", user.status);
+  
+  try {
+    console.log("Navigating to pricing-plans with phoneNumber:", user.phoneNumber, "rentId:", user.rentId);
+    navigate("/pricing-plans", {
+      state: {
+        phoneNumber: user.phoneNumber,
+        rentId: user.rentId,
+      },
+      replace: false
+    });
+  } catch (error) {
+    console.error("Navigation error:", error);
+    setMessage("Error navigating to payment page. Please try again.");
+  }
 };
 
 const formatIndianNumber = (x) => {
@@ -843,31 +860,15 @@ const itemStyle = {
            onMouseOver={(e) => {
             e.target.style.background = "#307F4D";
             e.target.style.fontWeight = 600;
-            e.target.style.transition = "background 0.3s ease"; // Brighter neon on hover
-
+            e.target.style.transition = "background 0.3s ease";
           }}
           onMouseOut={(e) => {
             e.target.style.background = "#0F9F2C";
             e.target.style.fontWeight = 400;
           }}
     onClick={(e) => {
-              e.stopPropagation(); // prevent card click
-
-      if (user.status === "incomplete") {
-        // Show EditForm instead of navigating
-        setEditData({
-          rentId: user.rentId,
-          phoneNumber: user.phoneNumber,
-        });
-      } else {
-        // Navigate to add-plan
-        navigate("/pricing-plans", {
-          state: {
-            phoneNumber: user.phoneNumber,
-            rentId: user.rentId,
-          },
-        });
-      }
+              e.stopPropagation();
+              handlePayNow(user);
     }}
   >
     Pay Now
