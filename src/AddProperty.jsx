@@ -94,6 +94,7 @@ import { motion } from 'framer-motion';
 
 
 
+
 function AddProperty() {
   const location = useLocation();
     const [rentId, setRentId] = useState(location.state?.rentId || ""); 
@@ -119,10 +120,17 @@ const fileInputRef = useRef(null); // Ref for input field
         const [videoloading, setvideoUploading] = useState(false);
 const [progress, setProgress] = useState(0);
 const [photoProgress, setPhotoProgress] = useState(0);
-const [photoloading, setPhotoUploading] = useState(false); // ⬅️ add this at top if not already
+const [photoloading, setPhotoUploading] = useState(false);
 const [uploadSuccess, setUploadSuccess] = useState(false);
 const [photoUploadSuccess, setPhotoUploadSuccess] = useState(false);
-const [videoError, setVideoError] = useState(""); // ⬅️ new state
+const [videoError, setVideoError] = useState("");
+// Photo compression states
+const [isPhotoCompressing, setIsPhotoCompressing] = useState(false);
+const [photoCompressionProgress, setPhotoCompressionProgress] = useState(0);
+// Video compression states (separate from photo)
+const [isVideoCompressing, setIsVideoCompressing] = useState(false);
+const [videoCompressionProgress, setVideoCompressionProgress] = useState(0);
+const [videoCompressionStatus, setVideoCompressionStatus] = useState("");
 
   const [isPreviewOpen, setIsPreviewOpen] = useState(false);
   const [isPreview, setIsPreview] = useState(false);
@@ -1059,30 +1067,25 @@ const handlePhotoUpload = async (e) => {
 // };
 const handleVideoChange = async (e) => {
   const selectedFiles = Array.from(e.target.files);
-  const maxSize = 50 * 1024 * 1024; // 50MB
-  const intimationSize = 10 * 1024 * 1024; // 10MB
   const validFiles = [];
 
   setVideoError(""); // reset previous error
 
   for (let file of selectedFiles) {
-    // ⚡ Intimation if >10MB
-    if (file.size > intimationSize && file.size <= maxSize) {
-      alert(`${file.name} is above 10MB. Large files may take longer to upload.`);
-    }
-
-    // ❌ Reject if >50MB
-    if (file.size > maxSize) {
-      setVideoError(`${file.name} exceeds the 50MB size limit.`);
-      continue;
-    }
-
-    // ✅ Compress before pushing
+    // ✅ Compress all videos to ~200KB
     let compressedFile = file;
     try {
+      setIsVideoCompressing(true);
+      setVideoCompressionProgress(0);
+      setVideoCompressionStatus(`Compressing ${file.name}...`);
       compressedFile = await compressVideo(file);
+      setVideoCompressionStatus(`Compressed: ${(file.size / 1024 / 1024).toFixed(2)}MB → ${(compressedFile.size / 1024).toFixed(0)}KB`);
     } catch (err) {
       console.warn("Compression failed, using original file", err);
+      setVideoCompressionStatus('Compression failed, using original');
+    } finally {
+      setIsVideoCompressing(false);
+      setTimeout(() => setVideoCompressionStatus(''), 2000);
     }
 
     validFiles.push(compressedFile);
@@ -1104,7 +1107,7 @@ const handleVideoChange = async (e) => {
     if (percent >= 100) {
       clearInterval(interval);
 
-      setVideos((prev) => [...prev, ...validFiles].slice(0, 3));
+      setVideos((prev) => [...prev, ...validFiles].slice(0, 5));
       setvideoUploading(false);
       setUploadSuccess(true);
 
@@ -1113,76 +1116,139 @@ const handleVideoChange = async (e) => {
   }, 300);
 };
 
-// ⚡ Compress video using ffmpeg.wasm
+// ⚡ Compress video to ~200KB using canvas-based compression
 const compressVideo = async (file) => {
-  const { createFFmpeg, fetchFile } = await import("@ffmpeg/ffmpeg");
-  const ffmpeg = createFFmpeg({ log: false });
-  if (!ffmpeg.isLoaded()) await ffmpeg.load();
+  return new Promise((resolve, reject) => {
+    const video = document.createElement('video');
+    video.preload = 'metadata';
+    video.muted = true;
+    video.playsInline = true;
 
-  const inputName = "input.mp4";
-  const outputName = "output.mp4";
+    video.onloadedmetadata = async () => {
+      try {
+        // Target ~200KB output
+        const targetSizeKB = 200;
+        const duration = video.duration;
+        
+        // Calculate target bitrate (in bits per second)
+        // targetSize (bytes) = (bitrate / 8) * duration
+        // bitrate = (targetSize * 8) / duration
+        const targetBitrate = Math.floor((targetSizeKB * 1024 * 8) / duration);
+        
+        // Determine scale factor based on original resolution
+        const originalWidth = video.videoWidth;
+        const originalHeight = video.videoHeight;
+        
+        // Scale down significantly to achieve small file size
+        let targetWidth = Math.min(320, originalWidth);
+        let targetHeight = Math.round((targetWidth / originalWidth) * originalHeight);
+        
+        // Ensure even dimensions for encoding
+        targetWidth = Math.floor(targetWidth / 2) * 2;
+        targetHeight = Math.floor(targetHeight / 2) * 2;
 
-  ffmpeg.FS("writeFile", inputName, await fetchFile(file));
-  // Adjust bitrate/resolution for compression
-  await ffmpeg.run(
-    "-i", inputName,
-    "-vcodec", "libx264",
-    "-crf", "28",
-    "-preset", "veryfast",
-    "-vf", "scale=640:-1",
-    outputName
-  );
+        const canvas = document.createElement('canvas');
+        canvas.width = targetWidth;
+        canvas.height = targetHeight;
+        const ctx = canvas.getContext('2d');
 
-  const data = ffmpeg.FS("readFile", outputName);
-  return new File([data.buffer], file.name.replace(/\.[^/.]+$/, "") + "_compressed.mp4", { type: "video/mp4" });
+        // Use MediaRecorder for compression
+        const stream = canvas.captureStream(10); // 10 FPS for smaller file
+        
+        // Try to use VP8 or H264 codec with low bitrate
+        let mimeType = 'video/webm;codecs=vp8';
+        if (!MediaRecorder.isTypeSupported(mimeType)) {
+          mimeType = 'video/webm';
+        }
+        if (!MediaRecorder.isTypeSupported(mimeType)) {
+          mimeType = 'video/mp4';
+        }
+
+        const mediaRecorder = new MediaRecorder(stream, {
+          mimeType: mimeType,
+          videoBitsPerSecond: Math.min(targetBitrate, 100000) // Cap at 100kbps for better quality
+        });
+
+        const chunks = [];
+        mediaRecorder.ondataavailable = (e) => {
+          if (e.data.size > 0) chunks.push(e.data);
+        };
+
+        mediaRecorder.onstop = () => {
+          const blob = new Blob(chunks, { type: mimeType });
+          const compressedFile = new File(
+            [blob],
+            file.name.replace(/\.[^/.]+$/, '') + '_compressed.webm',
+            { type: mimeType }
+          );
+          
+          setVideoCompressionProgress(100);
+          resolve(compressedFile);
+        };
+
+        mediaRecorder.onerror = (e) => reject(e);
+
+        // Start recording
+        mediaRecorder.start();
+        video.currentTime = 0;
+        video.play();
+
+        let lastProgress = 0;
+        const drawFrame = () => {
+          if (video.ended || video.paused) {
+            mediaRecorder.stop();
+            return;
+          }
+
+          ctx.drawImage(video, 0, 0, targetWidth, targetHeight);
+          
+          // Update progress
+          const currentProgress = Math.round((video.currentTime / duration) * 100);
+          if (currentProgress !== lastProgress) {
+            lastProgress = currentProgress;
+            setVideoCompressionProgress(currentProgress);
+          }
+
+          requestAnimationFrame(drawFrame);
+        };
+
+        video.onended = () => {
+          mediaRecorder.stop();
+        };
+
+        drawFrame();
+
+      } catch (err) {
+        reject(err);
+      }
+    };
+
+    video.onerror = () => reject(new Error('Failed to load video'));
+    video.src = URL.createObjectURL(file);
+  });
 };
- const removeVideo = (indexToRemove) => {
+
+const removeVideo = (indexToRemove) => {
   setVideos(prev => prev.filter((_, index) => index !== indexToRemove));
 };
 
-  const handlePhotoSelect = (index) => {
-    setSelectedPhotoIndex(index);
-  };
-
-   const handleFieldChange = (e) => {
-  const { name, value } = e.target;
-
-  let updatedValue = value;
-
-  if (name === "description" && value.length > 0) {
-    updatedValue = value.charAt(0).toUpperCase() + value.slice(1);
+const getMimeType = (filename) => {
+  if (!filename || typeof filename !== "string" || !filename.includes(".")) {
+    return "video/mp4"; // fallback
   }
 
-  if (name === "rentalAmount" && value !== "" && !isNaN(value)) {
-    setPriceInWords(convertToIndianRupees(value));
-  } else if (name === "rentalAmount" && value === "") {
-    setPriceInWords("");
+  const ext = filename.split('.').pop().toLowerCase();
+
+  switch (ext) {
+    case 'mp4': return 'video/mp4';
+    case 'webm': return 'video/webm';
+    case 'ogg': return 'video/ogg';
+    case 'mov': return 'video/quicktime';
+    case 'avi': return 'video/x-msvideo';
+    case 'mkv': return 'video/x-matroska';
+    default: return 'video/mp4';
   }
-   if (name === "securityDeposit" && value !== "" && !isNaN(value)) {
-    setPriceInWordss(convertToIndianRupees(value));
-  } else if (name === "securityDeposit" && value === "") {
-    setPriceInWordss("");
-  }
-  // Set form data and open next dropdown *after* state updates
- setFormData((prev) => ({
-      ...prev,
-      [name]: value, // This dynamically updates the correct field (phoneNumberCountryCode or alternatePhoneCountryCode)
-}));
 };
-
-  const convertToIndianRupees = (num) => {
-    const number = parseInt(num, 10);
-    if (isNaN(number)) return "";
-  
-    if (number >= 10000000) {
-      return (number / 10000000).toFixed(2).replace(/\.00$/, '') + " crores";
-    } else if (number >= 100000) {
-      return (number / 100000).toFixed(2).replace(/\.00$/, '') + " lakhs";
-    } else {
-      return toWords(number).replace(/\b\w/g, l => l.toUpperCase()) + " rupees";
-    }
-  };
-
 
 
 
@@ -2037,7 +2103,31 @@ onClick={() => removePhoto(index)}>
                   marginRight: '5px',
                 }}
               />
-{videoloading ? (
+{isVideoCompressing ? (
+  <div style={{ width: "100%", textAlign: "center" }}>
+    <div style={{ marginBottom: "5px", color: "#ff9800", fontWeight: "bold" }}>
+      🎬 Compressing... {videoCompressionProgress}%
+    </div>
+    <div style={{ 
+      width: "100%", 
+      height: "10px", 
+      backgroundColor: "#e0e0e0", 
+      borderRadius: "5px",
+      overflow: "hidden"
+    }}>
+      <div style={{ 
+        width: `${videoCompressionProgress}%`, 
+        height: "100%", 
+        background: "linear-gradient(90deg, #ff9800, #ff5722)",
+        borderRadius: "5px",
+        transition: "width 0.3s ease"
+      }}></div>
+    </div>
+    <small style={{ color: "#666", fontSize: "10px", marginTop: "3px", display: "block" }}>
+      {videoCompressionStatus || "Compressing to under 200KB..."}
+    </small>
+  </div>
+) : videoloading ? (
   <>
     <Spinner
       animation="border"
@@ -2051,7 +2141,7 @@ onClick={() => removePhoto(index)}>
 ) : videoError ? (
   <span style={{ color: "red", fontSize:"11px" }}>{videoError}</span>   
 ) : (
-  "Upload Property Videos"
+  "Upload Property Videos (Auto-compressed to <200KB)"
 )}               </span>
           </label>
 

@@ -3649,6 +3649,115 @@ const AllProperty = () => {
   const [showNoDataModal, setShowNoDataModal] = useState(false);
   const [searchPerformed, setSearchPerformed] = useState(false);
 
+  // Area suggestions state
+  const [areaSuggestions, setAreaSuggestions] = useState([]);
+  const [showAreaSuggestions, setShowAreaSuggestions] = useState(false);
+
+  // Area to Pincode mapping
+  const areaPincodeMap = {
+    "Abishegapakkam": "605007",
+    "Ariyankuppam": "605007",
+    "Arumbarthapuram": "605110",
+    "Bahoor": "607402",
+    "Bommayarpalayam": "605104",
+    "Botanical Garden": "605001",
+    "Calapet": "605014",
+    "Courivinatham": "607402",
+    "Dhanvantry Nagar": "605006",
+    "Embalam": "605106",
+    "Irumbai": "605111",
+    "Karayamputhur": "605106",
+    "Karikalambakkam": "605007",
+    "Kariyamanikam": "605106",
+    "Kijour": "605106",
+    "Kilpudupattu": "605014",
+    "Kilsirivi": "604301",
+    "Kirumambakkam": "607402",
+    "Korkadu": "605110",
+    "Kottakuppam": "605104",
+    "Kuilapalayam": "605101",
+    "Lawspet": "605008",
+    "Maducore": "605105",
+    "Manamedu": "607402",
+    "Manapeth": "607402",
+    "Mandagapet": "605106",
+    "Mangalam": "605110",
+    "Mannadipattu": "605501",
+    "Morattandi": "605101",
+    "Mottoupalayam": "605009",
+    "Mouroungapakkam": "605004",
+    "Moutrepaleam": "605009",
+    "Mudaliarpet": "605004",
+    "Muthialpet": "605003",
+    "Mutrampattu": "605501",
+    "Nallavadu": "605007",
+    "Nellithoppe": "605005",
+    "Nettapakkam": "605106",
+    "Odiensalai": "605001",
+    "Ozhugarai": "605010",
+    "Padmin nagar": "605012",
+    "Pakkam": "605106",
+    "Pandakkal": "673310",
+    "Pillaichavady": "605014",
+    "Pillayarkuppam": "607402",
+    "Pondicherry": "605001",
+    "Pondicherry Bazaar": "605001",
+    "Pondicherry Courts": "605001",
+    "Pondicherry North": "605001",
+    "Pondicherry University": "605014",
+    "Pooranankuppam": "605007",
+    "Poothurai": "605111",
+    "Rayapudupakkam": "605111",
+    "Reddiyarpalayam": "605010",
+    "Saram(py)": "605013",
+    "Sedarapet": "605111",
+    "Seliamedu": "607402",
+    "Sellipet": "605501",
+    "Sri Aurobindo ashram": "605002",
+    "Sulthanpet": "605110",
+    "Thattanchavady": "605009",
+    "Thengaithittu": "605004",
+    "Thimmanaickenpalayam": "605007",
+    "Tirukkanur": "605501",
+    "Vadhanur": "605501",
+    "Veerampattinam": "605007",
+    "Venkata Nagar": "605011",
+    "Villiyanur": "605110",
+    "Vimacoundinpaleam": "605009",
+    "Viranam": "605106",
+    "Yanam": "533464",
+  };
+
+  // Handle area input change with suggestions
+  const handleAreaInputChange = (e) => {
+    const value = e.target.value;
+    setFilters(prev => ({ ...prev, area: value }));
+
+    if (value.length > 0) {
+      const areaNames = Object.keys(areaPincodeMap);
+      const filtered = areaNames.filter(area =>
+        area.toLowerCase().includes(value.toLowerCase())
+      );
+      setAreaSuggestions(filtered);
+      setShowAreaSuggestions(filtered.length > 0);
+    } else {
+      setAreaSuggestions([]);
+      setShowAreaSuggestions(false);
+    }
+  };
+
+  // Handle area selection from suggestions
+  const handleAreaSelect = (selectedArea) => {
+    const pincode = areaPincodeMap[selectedArea] || "";
+    setFilters(prev => ({
+      ...prev,
+      area: selectedArea,
+      pinCode: pincode
+    }));
+    setShowAreaSuggestions(false);
+    setAreaSuggestions([]);
+  };
+
   const [imageCounts, setImageCounts] = useState({}); // Store image count for each property
   const [loading, setLoading] = useState(true);
   const [isPropertyLoading, setIsPropertyLoading] = useState(false); // Loading state when clicking property
@@ -4144,6 +4253,37 @@ useEffect(() => {
     setAdvancedFilters((prevState) => ({ ...prevState, [name]: value }));
     setDropdownState((prevState) => ({ ...prevState, filterText: value }));
   };
+
+  // Handle advanced filter area input change with suggestions
+  const handleAdvancedAreaInputChange = (e) => {
+    const value = e.target.value;
+    setAdvancedFilters(prev => ({ ...prev, area: value }));
+
+    if (value.length > 0) {
+      const areaNames = Object.keys(areaPincodeMap);
+      const filtered = areaNames.filter(area =>
+        area.toLowerCase().includes(value.toLowerCase())
+      );
+      setAreaSuggestions(filtered);
+      setShowAreaSuggestions(filtered.length > 0);
+    } else {
+      setAreaSuggestions([]);
+      setShowAreaSuggestions(false);
+    }
+  };
+
+  // Handle advanced filter area selection from suggestions
+  const handleAdvancedAreaSelect = (selectedArea) => {
+    const pincode = areaPincodeMap[selectedArea] || "";
+    setAdvancedFilters(prev => ({
+      ...prev,
+      area: selectedArea,
+      pinCode: pincode
+    }));
+    setShowAreaSuggestions(false);
+    setAreaSuggestions([]);
+  };
+
 const fieldLabels = {
   propertyMode: "Property Mode",
   propertyType: "Property Type",
@@ -4330,12 +4470,12 @@ const fieldLabels = {
       (filters.propertyMode ? property.propertyMode?.toLowerCase().includes(filters.propertyMode.toLowerCase()) : true) &&
       (filters.propertyType ? property.propertyType?.toLowerCase().includes(filters.propertyType.toLowerCase()) : true) &&
       (filters.rentType ? property.rentType?.toLowerCase().includes(filters.rentType.toLowerCase()) : true) &&
-      (filters.bedrooms ? property.bedrooms?.toLowerCase().includes(filters.bedrooms.toLowerCase()) : true) &&
-      (filters.floorNo ? property.floorNo?.toLowerCase().includes(filters.floorNo.toLowerCase()) : true) &&
+      (filters.bedrooms ? property.bedrooms?.toString().toLowerCase().includes(filters.bedrooms.toLowerCase()) : true) &&
+      (filters.floorNo ? property.floorNo?.toString().toLowerCase().includes(filters.floorNo.toLowerCase()) : true) &&
       (filters.area ? property.area?.toLowerCase().includes(filters.area.toLowerCase()) : true) &&
       (filters.nagar ? property.nagar?.toLowerCase().includes(filters.nagar.toLowerCase()) : true) &&
       (filters.streetName ? property.streetName?.toLowerCase().includes(filters.streetName.toLowerCase()) : true) &&
-      (filters.pinCode ? property.pinCode?.toLowerCase().includes(filters.pinCode.toLowerCase()) : true) &&
+      (filters.pinCode ? property.pinCode?.toString().toLowerCase().includes(filters.pinCode.toLowerCase()) : true) &&
       (filters.state ? property.state?.toLowerCase().includes(filters.state.toLowerCase()) : true);
 
     const priceMatch = 
@@ -5346,7 +5486,7 @@ useEffect(() => {
      </div></div>
        {/* Area */}
      
-     <div className="form-group">
+     <div className="form-group" style={{ position: "relative" }}>
        {/* <label>Area:</label> */}
        <div className="input-card p-0 rounded-2" style={{ 
          display: 'flex', 
@@ -5382,7 +5522,15 @@ useEffect(() => {
            type="text"
            name="area"
            value={filters.area}
-           onChange={handleFilterChange}
+           onChange={handleAreaInputChange}
+           onFocus={() => {
+             if (filters.area && areaSuggestions.length > 0) {
+               setShowAreaSuggestions(true);
+             }
+           }}
+           onBlur={() => {
+             setTimeout(() => setShowAreaSuggestions(false), 200);
+           }}
            className="form-input m-0"
            placeholder="Area"
              style={{ flex: '1', padding: '12px', fontSize: '14px', border: 'none', outline: 'none' , color:"grey"}}
@@ -5391,105 +5539,47 @@ useEffect(() => {
         {filters.area && (
            <GoCheckCircleFill style={{ color: "green", margin: "5px" }} />
          )}
-     </div></div>
-     
-       {/* Nagar */}
-     
-     <div className="form-group">
-       {/* <label>Nagar:</label> */}
-       <div className="input-card p-0 rounded-2" style={{ 
-         display: 'flex', 
-         alignItems: 'center', 
-         justifyContent: 'space-between', 
-         width: '100%',  
-         boxShadow: '0 4px 10px rgba(38, 104, 190, 0.1)',
-         background: "#fff",
-         paddingRight: "10px"
-       }}>
-         
-       
+     </div>
+
+       {/* Area Suggestions Dropdown */}
+       {showAreaSuggestions && areaSuggestions.length > 0 && (
          <div
-       style={{
-         display: "flex",
-         alignItems: "stretch", // <- Stretch children vertically
-         width: "100%",
-       }}
-     > 
-          <span
-         style={{
-           display: "flex",
-           alignItems: "center",
-           justifyContent: "center",
-           padding: "0 14px",
-           borderRight: "1px solid #4F4B7E",
-           background: "#fff", // optional
-         }}
-       >
-          {fieldIcons.nagar || <FaHome />} 
-       </span>
-       <input
-           type="text"
-           name="nagar"
-           value={filters.nagar}
-           onChange={handleFilterChange}
-           className="form-input m-0"
-           placeholder="Nagar"
-             style={{ flex: '1', padding: '12px', fontSize: '14px', border: 'none', outline: 'none' , color:"grey"}}
-         />
-       </div>
-        {filters.nagar && (
-           <GoCheckCircleFill style={{ color: "green", margin: "5px" }} />
-         )}
-     </div></div>
-     
-       {/* Street Name */}
-     
-     <div className="form-group">
-       {/* <label>Street Name:</label> */}
-       <div className="input-card p-0 rounded-2" style={{ 
-         display: 'flex', 
-         alignItems: 'center', 
-         justifyContent: 'space-between', 
-         width: '100%',  
-         boxShadow: '0 4px 10px rgba(38, 104, 190, 0.1)',
-         background: "#fff",
-         paddingRight: "10px"
-       }}>
-         
-       
-         <div
-       style={{
-         display: "flex",
-         alignItems: "stretch", // <- Stretch children vertically
-         width: "100%",
-       }}
-     > 
-          <span
-         style={{
-           display: "flex",
-           alignItems: "center",
-           justifyContent: "center",
-           padding: "0 14px",
-           borderRight: "1px solid #4F4B7E",
-           background: "#fff", // optional
-         }}
-       >
-          {fieldIcons.streetName || <FaHome />} 
-       </span>
-       <input
-           type="text"
-           name="streetName"
-           value={filters.streetName}
-           onChange={handleFilterChange}
-           className="form-input m-0"
-           placeholder="Street Name"
-             style={{ flex: '1', padding: '12px', fontSize: '14px', border: 'none', outline: 'none' , color:"grey"}}
-         />
-       </div>
-        {filters.streetName && (
-           <GoCheckCircleFill style={{ color: "green", margin: "5px" }} />
-         )}
-     </div></div>
+           style={{
+             position: "absolute",
+             top: "100%",
+             left: 0,
+             right: 0,
+             backgroundColor: "#fff",
+             border: "1px solid #4F4B7E",
+             borderRadius: "8px",
+             maxHeight: "200px",
+             overflowY: "auto",
+             zIndex: 1000,
+             boxShadow: "0 4px 12px rgba(0, 0, 0, 0.15)",
+           }}
+         >
+           {areaSuggestions.map((area, index) => (
+             <div
+               key={index}
+               onClick={() => handleAreaSelect(area)}
+               style={{
+                 padding: "10px 15px",
+                 cursor: "pointer",
+                 borderBottom: index < areaSuggestions.length - 1 ? "1px solid #eee" : "none",
+                 display: "flex",
+                 justifyContent: "space-between",
+                 alignItems: "center",
+               }}
+               onMouseEnter={(e) => e.target.style.backgroundColor = "#f0f0f0"}
+               onMouseLeave={(e) => e.target.style.backgroundColor = "#fff"}
+             >
+               <span style={{ color: "#333", fontWeight: 500 }}>{area}</span>
+               <span style={{ color: "#4F4B7E", fontSize: "12px" }}>{areaPincodeMap[area]}</span>
+             </div>
+           ))}
+         </div>
+       )}
+     </div>
      
        {/* Pincode */}
      
@@ -6765,7 +6855,7 @@ useEffect(() => {
      </div></div>
        {/* Area */}
      
-     <div className="form-group">
+     <div className="form-group" style={{ position: "relative" }}>
        {/* <label>Area:</label> */}
        <div className="input-card p-0 rounded-2" style={{ 
          display: 'flex', 
@@ -6801,7 +6891,15 @@ useEffect(() => {
            type="text"
            name="area"
            value={advancedFilters.area}
-           onChange={handleAdvancedFilterChange}
+           onChange={handleAdvancedAreaInputChange}
+           onFocus={() => {
+             if (advancedFilters.area && areaSuggestions.length > 0) {
+               setShowAreaSuggestions(true);
+             }
+           }}
+           onBlur={() => {
+             setTimeout(() => setShowAreaSuggestions(false), 200);
+           }}
            className="form-input m-0"
            placeholder="Area"
              style={{ flex: '1', padding: '12px', fontSize: '14px', border: 'none', outline: 'none' , color:"grey"}}
@@ -6810,103 +6908,47 @@ useEffect(() => {
         {advancedFilters.area && (
            <GoCheckCircleFill style={{ color: "green", margin: "5px" }} />
          )}
-     </div></div>
-       {/* Nagar */}
-     
-     <div className="form-group">
-       {/* <label>Nagar:</label> */}
-       <div className="input-card p-0 rounded-2" style={{ 
-         display: 'flex', 
-         alignItems: 'center', 
-         justifyContent: 'space-between', 
-         width: '100%',  
-         boxShadow: '0 4px 10px rgba(38, 104, 190, 0.1)',
-         background: "#fff",
-         paddingRight: "10px"
-       }}>
-         
-       
+     </div>
+
+       {/* Area Suggestions Dropdown */}
+       {showAreaSuggestions && areaSuggestions.length > 0 && (
          <div
-       style={{
-         display: "flex",
-         alignItems: "stretch", // <- Stretch children vertically
-         width: "100%",
-       }}
-     > 
-          <span
-         style={{
-           display: "flex",
-           alignItems: "center",
-           justifyContent: "center",
-           padding: "0 14px",
-           borderRight: "1px solid #4F4B7E",
-           background: "#fff", // optional
-         }}
-       >
-          {fieldIcons.nagar || <FaHome />} 
-       </span>
-       <input
-           type="text"
-           name="nagar"
-           value={advancedFilters.nagar}
-           onChange={handleAdvancedFilterChange}
-           className="form-input m-0"
-           placeholder="Nagar"
-             style={{ flex: '1', padding: '12px', fontSize: '14px', border: 'none', outline: 'none' , color:"grey"}}
-         />
-       </div>
-        {advancedFilters.nagar && (
-           <GoCheckCircleFill style={{ color: "green", margin: "5px" }} />
-         )}
-     </div></div>
-       {/* Street Name */}
-     
-     <div className="form-group">
-       {/* <label>Street Name:</label> */}
-       <div className="input-card p-0 rounded-2" style={{ 
-         display: 'flex', 
-         alignItems: 'center', 
-         justifyContent: 'space-between', 
-         width: '100%',  
-         boxShadow: '0 4px 10px rgba(38, 104, 190, 0.1)',
-         background: "#fff",
-         paddingRight: "10px"
-       }}>
-         
-       
-         <div
-       style={{
-         display: "flex",
-         alignItems: "stretch", // <- Stretch children vertically
-         width: "100%",
-       }}
-     > 
-          <span
-         style={{
-           display: "flex",
-           alignItems: "center",
-           justifyContent: "center",
-           padding: "0 14px",
-           borderRight: "1px solid #4F4B7E",
-           background: "#fff", // optional
-         }}
-       >
-          {fieldIcons.streetName || <FaHome />} 
-       </span>
-       <input
-           type="text"
-           name="streetName"
-           value={advancedFilters.streetName}
-           onChange={handleAdvancedFilterChange}
-           className="form-input m-0"
-           placeholder="Street Name"
-             style={{ flex: '1', padding: '12px', fontSize: '14px', border: 'none', outline: 'none' , color:"grey"}}
-         />
-       </div>
-        {advancedFilters.streetName && (
-           <GoCheckCircleFill style={{ color: "green", margin: "5px" }} />
-         )}
-     </div></div>
+           style={{
+             position: "absolute",
+             top: "100%",
+             left: 0,
+             right: 0,
+             backgroundColor: "#fff",
+             border: "1px solid #4F4B7E",
+             borderRadius: "8px",
+             maxHeight: "200px",
+             overflowY: "auto",
+             zIndex: 1000,
+             boxShadow: "0 4px 12px rgba(0, 0, 0, 0.15)",
+           }}
+         >
+           {areaSuggestions.map((area, index) => (
+             <div
+               key={index}
+               onClick={() => handleAdvancedAreaSelect(area)}
+               style={{
+                 padding: "10px 15px",
+                 cursor: "pointer",
+                 borderBottom: index < areaSuggestions.length - 1 ? "1px solid #eee" : "none",
+                 display: "flex",
+                 justifyContent: "space-between",
+                 alignItems: "center",
+               }}
+               onMouseEnter={(e) => e.target.style.backgroundColor = "#f0f0f0"}
+               onMouseLeave={(e) => e.target.style.backgroundColor = "#fff"}
+             >
+               <span style={{ color: "#333", fontWeight: 500 }}>{area}</span>
+               <span style={{ color: "#4F4B7E", fontSize: "12px" }}>{areaPincodeMap[area]}</span>
+             </div>
+           ))}
+         </div>
+       )}
+     </div>
        {/* Pincode */}
      
      <div className="form-group">

@@ -123,6 +123,125 @@ const [photoUploadSuccess, setPhotoUploadSuccess] = useState(false);
      const [videoloading, setvideoUploading] = useState(false);
     
   const [videoError, setVideoError] = useState(""); // ⬅️ new state
+  // Popup states for validation errors
+  const [showPopup, setShowPopup] = useState(false);
+  const [popupMessage, setPopupMessage] = useState("");
+  // Photo compression states
+  const [isPhotoCompressing, setIsPhotoCompressing] = useState(false);
+  const [photoCompressionProgress, setPhotoCompressionProgress] = useState(0);
+  // Video compression states (separate from photo)
+  const [isVideoCompressing, setIsVideoCompressing] = useState(false);
+  const [videoCompressionProgress, setVideoCompressionProgress] = useState(0);
+  const [videoCompressionStatus, setVideoCompressionStatus] = useState("");
+
+  // Area suggestions state
+  const [areaSuggestions, setAreaSuggestions] = useState([]);
+  const [showAreaSuggestions, setShowAreaSuggestions] = useState(false);
+
+  // Area to Pincode mapping
+  const areaPincodeMap = {
+    "Abishegapakkam": "605007",
+    "Ariyankuppam": "605007",
+    "Arumbarthapuram": "605110",
+    "Bahoor": "607402",
+    "Bommayarpalayam": "605104",
+    "Botanical Garden": "605001",
+    "Calapet": "605014",
+    "Courivinatham": "607402",
+    "Dhanvantry Nagar": "605006",
+    "Embalam": "605106",
+    "Irumbai": "605111",
+    "Karayamputhur": "605106",
+    "Karikalambakkam": "605007",
+    "Kariyamanikam": "605106",
+    "Kijour": "605106",
+    "Kilpudupattu": "605014",
+    "Kilsirivi": "604301",
+    "Kirumambakkam": "607402",
+    "Korkadu": "605110",
+    "Kottakuppam": "605104",
+    "Kuilapalayam": "605101",
+    "Lawspet": "605008",
+    "Maducore": "605105",
+    "Manamedu": "607402",
+    "Manapeth": "607402",
+    "Mandagapet": "605106",
+    "Mangalam": "605110",
+    "Mannadipattu": "605501",
+    "Morattandi": "605101",
+    "Mottoupalayam": "605009",
+    "Mouroungapakkam": "605004",
+    "Moutrepaleam": "605009",
+    "Mudaliarpet": "605004",
+    "Muthialpet": "605003",
+    "Mutrampattu": "605501",
+    "Nallavadu": "605007",
+    "Nellithoppe": "605005",
+    "Nettapakkam": "605106",
+    "Odiensalai": "605001",
+    "Ozhugarai": "605010",
+    "Padmin nagar": "605012",
+    "Pakkam": "605106",
+    "Pandakkal": "673310",
+    "Pillaichavady": "605014",
+    "Pillayarkuppam": "607402",
+    "Pondicherry": "605001",
+    "Pondicherry Bazaar": "605001",
+    "Pondicherry Courts": "605001",
+    "Pondicherry North": "605001",
+    "Pondicherry University": "605014",
+    "Pooranankuppam": "605007",
+    "Poothurai": "605111",
+    "Rayapudupakkam": "605111",
+    "Reddiyarpalayam": "605010",
+    "Saram(py)": "605013",
+    "Sedarapet": "605111",
+    "Seliamedu": "607402",
+    "Sellipet": "605501",
+    "Sri Aurobindo ashram": "605002",
+    "Sulthanpet": "605110",
+    "Thattanchavady": "605009",
+    "Thengaithittu": "605004",
+    "Thimmanaickenpalayam": "605007",
+    "Tirukkanur": "605501",
+    "Vadhanur": "605501",
+    "Veerampattinam": "605007",
+    "Venkata Nagar": "605011",
+    "Villiyanur": "605110",
+    "Vimacoundinpaleam": "605009",
+    "Viranam": "605106",
+    "Yanam": "533464",
+  };
+
+  // Handle area input change with suggestions
+  const handleAreaChange = (e) => {
+    const value = e.target.value;
+    setFormData(prev => ({ ...prev, area: value }));
+
+    if (value.length > 0) {
+      const areaNames = Object.keys(areaPincodeMap);
+      const filtered = areaNames.filter(area =>
+        area.toLowerCase().includes(value.toLowerCase())
+      );
+      setAreaSuggestions(filtered);
+      setShowAreaSuggestions(filtered.length > 0);
+    } else {
+      setAreaSuggestions([]);
+      setShowAreaSuggestions(false);
+    }
+  };
+
+  // Handle area selection from suggestions
+  const handleAreaSelect = (selectedArea) => {
+    const pincode = areaPincodeMap[selectedArea] || "";
+    setFormData(prev => ({
+      ...prev,
+      area: selectedArea,
+      pinCode: pincode
+    }));
+    setShowAreaSuggestions(false);
+    setAreaSuggestions([]);
+  };
 
     const [currentStep, setCurrentStep] = useState(1);
         const [isScrolling, setIsScrolling] = useState(false);
@@ -238,6 +357,58 @@ const [formData, setFormData] = useState({
     rentType:"",
     createdAt:"",
   });
+
+  // Required field refs for validation (same as AddProperty)
+  const propertyModeRef = useRef(null);
+  const propertyTypeRef = useRef(null);
+  const rentTypeRef = useRef(null);
+  const rentalAmountRef = useRef(null);
+  const totalAreaRef = useRef(null);
+  const areaUnitRef = useRef(null);
+  const bedroomsRef = useRef(null);
+  const floorNoRef = useRef(null);
+  const postedByRef = useRef(null);
+  const availableDateRef = useRef(null);
+  const stateRef = useRef(null);
+  const cityRef = useRef(null);
+  const areaRef = useRef(null);
+  const pinCodeRef = useRef(null);
+
+  const formRefs = {
+    propertyMode: propertyModeRef,
+    propertyType: propertyTypeRef,
+    rentType: rentTypeRef,
+    rentalAmount: rentalAmountRef,
+    totalArea: totalAreaRef,
+    areaUnit: areaUnitRef,
+    bedrooms: bedroomsRef,
+    floorNo: floorNoRef,
+    postedBy: postedByRef,
+    availableDate: availableDateRef,
+    state: stateRef,
+    city: cityRef,
+    area: areaRef,
+    pinCode: pinCodeRef,
+  };
+
+  // Field labels for displaying friendly names in error messages
+  const fieldLabels = {
+    propertyMode: "Property Mode",
+    propertyType: "Property Type",
+    rentType: "Rent Type",
+    rentalAmount: "Rental Amount",
+    totalArea: "Total Area",
+    areaUnit: "Area Unit",
+    bedrooms: "Bedrooms",
+    floorNo: "Floor No.",
+    postedBy: "Posted By",
+    availableDate: "Available From",
+    state: "State",
+    city: "City",
+    area: "Area",
+    pinCode: "Pincode",
+  };
+
   useEffect(() => {
     if (isPreview || !window.google) return;
   
@@ -576,7 +747,37 @@ const handleClear = () => {
   // const handlePreview = () => {
   //   setIsPreview(!isPreview);
   // };
-  const handlePreview = () => {
+  const handlePreview = (e) => {
+    if (e) e.preventDefault();
+    
+    // Validate required fields before allowing preview
+    const requiredFields = Object.keys(formRefs);
+    const missingFields = requiredFields.filter(field => !formData[field]);
+    
+    console.log("Required Fields:", requiredFields);
+    console.log("Form Data:", formData);
+    console.log("Missing Fields:", missingFields);
+
+    if (missingFields.length > 0) {
+      // Convert field names to friendly labels
+      const missingFieldLabels = missingFields.map(field => fieldLabels[field] || field);
+      setPopupMessage(`Please fill in the following required fields: ${missingFieldLabels.join(", ")}`);
+      setShowPopup(true);
+
+      // Focus and scroll to the first missing field
+      const firstMissingField = missingFields[0];
+      const fieldRef = formRefs[firstMissingField];
+
+      if (fieldRef?.current) {
+        fieldRef.current.focus();
+        setTimeout(() => {
+          fieldRef.current.scrollIntoView({ behavior: "smooth", block: "center" });
+        }, 100);
+      }
+
+      return;
+    }
+
     setIsPreview(!isPreview);
     setIsPreviewOpen(true); // Open the preview
   
@@ -633,6 +834,7 @@ const formattedUpdatedAt = formData.updatedAt
           phoneNumber: data.phoneNumber || "",
           propertyMode: data.propertyMode || '',
           propertyType: data.propertyType || '',
+          rentType: data.rentType || '',
           rentalAmount: data.rentalAmount || '',
           propertyAge: data.propertyAge || '',
           bankLoan: data.bankLoan || '',
@@ -1364,62 +1566,6 @@ const handleCombinedClick = async (e) => {
   }
 }, [formData.length, formData.breadth]);
 
-
-const fieldLabels = {
-  propertyMode: "Property Mode",
-  propertyType: "Property Type",
-    rentType: "rent Type",
-  rentalAmount: "rental Amount",
-  propertyAge: "Property Age",
-  bankLoan: "Bank Loan",
-  negotiation: "Negotiation",
-    securityDeposit: "security Deposit",
-  length: "Length",
-  breadth: "Breadth",
-  totalArea: "Total Area",
-  ownership: "Ownership",
-  bedrooms: "Bedrooms",
-  kitchen: "Kitchen",
-  availableDate: "available From",
-  familyMembers: "No. of family Members",
-  foodHabit: "food Habit",
-  jobType: "job Type",
-  petAllowed: "pet",
-    wheelChairAvailable:"wheel Chair",
-
-  kitchenType: "Kitchen Type",
-  balconies: "Balconies",
-  floorNo: "Floor No.",
-  areaUnit: "Area Unit",
-  propertyApproved: "Property Approved",
-  postedBy: "Posted By",
-  facing: "Facing",
-  salesMode: "Sales Mode",
-  salesType: "Sales Type",
-  description: "Description",
-  furnished: "Furnished",
-  lift: "Lift",
-  attachedBathrooms: "Attached Bathrooms",
-  western: "Western Toilet",
-  numberOfFloors: "Number of Floors",
-  carParking: "Car Parking",
-  rentalPropertyAddress: "Property Address",
-  country: "Country",
-  state: "State",
-  city: "City",
-  district: "District",
-  area: "Area",
-  streetName: "Street Name",
-  doorNumber: "Door Number",
-  nagar: "Nagar",
-  ownerName: "Owner Name",
-  email: "Email",
-  phoneNumber: "Phone Number",
-  phoneNumberCountryCode: "Phone Country Code",
-  alternatePhone: "Alternate Phone",
-  alternatePhoneCountryCode: "Alternate Phone Country Code",
-  bestTimeToCall: "Best Time to Call",
-};
  
  const renderDropdown = (field) => {
    const options = dataList[field] || [];
@@ -1984,6 +2130,7 @@ onClick={() => removePhoto(index)}>
     </select>
 
     <button
+      ref={formRefs.propertyMode}
       className="m-0"
       type="button"
  onClick={() => {
@@ -2063,6 +2210,7 @@ onClick={() => removePhoto(index)}>
         </select>
 
         <button
+          ref={formRefs.propertyType}
           className="m-0"
           type="button"
            onClick={() => {
@@ -2137,6 +2285,7 @@ onClick={() => removePhoto(index)}>
         </select>
 
         <button
+          ref={formRefs.rentType}
           className="m-0"
           type="button"
           onClick={() => toggleDropdown("rentType")}
@@ -2274,6 +2423,7 @@ onClick={() => removePhoto(index)}>
   >
 <img src={price} alt="" style={{ width: 20, height: 20 }} /> <sup style={{ color: 'red' }}>*</sup> </span>
       <input
+        ref={formRefs.rentalAmount}
         type="number"
         name="rentalAmount"
         value={formData.rentalAmount}
@@ -2381,6 +2531,7 @@ onClick={() => removePhoto(index)}>
   >
 {fieldIcons.totalArea} <sup style={{ color: 'red' }}>*</sup> </span>
   <input
+      ref={formRefs.totalArea}
       type="number"
       name="totalArea"
       value={formData.totalArea}
@@ -2437,6 +2588,7 @@ onClick={() => removePhoto(index)}>
           </select>
 
           <button
+            ref={formRefs.areaUnit}
             className="m-0"
             type="button"
             onClick={() => toggleDropdown("areaUnit")}
@@ -2514,6 +2666,7 @@ onClick={() => removePhoto(index)}>
           </select>
 
           <button
+            ref={formRefs.bedrooms}
             className="m-0"
             type="button"
             onClick={() => toggleDropdown("bedrooms")}
@@ -2585,6 +2738,7 @@ onClick={() => removePhoto(index)}>
            </select>
  
            <button
+             ref={formRefs.floorNo}
              className="m-0"
              type="button"
              onClick={() => toggleDropdown("floorNo")}
@@ -3353,6 +3507,7 @@ onClick={() => removePhoto(index)}>
           </select>
 
           <button
+            ref={formRefs.postedBy}
             className="m-0"
             type="button"
             onClick={() => toggleDropdown("postedBy")}
@@ -3423,6 +3578,7 @@ onClick={() => removePhoto(index)}>
         </select>
 
         <button
+          ref={formRefs.availableDate}
           className="m-0"
           type="button"
           onClick={() => toggleDropdown("availableDate")}
@@ -3924,6 +4080,7 @@ onClick={() => removePhoto(index)}>
     </select>
 
     <button
+      ref={formRefs.state}
       className="m-0"
       type="button"
       onClick={() => toggleDropdown("state")}
@@ -3995,6 +4152,7 @@ onClick={() => removePhoto(index)}>
      {fieldIcons.city || <FaHome />} <sup style={{ color: 'red' }}>*</sup>
   </span>
   <input
+      ref={formRefs.city}
       type="text"
       name="city"
       value={formData.city}
@@ -4078,7 +4236,7 @@ onClick={() => removePhoto(index)}>
     </div>
 
   {/* area */}
-  <div className="form-group">
+  <div className="form-group" style={{ position: "relative" }}>
   {/* <label>Area:</label> */}
   <div className="input-card p-0 rounded-2 mb-2" style={{ 
     display: 'flex', 
@@ -4110,10 +4268,20 @@ onClick={() => removePhoto(index)}>
   >
  {fieldIcons.area}  <sup style={{ color: 'red' }}>*</sup></span>
   <input
+      ref={formRefs.area}
       type="text"
       name="area"
       value={formData.area}
-      onChange={handleFieldChange}
+      onChange={handleAreaChange}
+      onFocus={() => {
+        if (formData.area && areaSuggestions.length > 0) {
+          setShowAreaSuggestions(true);
+        }
+      }}
+      onBlur={() => {
+        // Delay hiding to allow click on suggestion
+        setTimeout(() => setShowAreaSuggestions(false), 200);
+      }}
       className="form-input m-0"
       placeholder="Area"
         style={{ flex: '1', padding: '12px', fontSize: '14px', border: 'none', outline: 'none' , color:"grey"}}
@@ -4122,7 +4290,47 @@ onClick={() => removePhoto(index)}>
    {formData.area && (
       <GoCheckCircleFill style={{ color: "green", margin: "5px" }} />
     )}
-</div></div>
+</div>
+
+  {/* Area Suggestions Dropdown */}
+  {showAreaSuggestions && areaSuggestions.length > 0 && (
+    <div
+      style={{
+        position: "absolute",
+        top: "100%",
+        left: 0,
+        right: 0,
+        backgroundColor: "#fff",
+        border: "1px solid #4F4B7E",
+        borderRadius: "8px",
+        maxHeight: "200px",
+        overflowY: "auto",
+        zIndex: 1000,
+        boxShadow: "0 4px 12px rgba(0, 0, 0, 0.15)",
+      }}
+    >
+      {areaSuggestions.map((area, index) => (
+        <div
+          key={index}
+          onClick={() => handleAreaSelect(area)}
+          style={{
+            padding: "10px 15px",
+            cursor: "pointer",
+            borderBottom: index < areaSuggestions.length - 1 ? "1px solid #eee" : "none",
+            display: "flex",
+            justifyContent: "space-between",
+            alignItems: "center",
+          }}
+          onMouseEnter={(e) => e.target.style.backgroundColor = "#f0f0f0"}
+          onMouseLeave={(e) => e.target.style.backgroundColor = "#fff"}
+        >
+          <span style={{ color: "#333", fontWeight: 500 }}>{area}</span>
+          <span style={{ color: "#4F4B7E", fontSize: "12px" }}>{areaPincodeMap[area]}</span>
+        </div>
+      ))}
+    </div>
+  )}
+</div>
   {/* Nagar */}
   <div className="form-group">
   {/* <label>Nagar:</label> */}
@@ -4300,6 +4508,7 @@ onClick={() => removePhoto(index)}>
      <TbMapPinCode  className="input-icon" style={{color: '#4F4B7E',}} />
   </span>
   <input
+      ref={formRefs.pinCode}
       type="text"
       name="pinCode"
       value={formData.pinCode}
@@ -4670,6 +4879,70 @@ value={formData.phoneNumber}
                   PreView
                 </Button>
 
+      {/* Error Popup Modal for Required Fields */}
+      {showPopup && (
+        <div
+          style={{
+            position: "fixed",
+            top: 0,
+            left: 0,
+            width: "100vw",
+            height: "100vh",
+            backgroundColor: "rgba(0, 0, 0, 0.5)",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            zIndex: 9999,
+          }}
+          onClick={() => setShowPopup(false)}
+        >
+          <div
+            style={{
+              backgroundColor: "#fff",
+              padding: "20px",
+              borderRadius: "12px",
+              maxWidth: "90%",
+              width: "350px",
+              boxShadow: "0 4px 20px rgba(0, 0, 0, 0.3)",
+              animation: "popupOpen 0.3s ease-in-out",
+            }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "15px" }}>
+              <h5 style={{ margin: 0, color: "#d9534f", fontWeight: 600 }}>⚠️ Required Fields Missing</h5>
+              <button
+                onClick={() => setShowPopup(false)}
+                style={{
+                  background: "none",
+                  border: "none",
+                  fontSize: "20px",
+                  cursor: "pointer",
+                  color: "#999",
+                }}
+              >
+                ×
+              </button>
+            </div>
+            <p style={{ color: "#555", fontSize: "14px", lineHeight: "1.6" }}>{popupMessage}</p>
+            <button
+              onClick={() => setShowPopup(false)}
+              style={{
+                width: "100%",
+                padding: "10px",
+                backgroundColor: "#4F4B7E",
+                color: "#fff",
+                border: "none",
+                borderRadius: "8px",
+                cursor: "pointer",
+                fontWeight: 500,
+                marginTop: "10px",
+              }}
+            >
+              OK
+            </button>
+          </div>
+        </div>
+      )}
 
       </form>
 

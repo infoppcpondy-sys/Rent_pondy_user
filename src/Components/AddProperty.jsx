@@ -685,9 +685,18 @@ const handleClear = () => {
 
   const [photos, setPhotos] = useState([]);
   const [selectedPhotoIndex, setSelectedPhotoIndex] = useState(0);
-  const [compressionProgress, setCompressionProgress] = useState(0);
-  const [isCompressing, setIsCompressing] = useState(false);
-  const [compressionMessage, setCompressionMessage] = useState('');
+  // Photo compression states (blue progress bar)
+  const [isPhotoCompressing, setIsPhotoCompressing] = useState(false);
+  const [photoCompressionProgress, setPhotoCompressionProgress] = useState(0);
+  const [photoCompressionMessage, setPhotoCompressionMessage] = useState('');
+  // Video compression states (orange progress bar)  
+  const [isVideoCompressing, setIsVideoCompressing] = useState(false);
+  const [videoCompressionProgress, setVideoCompressionProgress] = useState(0);
+  const [videoCompressionStatus, setVideoCompressionStatus] = useState('');
+  const [videoloading, setvideoUploading] = useState(false);
+  const [progress, setProgress] = useState(0);
+  const [uploadSuccess, setUploadSuccess] = useState(false);
+  const [videoError, setVideoError] = useState('');
   const [video, setVideo] = useState(null);
   const [isPreview, setIsPreview] = useState(true);
 
@@ -1121,14 +1130,14 @@ const handlePhotoUpload = async (e) => {
     return;
   }
 
-  setIsCompressing(true);
-  setCompressionProgress(0);
+  setIsPhotoCompressing(true);
+  setPhotoCompressionProgress(0);
   const totalFiles = files.length;
   let compressedImages = [];
 
   try {
     for (let i = 0; i < files.length; i++) {
-      setCompressionMessage(`Compressing image ${i + 1} of ${totalFiles}...`);
+      setPhotoCompressionMessage(`Compressing image ${i + 1} of ${totalFiles}...`);
       try {
         const compressed = await compressImage(files[i], 30);
         compressedImages.push(compressed);
@@ -1136,28 +1145,28 @@ const handlePhotoUpload = async (e) => {
         console.error(`Failed to compress image ${i + 1}`, err);
         compressedImages.push(files[i]); // Fallback to original
       }
-      setCompressionProgress(Math.round(((i + 1) / totalFiles) * 100));
+      setPhotoCompressionProgress(Math.round(((i + 1) / totalFiles) * 100));
     }
 
-    setCompressionMessage('Applying watermark...');
+    setPhotoCompressionMessage('Applying watermark...');
     const watermarkedImages = await Promise.all(
       compressedImages.map((file) => applyImageWatermark(file))
     );
 
-    setCompressionMessage('All images compressed and ready!');
+    setPhotoCompressionMessage('All images compressed and ready!');
     setPhotos([...photos, ...watermarkedImages]);
     setSelectedFiles(watermarkedImages);
     setSelectedPhotoIndex(0);
 
     setTimeout(() => {
-      setIsCompressing(false);
-      setCompressionProgress(0);
-      setCompressionMessage('');
+      setIsPhotoCompressing(false);
+      setPhotoCompressionProgress(0);
+      setPhotoCompressionMessage('');
     }, 1500);
   } catch (err) {
     console.error('Photo upload error:', err);
     alert('Error processing photos. Please try again.');
-    setIsCompressing(false);
+    setIsPhotoCompressing(false);
   }
 };
 
@@ -1168,22 +1177,165 @@ const handlePhotoUpload = async (e) => {
     }
   };
 
-  const handleVideoChange = (e) => {
+  const handleVideoChange = async (e) => {
   const selectedFiles = Array.from(e.target.files);
-  const maxSize = 20 * 1024 * 1024; // 20MB per video (optimal for web)
   const validFiles = [];
 
+  setVideoError(""); // reset previous error
+
   for (let file of selectedFiles) {
-    if (file.size > maxSize) {
-      alert(`${file.name} exceeds the 20MB size limit. Please compress your video and try again.`);
-      continue;
+    // ✅ Compress all videos to ~200KB
+    let compressedFile = file;
+    try {
+      setIsVideoCompressing(true);
+      setVideoCompressionProgress(0);
+      setVideoCompressionStatus(`Compressing ${file.name}...`);
+      compressedFile = await compressVideo(file);
+      setVideoCompressionStatus(`Compressed: ${(file.size / 1024 / 1024).toFixed(2)}MB → ${(compressedFile.size / 1024).toFixed(0)}KB`);
+    } catch (err) {
+      console.warn("Compression failed, using original file", err);
+      setVideoCompressionStatus('Compression failed, using original');
+    } finally {
+      setIsVideoCompressing(false);
+      setTimeout(() => setVideoCompressionStatus(''), 2000);
     }
-    validFiles.push(file);
+
+    validFiles.push(compressedFile);
   }
 
-  // Allow up to 5 videos
-  const totalFiles = [...videos, ...validFiles].slice(0, 5);
-  setVideos(totalFiles);
+  if (!validFiles.length) return;
+
+  // normal upload flow...
+  setvideoUploading(true);
+  setProgress(0);
+  setUploadSuccess(false);
+
+  // fake progress simulation
+  let percent = 0;
+  const interval = setInterval(() => {
+    percent += 10;
+    setProgress(percent);
+
+    if (percent >= 100) {
+      clearInterval(interval);
+
+      setVideos((prev) => [...prev, ...validFiles].slice(0, 5));
+      setvideoUploading(false);
+      setUploadSuccess(true);
+
+      setTimeout(() => setUploadSuccess(false), 2000);
+    }
+  }, 300);
+};
+
+// ⚡ Compress video to ~200KB using canvas-based compression
+const compressVideo = async (file) => {
+  return new Promise((resolve, reject) => {
+    const video = document.createElement('video');
+    video.preload = 'metadata';
+    video.muted = true;
+    video.playsInline = true;
+
+    video.onloadedmetadata = async () => {
+      try {
+        // Target ~200KB output
+        const targetSizeKB = 200;
+        const duration = video.duration;
+        
+        // Calculate target bitrate (in bits per second)
+        const targetBitrate = Math.floor((targetSizeKB * 1024 * 8) / duration);
+        
+        // Determine scale factor based on original resolution
+        const originalWidth = video.videoWidth;
+        const originalHeight = video.videoHeight;
+        
+        // Scale down significantly to achieve small file size
+        let targetWidth = Math.min(320, originalWidth);
+        let targetHeight = Math.round((targetWidth / originalWidth) * originalHeight);
+        
+        // Ensure even dimensions for encoding
+        targetWidth = Math.floor(targetWidth / 2) * 2;
+        targetHeight = Math.floor(targetHeight / 2) * 2;
+
+        const canvas = document.createElement('canvas');
+        canvas.width = targetWidth;
+        canvas.height = targetHeight;
+        const ctx = canvas.getContext('2d');
+
+        // Use MediaRecorder for compression
+        const stream = canvas.captureStream(10); // 10 FPS for smaller file
+        
+        // Try to use VP8 or H264 codec with low bitrate
+        let mimeType = 'video/webm;codecs=vp8';
+        if (!MediaRecorder.isTypeSupported(mimeType)) {
+          mimeType = 'video/webm';
+        }
+        if (!MediaRecorder.isTypeSupported(mimeType)) {
+          mimeType = 'video/mp4';
+        }
+
+        const mediaRecorder = new MediaRecorder(stream, {
+          mimeType: mimeType,
+          videoBitsPerSecond: Math.min(targetBitrate, 100000) // Cap at 100kbps for better quality
+        });
+
+        const chunks = [];
+        mediaRecorder.ondataavailable = (e) => {
+          if (e.data.size > 0) chunks.push(e.data);
+        };
+
+        mediaRecorder.onstop = () => {
+          const blob = new Blob(chunks, { type: mimeType });
+          const compressedFile = new File(
+            [blob],
+            file.name.replace(/\.[^/.]+$/, '') + '_compressed.webm',
+            { type: mimeType }
+          );
+          
+          setVideoCompressionProgress(100);
+          resolve(compressedFile);
+        };
+
+        mediaRecorder.onerror = (e) => reject(e);
+
+        // Start recording
+        mediaRecorder.start();
+        video.currentTime = 0;
+        video.play();
+
+        let lastProgress = 0;
+        const drawFrame = () => {
+          if (video.ended || video.paused) {
+            mediaRecorder.stop();
+            return;
+          }
+
+          ctx.drawImage(video, 0, 0, targetWidth, targetHeight);
+          
+          // Update progress
+          const currentProgress = Math.round((video.currentTime / duration) * 100);
+          if (currentProgress !== lastProgress) {
+            lastProgress = currentProgress;
+            setVideoCompressionProgress(currentProgress);
+          }
+
+          requestAnimationFrame(drawFrame);
+        };
+
+        video.onended = () => {
+          mediaRecorder.stop();
+        };
+
+        drawFrame();
+
+      } catch (err) {
+        reject(err);
+      }
+    };
+
+    video.onerror = () => reject(new Error('Failed to load video'));
+    video.src = URL.createObjectURL(file);
+  });
 };
 
  const removeVideo = (indexToRemove) => {
@@ -2852,22 +3004,35 @@ const handleEdit = () => {
   </label>
 </div>
 
-{isCompressing && (
-  <div className="compression-progress-container">
-    <div className="compression-progress-bar">
-      <div style={{width: `${compressionProgress}%`}} 
-           className="compression-progress-fill"></div>
+{/* Blue Progress Bar for Photo Compression */}
+{isPhotoCompressing && (
+  <div style={{ 
+    backgroundColor: "#e3f2fd", 
+    padding: "15px", 
+    borderRadius: "10px", 
+    marginTop: "10px",
+    marginBottom: "10px"
+  }}>
+    <div style={{ marginBottom: "5px", color: "#1976d2", fontWeight: "bold" }}>
+      📷 {photoCompressionMessage || `Compressing... ${photoCompressionProgress}%`}
     </div>
-    <div className="compression-progress-text">
-      <span className="percentage">{compressionProgress}%</span>
+    <div style={{ 
+      width: "100%", 
+      height: "10px", 
+      backgroundColor: "#bbdefb", 
+      borderRadius: "5px",
+      overflow: "hidden"
+    }}>
+      <div style={{ 
+        width: `${photoCompressionProgress}%`, 
+        height: "100%", 
+        background: "linear-gradient(90deg, #2196f3, #1976d2)",
+        borderRadius: "5px",
+        transition: "width 0.3s ease"
+      }}></div>
     </div>
-    <div className="compression-message">
-      <span>{compressionMessage}</span>
-      {compressionProgress < 100 && (
-        <span className="compression-dots">
-          <span></span><span></span><span></span>
-        </span>
-      )}
+    <div style={{ marginTop: "5px", fontSize: "12px", color: "#1976d2" }}>
+      {photoCompressionProgress}%
     </div>
   </div>
 )}
@@ -2925,10 +3090,11 @@ const handleEdit = () => {
               display: "flex",
               justifyContent: "center",
               alignItems: "center",
-              height: "60px",
+              minHeight: "60px",
+              padding: "10px",
             }}
           >
-            <span>
+            <span style={{ width: "100%", textAlign: "center" }}>
               <FaFileVideo
                 style={{
                   color: "white",
@@ -2938,7 +3104,42 @@ const handleEdit = () => {
                   marginRight: "5px",
                 }}
               />
-              Upload Property Video
+              {isVideoCompressing ? (
+                <div style={{ width: "100%", marginTop: "10px" }}>
+                  <div style={{ marginBottom: "5px", color: "#ff9800", fontWeight: "bold" }}>
+                    🎬 Compressing... {videoCompressionProgress}%
+                  </div>
+                  <div style={{ 
+                    width: "100%", 
+                    height: "10px", 
+                    backgroundColor: "#e0e0e0", 
+                    borderRadius: "5px",
+                    overflow: "hidden"
+                  }}>
+                    <div style={{ 
+                      width: `${videoCompressionProgress}%`, 
+                      height: "100%", 
+                      background: "linear-gradient(90deg, #ff9800, #ff5722)",
+                      borderRadius: "5px",
+                      transition: "width 0.3s ease"
+                    }}></div>
+                  </div>
+                  <small style={{ color: "#666", fontSize: "10px", marginTop: "3px", display: "block" }}>
+                    {videoCompressionStatus || "Compressing to under 200KB..."}
+                  </small>
+                </div>
+              ) : videoloading ? (
+                <>
+                  <Spinner animation="border" size="sm" style={{ color: "#2e86e4", marginRight: "5px" }} />
+                  Uploading... {progress}%
+                </>
+              ) : uploadSuccess ? (
+                <span style={{ color: "green" }}>✅ Successfully uploaded</span>
+              ) : videoError ? (
+                <span style={{ color: "red", fontSize: "11px" }}>{videoError}</span>
+              ) : (
+                "Upload Property Video (Auto-compressed to ~200KB)"
+              )}
             </span>
           </label>
           {/* Only show video preview if videos exist */}
@@ -2949,7 +3150,7 @@ const handleEdit = () => {
                 {videos.map((video, index) => (
                   <div key={index} style={{ position: 'relative', display: 'inline-block' }}>
                     <video width="200" height="200" controls>
-                      <source src={URL.createObjectURL(video)} type="video/mp4" />
+                      <source src={video instanceof File ? URL.createObjectURL(video) : video} type={video instanceof File ? video.type : "video/mp4"} />
                       Your browser does not support the video tag.
                     </video>
                     <Button
