@@ -531,11 +531,37 @@ const linkStyle = (key) => ({
                   <p>Loading properties...</p>
                 </div>
               ) : propertyUsers.length > 0 ? (
-            propertyUsers.map((user) => (
+            propertyUsers.map((user) => {
+              // Check ALL possible fields for payment status
+              const paymentStatusValue = 
+                user.payustatususer || 
+                user.payUstatususer || 
+                user.paymentStatus ||
+                user.paymentData?.payustatususer ||
+                user.paymentData?.status ||
+                "";
+              
+              const isPaid = paymentStatusValue?.toString().toLowerCase() === "paid";
+              const statusLower = user.displayStatus?.toLowerCase() || "";
+              const isPreApproved = statusLower === "preapproved" || statusLower === "pre_approved";
+              
+              // Debug: Log all payment-related fields
+              console.log("Property:", user.rentId, {
+                payustatususer: user.payustatususer,
+                payUstatususer: user.payUstatususer,
+                paymentStatus: user.paymentStatus,
+                paymentData: user.paymentData,
+                displayStatus: user.displayStatus,
+                resolvedPaymentStatus: paymentStatusValue,
+                isPaid: isPaid,
+                isPreApproved: isPreApproved
+              });
+              
+              return (
                   <div
                     key={user.rentId}
-                    className="row g-0 rounded-4 mb-2"
-                    style={{ border: "1px solid #ddd", background: "#EFEFEF" }}
+                    className={`row g-0 rounded-4 mb-2 property-card ${isPaid ? "paid-card" : "pending-card"}`}
+                    style={{ position: "relative", overflow: "hidden" }}
                     onClick={() => handleCardClick(user.rentId)}
    >
                     {/* Image Column */}
@@ -568,13 +594,20 @@ const linkStyle = (key) => ({
                           color: "#fff",
                           textAlign: "center"
                         }}>
-                          {user.displayStatus || "N/A"}
+                          {isPaid && isPreApproved ? "Approved" : user.displayStatus || "N/A"}
                         </div>
                       </div>
                     </div>
 
                     {/* Details Column */}
                     <div className="col-md-8 col-8 p-2" style={{ background: "#FAFAFA" }}>
+                      {/* Payment Status Badge - Inline Pill */}
+                      <div className="d-flex justify-content-between align-items-start mb-1">
+                        <span style={{ fontSize: '11px', color: '#666' }}>{user.propertyMode ? user.propertyMode.charAt(0).toUpperCase() + user.propertyMode.slice(1) : 'N/A'}</span>
+                        <span className={`payment-badge ${isPaid ? "paid" : "pending"}`}>
+                          {isPaid ? "Paid" : "Pending"}
+                        </span>
+                      </div>
                       {/* <p className="m-0 text-dark fw-bold">{user.propertyType || "N/A"}</p>
                       <p style={{ fontSize: "13px", color: "#5E5E5E" }}>
                         {[user.area, user.city, user.state].filter(Boolean).join(", ") || "N/A, N/A"}
@@ -594,11 +627,6 @@ const linkStyle = (key) => ({
                         ₹{user.price || "N/A"} <small className="text-muted ms-2">Negotiable</small>
                       </h6> */}
 
-                  <div className="d-flex justify-content-start"><p className="m-0" style={{ color:'#5E5E5E' , fontWeight:500 , fontSize:"13px"}}>{user.propertyMode
-                   ? user.propertyMode.charAt(0).toUpperCase() + user.propertyMode.slice(1)
-                   : 'N/A'}
-                 </p> 
-                           </div>
                             <p className="fw-bold m-0 " style={{ color: "#000000", fontSize:"15px" }}>{user.propertyType 
                    ? user.propertyType.charAt(0).toUpperCase() + user.propertyType.slice(1) 
                    : 'N/A'}
@@ -688,7 +716,12 @@ const linkStyle = (key) => ({
                            </span>
                                    </h6>
                                 </div>          
-                                <div className="me-3 mt-2" style={{color:"orangered"}}> {user.paymentDisplayStatus || "N/A"}</div>
+                                <div className="me-3 mt-2" style={{
+                                  color: isPaid ? "#0F9F2C" : "#FF0000",
+                                  fontWeight: 500
+                                }}>
+                                  {isPaid ? "Payment Paid" : "Payment Pending"}
+                                </div>
 </div></div>
 
                       <div className="mt-2 d-flex justify-content-around">
@@ -751,55 +784,51 @@ const linkStyle = (key) => ({
                             Pay Now
                           </button>
                         )} */}
+{(isPreApproved || statusLower === "expired") && !isPaid && (
+    <button
+      className="btn btn-sm"
+      style={{
+        background: "#0F9F2C",
+        color: "#fff",
+        width: "30%",
+        transition: "all 0.3s ease",
+      }}
+      onMouseEnter={(e) => {
+        e.currentTarget.style.background = "#307F4D";
+        e.currentTarget.style.fontWeight = "600";
+      }}
+      onMouseLeave={(e) => {
+        e.currentTarget.style.background = "#0F9F2C";
+        e.currentTarget.style.fontWeight = "400";
+      }}
+      onClick={(e) => {
+        e.stopPropagation(); // prevent card click
 
-                       {user.payustatususer !== "paid" && (
-  <button
-        className="btn btn-sm"
-       style={{
-            background: '#0F9F2C',
-            color: '#fff',
-            width: '30%',
-            transition: 'all 0.3s ease',
-          }}
-           onMouseOver={(e) => {
-            e.target.style.background = "#307F4D";
-            e.target.style.fontWeight = 600;
-            e.target.style.transition = "background 0.3s ease"; // Brighter neon on hover
-
-          }}
-          onMouseOut={(e) => {
-            e.target.style.background = "#0F9F2C";
-            e.target.style.fontWeight = 400;
-          }}
-    onClick={(e) => {
-              e.stopPropagation(); // prevent card click
-
-      if (user.status === "incomplete") {
-        // Show EditForm instead of navigating
-        setEditData({
-          rentId: user.rentId,
-          phoneNumber: user.phoneNumber,
-        });
-      } else {
-        // Navigate to add-plan
-        navigate("/pricing-plans", {
-          state: {
-            phoneNumber: user.phoneNumber,
+        if (user.status === "incomplete") {
+          // Open Edit Form
+          setEditData({
             rentId: user.rentId,
-          },
-        });
-      }
-    }}
-  >
-    Pay Now
-  </button>
+            phoneNumber: user.phoneNumber,
+          });
+        } else {
+          // Navigate to pricing plans
+          navigate("/pricing-plans", {
+            state: {
+              phoneNumber: user.phoneNumber,
+              rentId: user.rentId,
+            },
+          });
+        }
+      }}
+    >
+      Pay Now
+    </button>
 )}
-
 
                       </div>
                     </div>
                   </div>
-                ))
+                );})
               ) : (
                 <div className="text-center my-4">
                   <img src={NoData} width={100} alt="No Data" />

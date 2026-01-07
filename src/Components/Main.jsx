@@ -3,6 +3,7 @@
 import React, { useEffect, useState , useRef } from 'react';
 import TopBar from './TopBar';
 import BottomNavigation from './BottomNavigation';
+import AnimatedLogo from './AnimatedLogo';
 import { FaHome, FaBuilding, FaPlusSquare, FaUser, FaEllipsisH } from 'react-icons/fa';
 import logo from '../Assets/ppc_sentyourinterest.png';
 import logo2 from '../Assets/allprop50.png';
@@ -101,22 +102,22 @@ useEffect(() => {
 }, [activeContent]);
 
   const topBarItems = [
-    { icon: logo, text: 'Commercial / Lease', content: 'topPyProperty' },
-    { icon: logo2, text: 'All Property', content: 'topAllProperty' },
-        { icon: mapicon, text: 'Property Map', content: 'topPropertyMap' },
-        { icon: salee, text: 'sale Property', content: 'topSaleProperty' },
+    { icon: logo, text: 'Commercial / Lease', content: 'topPyProperty', isAnimated: false },
+    { icon: logo2, text: 'All Property', content: 'topAllProperty', isAnimated: false },
+    { icon: logo3, text: 'Tenant List', content: 'topMBuyerList', isAnimated: false },
+    { icon: mapicon, text: 'Property Map', content: 'topPropertyMap', isAnimated: false },
+    { icon: salee, text: 'sale Property', content: 'topSaleProperty', isAnimated: false },
 
-    { icon: logo3, text: 'Tenant List', content: 'topMBuyerList' },
-    { icon: logo7, text: 'Feature Property', content: 'topFeatureProperty' },
+    { icon: logo7, text: 'Feature Property', content: 'topFeatureProperty', isAnimated: false },
 
-            { icon: groom, text: 'Groom', content: 'topGroom' },
-        { icon: groom, text: 'Bride', content: 'topBride' },
-{ icon: groom, text: 'Rental Property Video', content: 'topPropertyVideo' },
+            { icon: groom, text: 'Groom', content: 'topGroom', isAnimated: false },
+        { icon: groom, text: 'Bride', content: 'topBride', isAnimated: false },
+{ icon: groom, text: 'Rental Property Video', content: 'topPropertyVideo', isAnimated: false },
 
-    { icon: nvprop50, text: 'Not View Property', content: 'topNotViewProperty' },
-    { icon: logo9, text: 'My Property', content: 'topMyProperty' },
-    { icon: logo10, text: 'Owner Menu', content: 'topOwnerMenu' },
-    { icon: logo11, text: 'Tenant Menu', content: 'topBuyerMenu' },
+    { icon: nvprop50, text: 'Not View Property', content: 'topNotViewProperty', isAnimated: false },
+    { icon: logo9, text: 'My Property', content: 'topMyProperty', isAnimated: false },
+    { icon: logo10, text: 'Owner Menu', content: 'topOwnerMenu', isAnimated: false },
+    { icon: logo11, text: 'Tenant Menu', content: 'topBuyerMenu', isAnimated: false },
   ];
 
   const renderContent = () => {

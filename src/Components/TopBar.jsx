@@ -2,12 +2,15 @@
 
 
 import React, { useRef, useEffect } from "react";
+import AnimatedLogo from "./AnimatedLogo";
 
 const TopBar = ({ items, setActive, activeItem }) => {
   const topBarRef = useRef(null);
+  const isScrollingRef = useRef(false);
 
   useEffect(() => {
     const topBarElement = topBarRef.current;
+    if (!topBarElement) return;
 
     // 🖱️ Mouse wheel for horizontal scrolling
     const handleWheel = (e) => {
@@ -19,14 +22,53 @@ const TopBar = ({ items, setActive, activeItem }) => {
       }
     };
 
-    // Enable smooth scrolling on touch devices
-    topBarElement.style.scrollBehavior = "smooth";
+    // Infinite loop scroll handler - seamless looping without jumps
+    const handleScroll = () => {
+      if (!topBarElement || isScrollingRef.current) return;
 
-    // Add event listener
+      const scrollWidth = topBarElement.scrollWidth;
+      const clientWidth = topBarElement.clientWidth;
+      const scrollLeft = topBarElement.scrollLeft;
+      
+      // Calculate the threshold for looping (at the halfway point)
+      const halfScrollWidth = scrollWidth / 2;
+      const resetThreshold = halfScrollWidth * 0.95; // 95% of halfway
+
+      // When user scrolls past the original items, seamlessly loop back
+      if (scrollLeft >= resetThreshold - 100) {
+        isScrollingRef.current = true;
+        topBarElement.scrollLeft = 100; // Reset to near start of duplicated items
+        setTimeout(() => {
+          isScrollingRef.current = false;
+        }, 50);
+      }
+      // When user scrolls backward past the start, loop to end
+      else if (scrollLeft <= 100) {
+        isScrollingRef.current = true;
+        topBarElement.scrollLeft = resetThreshold - 200; // Reset to near end
+        setTimeout(() => {
+          isScrollingRef.current = false;
+        }, 50);
+      }
+    };
+
+    // Enable smooth scrolling on touch devices
+    topBarElement.style.scrollBehavior = "auto"; // Use auto instead of smooth for instant reset
+    
+    // Scroll to center position initially for better UX
+    setTimeout(() => {
+      const scrollWidth = topBarElement.scrollWidth;
+      const clientWidth = topBarElement.clientWidth;
+      topBarElement.scrollLeft = (scrollWidth - clientWidth) / 2;
+    }, 100);
+
+    // Add event listeners
     topBarElement.addEventListener("wheel", handleWheel, { passive: false });
+    topBarElement.addEventListener("scroll", handleScroll, { passive: true });
 
     return () => {
       topBarElement.removeEventListener("wheel", handleWheel);
+      topBarElement.removeEventListener("scroll", handleScroll);
     };
   }, []);
 
@@ -59,11 +101,12 @@ const TopBar = ({ items, setActive, activeItem }) => {
 
         }}
       >
-        {items.map((item, index) => (
+        {/* Original items + duplicated items for seamless looping */}
+        {[...items, ...items].map((item, index) => (
           <li
           className={`text-center px-3 ${activeItem === item.content ? "text-primary" : "text-secondary"}`}
 
-            key={index}
+            key={`${item.content}-${index}`}
             style={{
               cursor: "pointer",
               textAlign: "center",
@@ -74,11 +117,15 @@ const TopBar = ({ items, setActive, activeItem }) => {
             }}
             onClick={() => setActive(item.content)}
           >
-            <img
-              src={item.icon}
-              alt={item.text}
-              style={{ width: "28px", height: "28px", objectFit: "cover" }}
-            />
+            {item.isAnimated ? (
+              <AnimatedLogo logoImage={item.icon} brandColor="#28a745" />
+            ) : (
+              <img
+                src={item.icon}
+                alt={item.text}
+                style={{ width: "28px", height: "28px", objectFit: "cover" }}
+              />
+            )}
             <span 
                style={{
                 marginTop: "5px",

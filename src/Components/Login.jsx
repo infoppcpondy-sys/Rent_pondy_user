@@ -13,6 +13,7 @@ import axios from 'axios';
 import './Login.css';
 import { RiEdit2Fill } from "react-icons/ri";
 import PrivacyPolicyWeb from './PrivacyPolicyWeb';
+import WhatsAppPolicyWeb from './WhatsAppPolicyWeb';
 import AboutMobile from './AboutMobile';
 import { FaArrowLeft, FaChevronLeft } from 'react-icons/fa';
 import bgg from '../Assets/loo.PNG';
@@ -30,6 +31,7 @@ const Login = ({ onLogin }) => {
   const [mockOtp, setMockOtp] = useState('');
   const phoneInputRef = useRef(null);
   const [showPopup, setShowPopup] = useState(false);
+  const [showWhatsAppPopup, setShowWhatsAppPopup] = useState(false);
   const [isChecked, setIsChecked] = useState(true);
   const [isDisabled, setIsDisabled] = useState(false);
   const [loginMode, setLoginMode] = useState('web');
@@ -296,44 +298,53 @@ navigate('/mobileviews');
                 <p className='ps-3' style={{color:"#989EA0"}}>Login to continue</p>
           </div>
 
-          <div className="text-center">
-            <img src={logo} alt="Logo" className="rounded-3" height={40} />
-            <p className="mt-2">Rent Pondy</p>
-            <p>Find Your rental property-Rent your property, Fast.</p>
+          <div className="text-center" style={{ marginBottom: '10px' }}>
+
+            <img src={logo} alt="Logo" style={{ height: 100, width: 100, borderRadius: 16, boxShadow: '0 4px 16px rgba(79,75,126,0.15)' }} />
+            <div style={{
+              fontFamily: 'Montserrat, Poppins, Inter, Arial, sans-serif',
+              fontWeight: 800,
+              fontSize: 32,
+              color: '#4F4B7E',
+              marginTop: 8,
+              letterSpacing: 1.5,
+              textShadow: '0 2px 8px rgba(79,75,126,0.08)'
+            }}>
+              Rent Pondy
+            </div>
+            <div style={{
+              fontFamily: 'Poppins, Inter, Arial, sans-serif',
+              fontWeight: 500,
+              fontSize: 16,
+              color: '#fff',
+              marginTop: 2,
+              marginBottom: 2
+            }}>
+              Connecting Tenants and Owners Seamlessly
+            </div>
 
            <Form onSubmit={handleSendOtp}>
                     <Form.Group className="mb-3" controlId="countryCode">
-                      <InputGroup>
-                        <InputGroup.Text className="border-0" style={{ backgroundColor: "transparent", }}>
-                          <Flag code={selectedCountry} style={{ width: '20px', marginRight: '8px' }} />
+                      <InputGroup style={{ maxWidth: 320, margin: '0 auto', borderRadius: 8, boxShadow: '0 2px 8px rgba(79,75,126,0.07)' }}>
+                        <InputGroup.Text className="border-0" style={{ backgroundColor: "#f5f5f5", borderTopLeftRadius: 8, borderBottomLeftRadius: 8 }}>
+                          <Flag code={selectedCountry} style={{ width: '22px', marginRight: '8px' }} />
                         </InputGroup.Text>
                         <Form.Select
                           value={selectedCountry}
                           onChange={handleCountryChange}
                           aria-label="Select Country"
-                          className="custom-background small-input fw-normal "
                           style={{
-                            width: 'auto', maxWidth: '70px',
-                            backgroundColor: "transparent",
-                            outline: "none",
-                            borderLeft: "none",
-                            borderRight: "none",
-                            borderBottom: "1px solid white",
-                            background: "transparent",
-                            color: "white",
-                            fontWeight: "bold",
-                            borderTop: "none",
-                            cursor: "pointer",
-                            padding: "5px 5px"
+                            width: 'auto', maxWidth: '80px',
+                            backgroundColor: "#f5f5f5",
+                            color: '#4F4B7E',
+                            fontWeight: 600,
+                            border: 'none',
+                            borderRadius: 0,
+                            outline: 'none',
+                            cursor: 'pointer',
+                            fontFamily: 'Poppins, Inter, Arial, sans-serif',
+                            fontSize: 15
                           }}
-                          onFocus={(e) =>
-                            Object.assign(e.target.style, {
-                              outline: "none",
-                              boxShadow: "none",
-                              background: "none",
-                              color: "white",
-                            })
-                          }
                         >
                           {countryCodes.map((country) => (
                             <option className="text-dark" key={country.code} value={country.flag}>
@@ -342,53 +353,44 @@ navigate('/mobileviews');
                           ))}
                         </Form.Select>
                         <Form.Control
-                          type="number"
+                          type="tel"
                           placeholder="Enter Mobile No"
                           value={phoneNumber}
                           onChange={handlePhoneNumberChange}
                           required
                           ref={phoneInputRef}
-                          className="custom-background small-input fw-normal rounded-0"
                           style={{
-                            width: 'auto', maxWidth: '140px',
-                            backgroundColor: "transparent",
-                            outline: "none",
-                            borderLeft: "none",
-                            borderRight: "none",
-                            borderBottom: "1px solid white",
-                            background: "transparent",
-                            color: "white",
-                            fontWeight: "bold",
-                            borderTop: "none",
-                            cursor: "pointer",
-                            appearance: 'textfield',
-                            MozAppearance: 'textfield',
-                            WebkitAppearance: 'none'
+                            width: '100%',
+                            backgroundColor: "#f5f5f5",
+                            color: '#222',
+                            fontWeight: 600,
+                            border: 'none',
+                            borderTopRightRadius: 8,
+                            borderBottomRightRadius: 8,
+                            fontFamily: 'Poppins, Inter, Arial, sans-serif',
+                            fontSize: 16,
+                            outline: 'none',
+                            boxShadow: 'none',
+                            paddingLeft: 12
                           }}
-                          onFocus={(e) =>
-                            Object.assign(e.target.style, {
-                              outline: "none",
-                              boxShadow: "none",
-                              background: "none",
-                              color: "white",
-                            })
-                          }
+                          pattern="[0-9]{10,15}"
+                          maxLength={15}
                         />
                       </InputGroup>
                     </Form.Group>
                     <style>
                       {`
-                        input[type="number"]::-webkit-inner-spin-button,
-                        input[type="number"]::-webkit-outer-spin-button {
+                        input[type="tel"]::-webkit-inner-spin-button,
+                        input[type="tel"]::-webkit-outer-spin-button {
                           -webkit-appearance: none;
                           margin: 0;
                         }
                       `}
                     </style>
                     <div className="d-flex justify-content-center">
-                      <Button type="submit"                       
-                      style={{ backgroundColor: "#4F4B7E", border: "2px solid #4F4B7E" }} 
-                      className="btn w-50 btn-small">
+                      <Button type="submit"
+                        style={{ backgroundColor: "#4F4B7E", border: "2px solid #4F4B7E", fontWeight: 700, fontSize: 16, borderRadius: 8 }}
+                        className="btn w-50 btn-small mt-2">
                         LOGIN
                       </Button>
                     </div>
@@ -526,23 +528,26 @@ navigate('/mobileviews');
            <div className='mb-2 mt-2' style={{
     display: 'flex',
     justifyContent: 'center',
-    // same as Bootstrap's mb-3
-  }}>                      <label>
+    alignItems: 'center',
+    gap: '8px'
+  }}>
+                      <label style={{ margin: 0 }}>
                         <input
                           type="checkbox"
                           checked={isChecked}
                           onChange={handleCheckboxChange}
+                          style={{ cursor: 'pointer' }}
                         />
                       </label>
                       <span
                         onClick={() => setShowPopup(true)}
                         style={{
                           cursor: 'pointer',
-                          fontSize: '16px',
-                          color:"grey"
+                          fontSize: '13px',
+                          color:"#666"
                         }}
                       >
-                        i agree with terms & conditions Privacy Policy
+                        I agree with <span style={{ color: '#4F4B7E', textDecoration: 'underline' }}>terms & conditions</span>
                       </span>
 
                       {showPopup && (
@@ -588,7 +593,81 @@ navigate('/mobileviews');
                                 cursor: 'pointer',
                               }}
                             >
-                              <FaChevronLeft /> <span className="m-0">Privacy Policy</span>
+                              <FaChevronLeft /> <span className="m-0">Back</span>
+                            </button>
+                          </div>
+                        </div>
+                      )}
+                    </div>
+
+                    <div className='mb-2 mt-1' style={{
+    display: 'flex',
+    justifyContent: 'center',
+    alignItems: 'center',
+    gap: '8px'
+  }}>
+                      <label style={{ margin: 0 }}>
+                        <input
+                          type="checkbox"
+                          defaultChecked
+                          style={{ cursor: 'pointer' }}
+                        />
+                      </label>
+                      <span
+                        onClick={() => setShowWhatsAppPopup(true)}
+                        style={{
+                          cursor: 'pointer',
+                          fontSize: '13px',
+                          color:"#666"
+                        }}
+                      >
+                        I agree with <span style={{ color: '#4F4B7E', textDecoration: 'underline' }}>WhatsApp policy</span>
+                      </span>
+
+                      {showWhatsAppPopup && (
+                        <div
+                          style={{
+                            position: 'fixed',
+                            top: '0',
+                            left: '0',
+                            height: '100vh',
+                            backgroundColor: '#fff',
+                            color: 'black',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            zIndex: 1000,
+                            overflow: "hidden"
+                          }}
+                        >
+                          <div
+                            style={{
+                              maxHeight: '100%',
+                              overflowY: 'auto',
+                              width: '100%',
+                              padding: '20px',
+                              borderRadius: '10px',
+                              boxShadow: '0 4px 8px rgba(0, 0, 0, 0.3)',
+                              minWidth: '300px',
+                              textAlign: 'center',
+                            }}
+                          >
+                            <WhatsAppPolicyWeb />
+                            <button
+                              onClick={() => setShowWhatsAppPopup(false)}
+                              style={{
+                                position: 'absolute',
+                                top: '10px',
+                                left: '10px',
+                                padding: '6px 12px',
+                                backgroundColor: '#EFEFEF',
+                                color: 'black',
+                                border: 'none',
+                                borderRadius: '4px',
+                                cursor: 'pointer',
+                              }}
+                            >
+                              <FaChevronLeft /> <span className="m-0">Back</span>
                             </button>
                           </div>
                         </div>

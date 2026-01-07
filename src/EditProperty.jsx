@@ -95,9 +95,7 @@ import securityDeposit from './Assets/advance.PNG';
 import { LiaCitySolid } from "react-icons/lia";
 import { GoCheckCircleFill } from "react-icons/go";
 import { motion } from 'framer-motion';
-
-
-
+import { compressVideo } from './utils/propertyUtils';
 
 
 function EditForm() {
@@ -1310,12 +1308,29 @@ const handleVideoChange = async (e) => {
       continue;
     }
 
-    // ✅ Compress before pushing
+    // ✅ Compress to 200KB before pushing
     let compressedFile = file;
     try {
-      compressedFile = await compressVideo(file);
+      setIsVideoCompressing(true);
+      setVideoCompressionProgress(0);
+      setVideoCompressionStatus(`Compressing ${file.name}...`);
+      
+      // Use propertyUtils compressVideo with progress callback
+      compressedFile = await compressVideo(
+        file,
+        (progress) => setVideoCompressionProgress(progress),
+        200 // Target 200KB
+      );
+      
+      setVideoCompressionStatus(`Compressed: ${(file.size / 1024 / 1024).toFixed(2)}MB → ${(compressedFile.size / 1024).toFixed(0)}KB`);
     } catch (err) {
       console.warn("Compression failed, using original file", err);
+      setVideoCompressionStatus(`Compression failed: ${err.message}`);
+      setVideoError(`Failed to compress ${file.name}: ${err.message}`);
+      compressedFile = file; // Use original as fallback
+    } finally {
+      setIsVideoCompressing(false);
+      setTimeout(() => setVideoCompressionStatus(''), 2000);
     }
 
     validFiles.push(compressedFile);
@@ -1346,35 +1361,14 @@ const handleVideoChange = async (e) => {
   }, 300);
 };
 
-// ⚡ Compress video using ffmpeg.wasm
-const compressVideo = async (file) => {
-  const { createFFmpeg, fetchFile } = await import("@ffmpeg/ffmpeg");
-  const ffmpeg = createFFmpeg({ log: false });
-  if (!ffmpeg.isLoaded()) await ffmpeg.load();
-
-  const inputName = "input.mp4";
-  const outputName = "output.mp4";
-
-  ffmpeg.FS("writeFile", inputName, await fetchFile(file));
-  // Adjust bitrate/resolution for compression
-  await ffmpeg.run(
-    "-i", inputName,
-    "-vcodec", "libx264",
-    "-crf", "28",
-    "-preset", "veryfast",
-    "-vf", "scale=640:-1",
-    outputName
-  );
-
-  const data = ffmpeg.FS("readFile", outputName);
-  return new File([data.buffer], file.name.replace(/\.[^/.]+$/, "") + "_compressed.mp4", { type: "video/mp4" });
-};
-  const removeVideo = (indexToRemove) => {
+// Utility function: Remove video from list
+const removeVideo = (indexToRemove) => {
   setVideos(prev => prev.filter((_, index) => index !== indexToRemove));
-    fileInputRef.current.value = ''; // Reset the file input
-  };
+  fileInputRef.current.value = ''; // Reset the file input
+};
 
-  const getMimeType = (filename) => {
+// Utility function: Get MIME type from filename
+const getMimeType = (filename) => {
   if (!filename || typeof filename !== "string" || !filename.includes(".")) {
     return "video/mp4"; // fallback
   }
@@ -2057,6 +2051,39 @@ onClick={() => removePhoto(index)}>
   "Upload Property Videos"
 )}                </span>
           </label>
+
+          {/* Orange Progress Bar for Video Compression */}
+          {isVideoCompressing && (
+            <div style={{ 
+              backgroundColor: "#fff3e0", 
+              padding: "15px", 
+              borderRadius: "10px", 
+              marginTop: "10px",
+              marginBottom: "10px"
+            }}>
+              <div style={{ marginBottom: "5px", color: "#ff9800", fontWeight: "bold" }}>
+                🎬 {videoCompressionStatus || `Compressing... ${videoCompressionProgress}%`}
+              </div>
+              <div style={{ 
+                width: "100%", 
+                height: "10px", 
+                backgroundColor: "#ffe0b2", 
+                borderRadius: "5px",
+                overflow: "hidden"
+              }}>
+                <div style={{ 
+                  width: `${videoCompressionProgress}%`, 
+                  height: "100%", 
+                  background: "linear-gradient(90deg, #ff9800, #ff5722)",
+                  borderRadius: "5px",
+                  transition: "width 0.3s ease"
+                }}></div>
+              </div>
+              <div style={{ marginTop: "5px", fontSize: "12px", color: "#ff9800" }}>
+                {videoCompressionProgress}% - Compressing to under 200KB...
+              </div>
+            </div>
+          )}
 
           {/* Display the selected video */}
  {videos.length > 0 && (
@@ -5204,7 +5231,7 @@ return (
 
         <button className="submit-button"
         onClick={handleCombinedClick}
-              disabled={isProcessing}
+              disabled={isProcessing || isVideoCompressing}
                         style={{
                 padding: "12px 20px",
                 fontSize: "16px",
@@ -5212,11 +5239,12 @@ return (
                  border: "none",
   background: 'linear-gradient(145deg, #4a90e2, #007bff)',
           color: "#ffffff",
-                cursor: "pointer",
+                cursor: isProcessing || isVideoCompressing ? "not-allowed" : "pointer",
                 position: "relative",
                 overflow: "hidden",
                 width: "150px",
                 height: "40px",
+                opacity: isProcessing || isVideoCompressing ? 0.6 : 1,
                   boxShadow: 'inset 0 0 0 1px rgba(255, 255, 255, 0.3), 0 4px 6px rgba(0, 0, 0, 0.1)',
               }}>
                    {isProcessing ? (

@@ -598,13 +598,17 @@ const itemStyle = {
     <p className="mt-2">Loading properties...</p>
   </div>
               ) : propertyUsers.length > 0 ? (
-                propertyUsers.map((user) => (
+                propertyUsers.map((user) => {
+                  const isPaid = user.payustatususer?.toString().toLowerCase() === "paid";
+                  return (
                   <div
                     key={user.rentId}
-                    className="row g-0 rounded-4 mb-2"
-                    style={{ border: "1px solid #ddd", background: "#EFEFEF" }}
-                                       onClick={() => handleCardClick(user.rentId)}
+                    className={`row g-0 rounded-4 mb-2 property-card ${isPaid ? "paid-card" : "pending-card"}`}
+                    style={{ position: "relative", overflow: "hidden" }}
+                    onClick={() => handleCardClick(user.rentId)}
    >
+                    {/* Payment Stamp */}
+                    <span className={`payment-stamp ${isPaid ? "paid" : "pending"}`}>{isPaid ? "Paid" : "Pending"}</span>
                     {/* Image Column */}
                     <div className="col-md-4 col-4 d-flex flex-column align-items-center">
                       <div className="text-white py-1 px-2 w-100 text-center" style={{ background: "#4F4B7E" }}>
@@ -635,7 +639,11 @@ const itemStyle = {
                           color: "#fff",
                           textAlign: "center"
                         }}>
-                          {user.displayStatus || "N/A"}
+                          {user.payustatususer === "paid" && 
+                           (user.displayStatus?.toLowerCase() === "preapproved" || 
+                            user.displayStatus?.toLowerCase() === "pre_approved")
+                            ? "Approved"
+                            : user.displayStatus || "N/A"}
                         </div>
                       </div>
                     </div>
@@ -784,7 +792,12 @@ const itemStyle = {
                            </span>
                                    </h6>
                                 </div>          
-                                <div className="me-3 mt-2" style={{color:"orangered"}}> {user.paymentDisplayStatus || "N/A"}</div>
+                                <div className="me-3 mt-2" style={{
+                                  color: user.payustatususer === "paid" ? "#0F9F2C" : "#FF0000",
+                                  fontWeight: 500
+                                }}>
+                                  {user.payustatususer === "paid" ? "Payment Paid" : "Payment Pending"}
+                                </div>
 </div></div>
 
                       <div className="mt-2 d-flex justify-content-around">
@@ -848,7 +861,10 @@ const itemStyle = {
                           </button>
                         )} */}
 
-                       {user.payustatususer !== "paid" && (
+                       {(user.displayStatus?.toLowerCase() === "pre_approved" || 
+                         user.displayStatus?.toLowerCase() === "preapproved" || 
+                         user.displayStatus?.toLowerCase() === "expired") && 
+                         user.payustatususer !== "paid" && (
   <button
         className="btn btn-sm"
        style={{
@@ -879,8 +895,7 @@ const itemStyle = {
                       </div>
                     </div>
                   </div>
-                ))
-              ) : (
+                );})              ) : (
                 <div className="text-center my-4"
                  style={{
                     position: 'fixed',

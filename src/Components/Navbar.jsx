@@ -5,7 +5,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { FaHome, FaBuilding, FaLightbulb, FaUserCircle, FaRocket, FaCogs, FaInfoCircle, FaRegAddressCard, FaShare, FaStar, FaShieldAlt, FaUsers, FaEnvelope, FaRegBell, FaShippingFast } from 'react-icons/fa';
 import logo from "../Assets/rentpondylogo.png";
 import { useNavigate, useLocation } from 'react-router-dom';
-import { MdClose, MdOutlineRefresh, MdPolicy } from "react-icons/md";
+import { MdClose, MdRefresh, MdPolicy } from "react-icons/md";
 import { FaPhone } from "react-icons/fa6";
 import { RiApps2AiFill } from 'react-icons/ri';
 import { HiDocumentText } from 'react-icons/hi2';
@@ -13,6 +13,7 @@ import { BiSolidLogIn } from 'react-icons/bi';
 import axios from 'axios';
 import { useDispatch } from 'react-redux';
 import { setPhoneNumber } from '../red/userSlice'; // Import your Redux action
+import './NavbarAnimation.css';
 
 
 
@@ -175,7 +176,7 @@ const SidebarApp = () => {
   {/* Header Section */}
   <div
     style={{
-      background: "#4F4B7E",
+      background: "#24ad92ff",
       flexShrink: 0,
       padding: "10px",
     }}
@@ -189,17 +190,23 @@ const SidebarApp = () => {
     />
 
     <div className="ms-md-3 ms-2">
-      <h6 style={{ color: "white" }}>Rent Pondy</h6>
+      <h6 style={{ margin: 0 }}>
+        <span style={{ color: "#28a745", fontWeight: "bold", fontSize: "18px" }}>RENT</span>
+        <span style={{ color: "white", fontWeight: "bold", fontSize: "18px" }}> PONDY</span>
+      </h6>
 
       <p style={{ color: "white", fontSize: "13px" }}>
-        Find Your rental property-Rent your property, Fast.
+        Find Your dream House Here!
       </p>
 
       {/* Phone Number as Text only */}
       {phoneNumber && (
-        <p style={{ color: "white", fontSize: "14px", marginTop: "-8px" }}>
-          📞 {fullPhoneNumber}
-        </p>
+        <div style={{ display: "flex", alignItems: "center", gap: "6px", marginTop: "-8px" }}>
+          <FaPhone style={{ color: "white", fontSize: "14px" }} />
+          <p style={{ color: "white", fontSize: "14px", margin: 0 }}>
+            {fullPhoneNumber}
+          </p>
+        </div>
       )}
     </div>
   </div>
@@ -601,19 +608,62 @@ const SidebarApp = () => {
         {/* Navbar */}
         <nav
           className="navbar navbar-light bg-light d-flex align-items-center justify-content-between px-3"
-          style={{ width: '100%', height: '60px' }}
+          style={{ width: '100%', height: '60px', display: 'flex', gap: '10px', position: 'relative' }}
         >
-          <button className="btn" onClick={toggleSidebar}>
-            ☰
-          </button>
-          <span className="navbar-brand mb-0 text-center mx-auto">Rent Pondy</span>
+          {/* Centered Animation */}
+          <div className="navbar-intro-container">
+            <div className="house">
+              <div className="roof"></div>
+              <div className="title">
+                <span className="rent">RENT</span>
+                <span className="pondy">PONDY</span>
+              </div>
+            </div>
+          </div>
 
-
-          <div style={{ position: "relative" }}>
-            <button onClick={handleRefresh} style={{ padding: "10px 20px", cursor: "pointer", color: "red", background: "none", border: "none" }}>
-              <MdOutlineRefresh size={24} />
+          <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+            <button 
+              className="btn" 
+              onClick={toggleSidebar}
+              style={{ color: "black", fontSize: "24px", padding: "0" }}
+              aria-label="Toggle Menu"
+            >
+              ☰
             </button>
-            <button className="btn border-0" style={{ fontWeight: "bold" }} onClick={handleBellClick}>
+          </div>
+          
+          <div style={{ flex: 1 }}></div>
+
+
+          <div style={{ position: "relative", display: "flex", alignItems: "center", gap: "10px" }}>
+            <button 
+              onClick={handleRefresh} 
+              style={{ 
+                padding: "8px 12px", 
+                cursor: "pointer", 
+                background: "linear-gradient(135deg, #2563eb 0%, #1e40af 100%)",
+                border: "none",
+                borderRadius: "8px",
+                color: "white",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                transition: "all 0.3s cubic-bezier(0.34, 1.56, 0.64, 1)",
+              }}
+              onMouseEnter={(e) => {
+                e.currentTarget.style.transform = "scale(1.1) rotate(20deg)";
+                e.currentTarget.style.boxShadow = "0 4px 16px rgba(37, 99, 235, 0.5)";
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.transform = "scale(1) rotate(0deg)";
+                e.currentTarget.style.boxShadow = "none";
+              }}
+              title="Refresh Page"
+              aria-label="Refresh"
+            >
+              <MdRefresh size={20} />
+            </button>
+            <button className="btn border-0" style={{ fontWeight: "bold", padding: "0" }} onClick={handleBellClick}>
               <FaRegBell color="#4F4B7E" size={24} />
             </button>
 

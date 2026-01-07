@@ -5,6 +5,7 @@ import { RxHome } from "react-icons/rx";
 import { BiBuildingHouse } from 'react-icons/bi';
 import { RiAccountCircleLine } from 'react-icons/ri';
 import { useNavigate } from 'react-router-dom';
+import AnimatedHomeLogo from './AnimatedHomeLogo';
 import Main from './Main';
 
 const BottomNavigation = ({ activeItem, setActive }) => {
@@ -71,6 +72,39 @@ const BottomNavigation = ({ activeItem, setActive }) => {
 
   return (
     <div style={backgroundStyle}>
+      <style>{`
+        /* Inner-only FAB animation: creates illusion of up/down motion
+           without moving the outer container. Uses transform on inner element only.
+           5s cycle: motion occurs early, then rests.
+        */
+        .fab-inner { will-change: transform, box-shadow; display: inline-flex; align-items: center; justify-content: center; width: 100%; height: 100%; pointer-events: none; }
+
+        @keyframes fabInnerPulse {
+          0% {
+            transform: translateY(0);
+            box-shadow: none;
+          }
+          8% {
+            transform: translateY(-20px);
+            box-shadow: 0 10px 28px rgba(79,75,126,0.12);
+          }
+          20% {
+            transform: translateY(-20px);
+            box-shadow: 0 14px 36px rgba(79,75,126,0.16);
+          }
+          36% {
+            transform: translateY(0);
+            box-shadow: none;
+          }
+          100% {
+            transform: translateY(0);
+            box-shadow: none;
+          }
+        }
+
+        /* Apply only to inner element; outer container remains static. */
+        .fab-inner.animate { animation: fabInnerPulse 5s ease-in-out infinite; }
+      `}</style>
       {allNavItems.map((item) => {
         const isAddButton = item.name === 'add';
           const isHome = item.name === 'bottomHome';
@@ -94,9 +128,15 @@ const BottomNavigation = ({ activeItem, setActive }) => {
       }}
       onClick={!isHome ? () => handleClick(item) : undefined}
           >
-            <div style={isAddButton ? floatingButtonStyle : iconStyle}>
-              {item.icon}
-            </div>
+            {isAddButton ? (
+              <div style={floatingButtonStyle} onClick={() => handleClick(item)}>
+                <AnimatedHomeLogo />
+              </div>
+            ) : (
+              <div style={iconStyle}>
+                {item.icon}
+              </div>
+            )}
             {!isAddButton && <div>{item.label}</div>}
           </div>
         );

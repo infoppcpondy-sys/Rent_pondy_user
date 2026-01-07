@@ -3545,6 +3545,7 @@ import { LiaCitySolid } from "react-icons/lia";
 import { GoCheckCircleFill } from "react-icons/go";
 import { FcSearch } from "react-icons/fc";
 import maplocation from "../Assets/maplocation.png";
+import AnimatedSearchLogo from "./AnimatedSearchLogo";
 
 
 
@@ -3760,12 +3761,12 @@ const AllProperty = () => {
 
   const [imageCounts, setImageCounts] = useState({}); // Store image count for each property
   const [loading, setLoading] = useState(true);
-  const [isPropertyLoading, setIsPropertyLoading] = useState(false); // Loading state when clicking property
     const [uploads, setUploads] = useState([]);
   const [mergedData, setMergedData] = useState([]);
 
 
   const [showMap, setShowMap] = useState(false);
+  const [isSearchMenuOpen, setIsSearchMenuOpen] = useState(false);
 
   const [clickedCar, setClickedCar] = useState([]);
   const location = useLocation();
@@ -3791,6 +3792,16 @@ const AllProperty = () => {
       recordDashboardView();
     }
   }, [phoneNumber]);
+
+  // Auto-close search menu after 5 seconds if user doesn't interact
+  useEffect(() => {
+    if (isSearchMenuOpen) {
+      const timer = setTimeout(() => {
+        setIsSearchMenuOpen(false);
+      }, 5000); // 5 seconds
+      return () => clearTimeout(timer);
+    }
+  }, [isSearchMenuOpen]);
 
 
   const [advancedFilters, setAdvancedFilters] = useState({
@@ -4456,6 +4467,94 @@ const fieldLabels = {
 ))}
 
             </ul>
+
+            {/* Action Buttons */}
+            <div style={{ 
+              display: 'flex', 
+              flexDirection: 'column', 
+              gap: '10px', 
+              marginTop: '15px' 
+            }}>
+              {/* CLEAR and SEARCH buttons */}
+              <div style={{ display: 'flex', gap: '10px' }}>
+                <button
+                  onClick={() => {
+                    setFilters({ id: '', minPrice: '', maxPrice: '', propertyMode: '', city: '', propertyType: '', rentType: '', bedrooms: '', floorNo: '', state: '' });
+                    setAdvancedFilters({ propertyMode: '', propertyType: '', minPrice: '', maxPrice: '', propertyAge: '', bankLoan: '', negotiation: '', length: '', breadth: '', totalArea: '', minTotalArea: '', ownership: '', bedrooms: '', minBedrooms: '', kitchen: '', kitchenType: '', balconies: '', floorNo: '', areaUnit: '', propertyApproved: '', facing: '', postedBy: '', furnished: '', lift: '', attachedBathrooms: '', minAttachedBathrooms: '', western: '', minWestern: '', rentType: '', carParking: '', area: '', nagar: '', streetName: '', pinCode: '', phoneNumber: '', state: '' });
+                    toggleDropdown(field);
+                  }}
+                  style={{
+                    flex: 1,
+                    padding: '10px',
+                    border: '2px solid #d32f2f',
+                    backgroundColor: '#fff',
+                    color: '#d32f2f',
+                    borderRadius: '6px',
+                    cursor: 'pointer',
+                    fontWeight: 'bold',
+                    fontSize: '14px'
+                  }}
+                >
+                  CLEAR
+                </button>
+                <button
+                  onClick={() => toggleDropdown(field)}
+                  style={{
+                    flex: 1,
+                    padding: '10px',
+                    border: '2px solid #4caf50',
+                    backgroundColor: '#fff',
+                    color: '#4caf50',
+                    borderRadius: '6px',
+                    cursor: 'pointer',
+                    fontWeight: 'bold',
+                    fontSize: '14px'
+                  }}
+                >
+                  SEARCH
+                </button>
+              </div>
+
+              {/* GO TO ADVANCED SEARCH button */}
+              <button
+                onClick={() => {
+                  toggleDropdown(field);
+                  setIsAdvancedPopupOpen(true);
+                }}
+                style={{
+                  padding: '10px',
+                  border: '2px solid #666',
+                  backgroundColor: '#fff',
+                  color: '#666',
+                  borderRadius: '6px',
+                  cursor: 'pointer',
+                  fontWeight: 'bold',
+                  fontSize: '14px'
+                }}
+              >
+                GO TO ADVANCED SEARCH
+              </button>
+
+              {/* HOME button */}
+              <button
+                onClick={() => {
+                  toggleDropdown(field);
+                  navigate('/');
+                }}
+                style={{
+                  padding: '10px',
+                  border: '2px solid #666',
+                  backgroundColor: '#fff',
+                  color: '#666',
+                  borderRadius: '6px',
+                  cursor: 'pointer',
+                  fontWeight: 'bold',
+                  fontSize: '14px'
+                }}
+              >
+                HOME
+              </button>
+            </div>
           </div>
         )
       );
@@ -4537,22 +4636,12 @@ useEffect(() => {
 }, []);
 
   const handleCardClick = (rentId, phoneNumber) => {
-    setIsPropertyLoading(true); // Show loading overlay
     const stored = JSON.parse(localStorage.getItem('clickedCar')) || [];
     if (!stored.includes(rentId)) {
       stored.push(rentId);
       localStorage.setItem('clickedCar', JSON.stringify(stored));
     }
-    
-    // Start fetching property data immediately
-    axios.get(`${process.env.REACT_APP_API_URL}/property-details-rent/${rentId}`)
-      .catch(err => console.log("Prefetch started"));
-    
-    // Keep loading visible for 3.5 seconds to ensure property data fully loads
-    setTimeout(() => {
-      setIsPropertyLoading(false);
-      navigate(`/detail/${rentId}`, { state: { phoneNumber } });
-    }, 3500);
+    navigate(`/detail/${rentId}`, { state: { phoneNumber } });
   };
 const totalUploads = useMemo(() => {
   return uploads.flatMap(upload =>
@@ -4608,158 +4697,6 @@ useEffect(() => {
         <title>Rental Property | Properties</title>
       </Helmet>
 
-      {/* Loading Popup Modal when clicking property */}
-      {isPropertyLoading && (
-        <div
-          style={{
-            position: 'fixed',
-            top: 0,
-            left: 0,
-            right: 0,
-            bottom: 0,
-            backgroundColor: 'rgba(0, 0, 0, 0.5)',
-            display: 'flex',
-            flexDirection: 'column',
-            justifyContent: 'center',
-            alignItems: 'center',
-            zIndex: 9999,
-          }}
-        >
-          <div
-            style={{
-              backgroundColor: '#fff',
-              borderRadius: '16px',
-              padding: '40px 30px',
-              boxShadow: '0 8px 32px rgba(0, 0, 0, 0.2)',
-              display: 'flex',
-              flexDirection: 'column',
-              justifyContent: 'center',
-              alignItems: 'center',
-              minWidth: '300px',
-              maxWidth: '350px',
-              animation: 'fadeIn 0.3s ease-in-out, pulse 2s ease-in-out infinite',
-            }}
-          >
-            <div
-              className="spinner-border"
-              role="status"
-              style={{
-                width: '50px',
-                height: '50px',
-                borderWidth: '4px',
-                color: '#4F4B7E',
-                animation: 'spin 1s linear infinite',
-              }}
-            />
-            <p
-              style={{
-                color: '#333',
-                marginTop: '20px',
-                fontSize: '16px',
-                fontWeight: '600',
-                textAlign: 'center',
-                animation: 'bounce 1.5s ease-in-out infinite',
-              }}
-            >
-              Loading property details...
-            </p>
-            
-            {/* Progress bar */}
-            <div
-              style={{
-                width: '100%',
-                height: '4px',
-                backgroundColor: '#f0f0f0',
-                borderRadius: '2px',
-                marginTop: '20px',
-                overflow: 'hidden',
-              }}
-            >
-              <div
-                style={{
-                  height: '100%',
-                  backgroundColor: '#4F4B7E',
-                  borderRadius: '2px',
-                  animation: 'progressBar 3.5s ease-in-out forwards',
-                }}
-              />
-            </div>
-
-            <p
-              style={{
-                color: '#666',
-                marginTop: '12px',
-                fontSize: '13px',
-                textAlign: 'center',
-                animation: 'fadeInOut 1.5s ease-in-out infinite',
-              }}
-            >
-              Please wait
-            </p>
-          </div>
-          <style>{`
-            @keyframes fadeIn {
-              from {
-                opacity: 0;
-                transform: scale(0.9);
-              }
-              to {
-                opacity: 1;
-                transform: scale(1);
-              }
-            }
-            
-            @keyframes pulse {
-              0%, 100% {
-                box-shadow: 0 8px 32px rgba(0, 0, 0, 0.2);
-              }
-              50% {
-                box-shadow: 0 8px 40px rgba(79, 75, 126, 0.3);
-              }
-            }
-            
-            @keyframes spin {
-              from {
-                transform: rotate(0deg);
-              }
-              to {
-                transform: rotate(360deg);
-              }
-            }
-            
-            @keyframes bounce {
-              0%, 100% {
-                transform: translateY(0);
-              }
-              50% {
-                transform: translateY(-5px);
-              }
-            }
-            
-            @keyframes fadeInOut {
-              0%, 100% {
-                opacity: 0.5;
-              }
-              50% {
-                opacity: 1;
-              }
-            }
-            
-            @keyframes progressBar {
-              0% {
-                width: 0%;
-              }
-              50% {
-                width: 70%;
-              }
-              100% {
-                width: 100%;
-              }
-            }
-          `}</style>
-        </div>
-      )}
-      
       {/* Hidden trigger button for filter popup */}
       <button
         ref={filterPopupTriggerRef}
@@ -4769,24 +4706,156 @@ useEffect(() => {
       />
       
       <Row className="g-3 w-100 ">
+        <style>{`
+          /* AddProperty icon subtle rise+glow animation, scoped to this file */
+          .add-property-anim {
+            will-change: transform, filter;
+            /* keep layout unaffected */
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+          }
+
+          @keyframes addPropertyPulse {
+            0% {
+              transform: translateY(0);
+              filter: drop-shadow(0 0 0 rgba(79,75,126,0));
+              box-shadow: none;
+            }
+            10% {
+              transform: translateY(-20px);
+              filter: drop-shadow(0 8px 18px rgba(79,75,126,0.14));
+              box-shadow: 0 8px 20px rgba(79,75,126,0.08);
+            }
+            25% {
+              transform: translateY(-20px);
+              filter: drop-shadow(0 10px 22px rgba(79,75,126,0.18));
+              box-shadow: 0 10px 24px rgba(79,75,126,0.10);
+            }
+            40% {
+              transform: translateY(0);
+              filter: drop-shadow(0 0 0 rgba(79,75,126,0));
+              box-shadow: none;
+            }
+            100% {
+              transform: translateY(0);
+              filter: drop-shadow(0 0 0 rgba(79,75,126,0));
+              box-shadow: none;
+            }
+          }
+
+          /* Run animation once every 5s (duration 1.6s + delay) */
+          .add-property-anim.animate {
+            animation: addPropertyPulse 1.6s ease-in-out infinite;
+            animation-iteration-count: infinite;
+            animation-delay: 0s;
+          }
+        `}</style>
         <Col lg={12} className="d-flex align-items-center justify-content-center pt-2 m-0">
       <div
-  className="d-flex flex-column justify-content-center align-items-center"
-  data-bs-toggle="modal"
-  data-bs-target="#propertyModal"
+  onClick={() => setIsSearchMenuOpen(true)}
   style={{
-    height: '50px',
-    width: '50px',
-    background: '#4F4B7E',
-    borderRadius: '50%',
+    height: '70px',
+    width: '70px',
     position: 'fixed',
-    right: 'calc(50% - 187.5px + 10px)', // Center - half of 375px + some offset
+    right: 'calc(50% - 187.5px + 10px)',
     bottom: '15%',
     zIndex: '1',
+    cursor: 'pointer',
   }}
 >
-  <BiSearchAlt fontSize={24} color="#fff" />
+  <AnimatedSearchLogo />
 </div>
+
+{/* Search Menu Modal - Shows for 5 seconds when search button clicked */}
+{isSearchMenuOpen && (
+  <div
+    style={{
+      position: 'fixed',
+      top: 0,
+      left: 0,
+      right: 0,
+      bottom: 0,
+      backgroundColor: 'rgba(64, 64, 64, 0.9)',
+      display: 'flex',
+      alignItems: 'center',
+      justifyContent: 'center',
+      zIndex: 1050,
+      animation: 'fadeIn 0.3s ease-in-out'
+    }}
+    onClick={() => setIsSearchMenuOpen(false)}
+  >
+    <div
+      className="rounded-5 shadow"
+      style={{
+        width: "350px",
+        backgroundColor: '#fff',
+        padding: '30px 20px'
+      }}
+      onClick={(e) => e.stopPropagation()}
+    >
+      <div className="d-grid gap-2 mb-2">
+        {/* Search Property - Open filter popup */}
+        <button
+          style={{ background: "#DFDFDF", color: "#5E5E5E", fontWeight: 600, fontSize: "15px" }}
+          className="btn btn-light border rounded-2 py-2 d-flex align-items-center justify-content-start ps-3 mb-3"
+          onClick={() => setIsSearchMenuOpen(false)}
+          data-bs-toggle="modal"
+          data-bs-target="#filterPopup"
+        >
+          <FaHome className="me-2" /> Search Property
+        </button>
+
+        {/* Tenant Search */}
+        <button
+          style={{ background: "#DFDFDF", color: "#5E5E5E", fontWeight: 600, fontSize: "15px" }}
+          className="btn btn-light border rounded-2 py-2 d-flex align-items-center justify-content-start ps-3 mb-3"
+          onClick={() => {
+            setIsSearchMenuOpen(false);
+            navigate(`/tenant-search`);
+          }}
+        >
+          <FaUsers className="me-2" /> Tenant Search
+        </button>
+
+        {/* Quick Sort */}
+        <button
+          style={{ background: "#DFDFDF", color: "#5E5E5E", fontWeight: 600, fontSize: "15px" }}
+          className="btn btn-light border rounded-2 py-2 d-flex align-items-center justify-content-start ps-3 mb-3"
+          onClick={() => {
+            setIsSearchMenuOpen(false);
+            navigate(`/Sort-Property`);
+          }}
+        >
+          <FaSortAmountDownAlt className="me-2" /> Quick Sort
+        </button>
+
+        {/* Property Assistance */}
+        <button
+          style={{ background: "#DFDFDF", color: "#5E5E5E", fontWeight: 600, fontSize: "15px" }}
+          className="btn btn-light border rounded-2 py-2 d-flex align-items-center justify-content-start ps-3 mb-3"
+          onClick={() => {
+            setIsSearchMenuOpen(false);
+            navigate(`/buyer-assistance`);
+          }}
+        >
+          <FaHeadset className="me-2" /> Property Assistance
+        </button>
+      </div>
+
+      {/* Cancel */}
+      <div className="text-center">
+        <button
+          className="btn btn-primary rounded-2 px-4 mt-2"
+          style={{ fontWeight: 500, fontSize: "10px" }}
+          onClick={() => setIsSearchMenuOpen(false)}
+        >
+          CANCEL
+        </button>
+      </div>
+    </div>
+  </div>
+)}
 
 {/* Modal */}
 <div
@@ -5641,18 +5710,20 @@ useEffect(() => {
           {/* Clear Button */}
           <button
             type="button"
-            style={{
-              flex: 1,
-              backgroundColor: hoverClear ? '#dc3545' : 'transparent',
-              color: hoverClear ? '#fff' : '#dc3545',
-              border: `1px solid #dc3545`,
-              padding: '10px 20px',
-              borderRadius: '4px',
-              cursor: 'pointer',
-              fontWeight: 'bold',
-            }}
             onMouseEnter={() => setHoverClear(true)}
             onMouseLeave={() => setHoverClear(false)}
+            style={{
+              flex: 1,
+              backgroundColor: hoverClear ? '#d32f2f' : '#fff',
+              color: hoverClear ? '#fff' : '#d32f2f',
+              border: `2px solid #d32f2f`,
+              padding: '12px 20px',
+              borderRadius: '6px',
+              cursor: 'pointer',
+              fontWeight: 'bold',
+              fontSize: '14px',
+              transition: 'all 0.3s ease'
+            }}
             onClick={() => {
               setFilters({
                 id: '',
@@ -5660,13 +5731,21 @@ useEffect(() => {
                 maxPrice: '',
                 propertyMode: '',
                 propertyType: '',
-                bhk: '',
-                facing: '',
+                rentType: '',
+                bedrooms: '',
+                floorNo: '',
+                state: '',
                 area: '',
                 nagar: '',
                 streetName: '',
-                pinCode: '',
-                state: '',
+                pinCode: ''
+              });
+              setAdvancedFilters({
+                propertyMode: '', propertyType: '', minPrice: '', maxPrice: '', propertyAge: '', bankLoan: '',
+                negotiation: '', length: '', breadth: '', totalArea: '', minTotalArea: '', ownership: '', bedrooms: '',
+                minBedrooms: '', kitchen: '', kitchenType: '', balconies: '', floorNo: '', areaUnit: '', propertyApproved: '',
+                facing: '', postedBy: '', furnished: '', lift: '', attachedBathrooms: '', minAttachedBathrooms: '',
+                western: '', minWestern: '', rentType: '', carParking: '', area: '', nagar: '', streetName: '', pinCode: '', phoneNumber: '', state: ''
               });
             }}
           >
@@ -5675,23 +5754,23 @@ useEffect(() => {
 
           {/* Search Button */}
           <button
-            aria-label="Close"
-            data-bs-dismiss="modal"
             type="button"
-            style={{
-              flex: 1,
-              backgroundColor: hoverSearch ? '#28a745' : '#ffffff',
-              color: hoverSearch ? '#ffffff' : '#28a745',
-              border: '1px solid #28a745',
-              padding: '10px 20px',
-              borderRadius: '4px',
-              cursor: 'pointer',
-              fontWeight: 'bold',
-              transition: 'all 0.3s ease',
-            }}
+            data-bs-dismiss="modal"
             onMouseEnter={() => setHoverSearch(true)}
             onMouseLeave={() => setHoverSearch(false)}
             onClick={() => setSearchPerformed(true)}
+            style={{
+              flex: 1,
+              backgroundColor: hoverSearch ? '#4caf50' : '#fff',
+              color: hoverSearch ? '#fff' : '#4caf50',
+              border: `2px solid #4caf50`,
+              padding: '12px 20px',
+              borderRadius: '6px',
+              cursor: 'pointer',
+              fontWeight: 'bold',
+              fontSize: '14px',
+              transition: 'all 0.3s ease'
+            }}
           >
             SEARCH
           </button>
@@ -5700,13 +5779,19 @@ useEffect(() => {
       <button
         type="button"
         className="btn w-100 mt-3"
+        data-bs-dismiss="modal"
         style={{
-          backgroundColor: hoverAdvance ? '#4F4B7E' : 'transparent',
-          color: hoverAdvance ? '#fff' : '#4F4B7E',
-          border: `1px solid #4F4B7E`,
+          backgroundColor: '#fff',
+          color: '#666',
+          border: `2px solid #666`,
+          padding: '12px 20px',
+          borderRadius: '6px',
+          fontWeight: 'bold',
+          fontSize: '14px'
         }}
-        onMouseEnter={() => setHoverAdvance(true)}
-        onMouseLeave={() => setHoverAdvance(false)}
+        onClick={() => {
+          // Keep advanced filter modal open, just switch to it
+        }}
         data-bs-toggle="modal"
         data-bs-target="#advancedFilterPopup"
       >
@@ -5716,15 +5801,18 @@ useEffect(() => {
       <button
         type="button"
         className="btn w-100 mt-3"
+        data-bs-dismiss="modal"
         style={{
-          backgroundColor: hoverHome ? '#4F4B7E' : 'transparent',
-          color: hoverHome ? '#fff' : '#4F4B7E',
-          border: `1px solid #4F4B7E`,
+          backgroundColor: '#fff',
+          color: '#666',
+          border: `2px solid #666`,
+          padding: '12px 20px',
+          borderRadius: '6px',
+          fontWeight: 'bold',
+          fontSize: '14px'
         }}
-        onMouseEnter={() => setHoverHome(true)}
-        onMouseLeave={() => setHoverHome(false)}
         onClick={() => {
-          navigate('/all-property');
+          navigate('/');
         }}
       >
         HOME

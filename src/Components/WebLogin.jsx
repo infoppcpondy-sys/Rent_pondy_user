@@ -607,43 +607,50 @@ navigate('/mobileviews');
       textAlign: 'center',
     }}
   >
-    <h4 className='mb-3' style={{color:"#001F3F"}}>Login</h4>
+    <div style={{
+              fontFamily: 'Montserrat, Poppins, Inter, Arial, sans-serif',
+              fontWeight: 800,
+              fontSize: 32,
+              color: '#ffff',
+              marginBottom: 8,
+              letterSpacing: 1.5,
+              textShadow: '0 2px 8px rgba(79,75,126,0.08)'
+            }}>
+              Rent Pondy
+            </div>
+            <div style={{
+              fontFamily: 'Poppins, Inter, Arial, sans-serif',
+              fontWeight: 500,
+              fontSize: 16,
+              color: '#ffff',
+              marginTop: 2,
+              marginBottom: 16
+            }}>
+              Connecting Tenants and Owners Seamlessly
+            </div>
          <Form onSubmit={handleSendOtp}>
 
-<div className="d-flex justify-content-center">
-
                           <Form.Group controlId="countryCode">
-    <InputGroup >
-                              <InputGroup.Text className="border-0" style={{ backgroundColor: "white", }}>
-                                <Flag code={selectedCountry} style={{ width: '20px', marginRight: '8px' }} />
+                            <InputGroup style={{ maxWidth: 320, margin: '0 auto', borderRadius: 8, boxShadow: '0 2px 8px rgba(79,75,126,0.07)' }}>
+                              <InputGroup.Text className="border-0" style={{ backgroundColor: "#f5f5f5", borderTopLeftRadius: 8, borderBottomLeftRadius: 8 }}>
+                                <Flag code={selectedCountry} style={{ width: '22px', marginRight: '8px' }} />
                               </InputGroup.Text>
                               <Form.Select
                                 value={selectedCountry}
                                 onChange={handleCountryChange}
                                 aria-label="Select Country"
-                                className="custom-background small-input fw-normal "
                                 style={{
-                                  width: 'auto', maxWidth: '70px',
-                                  backgroundColor: "white",
-                                  outline: "none",
-                                  borderLeft: "none",
-                                  borderRight: "none",
-                                  borderBottom: "1px solid #5DB875",
-                                  background: "white",
-                                  color: "#5DB875",
-                                  fontWeight: "bold",
-                                  borderTop: "none",
-                                  cursor: "pointer",
-                                  padding: "5px 5px"
+                                  width: 'auto', maxWidth: '80px',
+                                  backgroundColor: "#f5f5f5",
+                                  color: '#4F4B7E',
+                                  fontWeight: 600,
+                                  border: 'none',
+                                  borderRadius: 0,
+                                  outline: 'none',
+                                  cursor: 'pointer',
+                                  fontFamily: 'Poppins, Inter, Arial, sans-serif',
+                                  fontSize: 15
                                 }}
-                                onFocus={(e) =>
-                                  Object.assign(e.target.style, {
-                                    outline: "none",
-                                    boxShadow: "none",
-                                    background: "white",
-                                    color: "#5DB875",
-                                  })
-                                }
                               >
                                 {countryCodes.map((country) => (
                                   <option className="text-dark" key={country.code} value={country.flag}>
@@ -652,52 +659,42 @@ navigate('/mobileviews');
                                 ))}
                               </Form.Select>
                               <Form.Control
-                                type="number"
+                                type="tel"
                                 placeholder="Enter Mobile No"
                                 value={phoneNumber}
                                 onChange={handlePhoneNumberChange}
                                 required
                                 ref={phoneInputRef}
-                                className="custom-background small-input fw-normal rounded-0"
                                 style={{
-                                  width: 'auto', maxWidth: '140px',
-                                  backgroundColor: "white",
-                                  outline: "none",
-                                  borderLeft: "none",
-                                  borderRight: "none",
-                                  borderBottom: "1px solid #5DB875",
-                                  background: "white",
-                                  color: "#5DB875",
-                                  fontWeight: "bold",
-                                  borderTop: "none",
-                                  cursor: "pointer",
-                                  appearance: 'textfield',
-                                  MozAppearance: 'textfield',
-                                  WebkitAppearance: 'none'
+                                  width: '100%',
+                                  backgroundColor: "#f5f5f5",
+                                  color: '#222',
+                                  fontWeight: 600,
+                                  border: 'none',
+                                  borderTopRightRadius: 8,
+                                  borderBottomRightRadius: 8,
+                                  fontFamily: 'Poppins, Inter, Arial, sans-serif',
+                                  fontSize: 16,
+                                  outline: 'none',
+                                  boxShadow: 'none',
+                                  paddingLeft: 12
                                 }}
-                                onFocus={(e) =>
-                                  Object.assign(e.target.style, {
-                                    outline: "none",
-                                    boxShadow: "none",
-                                    background: "white",
-                                    color: "#5DB875",
-                                  })
-                                }
+                                pattern="[0-9]{10,15}"
+                                maxLength={15}
                               />
                             </InputGroup>
                           </Form.Group>
-                          </div>
                           <style>
                             {`
-                              input[type="number"]::-webkit-inner-spin-button,
-                              input[type="number"]::-webkit-outer-spin-button {
+                              input[type="tel"]::-webkit-inner-spin-button,
+                              input[type="tel"]::-webkit-outer-spin-button {
                                 -webkit-appearance: none;
                                 margin: 0;
                               }
                             `}
                           </style>
                           <div className="d-flex justify-content-center">
-                            <Button type="submit" style={{ backgroundColor: "#46A182", border: "none" }} className="btn w-50 btn-small mx-2 mt-1">
+                            <Button type="submit" style={{ backgroundColor: "#4F4B7E", border: "2px solid #4F4B7E", fontWeight: 700, fontSize: 16, borderRadius: 8 }} className="btn w-50 btn-small mt-2">
                               LOGIN
                             </Button>
                           </div>

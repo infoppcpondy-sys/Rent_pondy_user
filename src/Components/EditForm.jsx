@@ -29,7 +29,7 @@ import { GrSteps } from "react-icons/gr";
 import moment from "moment";
 import { toWords } from 'number-to-words';
 import { FcSearch } from "react-icons/fc";
-import { compressImage, applyImageWatermark } from '../utils/propertyUtils';
+import { compressImage, applyImageWatermark, compressVideo } from '../utils/propertyUtils';
 
 // icon
 
@@ -113,6 +113,10 @@ function EditForm() {
         const [isScrolling, setIsScrolling] = useState(false);
       const [isUploading, setIsUploading] = useState(false);
       const [uploadProgress, setUploadProgress] = useState(0);
+      const [isVideoCompressing, setIsVideoCompressing] = useState(false);
+      const [videoCompressionProgress, setVideoCompressionProgress] = useState(0);
+      const [videoCompressionStatus, setVideoCompressionStatus] = useState('');
+      const [videoError, setVideoError] = useState('');
       const [isCompressing, setIsCompressing] = useState(false);
       const [compressionProgress, setCompressionProgress] = useState(0);
       const [compressionMessage, setCompressionMessage] = useState('');
@@ -220,6 +224,115 @@ const [formData, setFormData] = useState({
     wheelChairAvailable:"",
     createdAt:"",
   });
+
+  // Area to Pincode mapping
+  const areaPincodeMap = {
+    "Abishegapakkam": "605007",
+    "Ariyankuppam": "605007",
+    "Arumbarthapuram": "605110",
+    "Bahoor": "607402",
+    "Bommayarpalayam": "605104",
+    "Botanical Garden": "605001",
+    "Calapet": "605014",
+    "Courivinatham": "607402",
+    "Dhanvantry Nagar": "605006",
+    "Embalam": "605106",
+    "Irumbai": "605111",
+    "Karayamputhur": "605106",
+    "Karikalambakkam": "605007",
+    "Kariyamanikam": "605106",
+    "Kijour": "605106",
+    "Kilpudupattu": "605014",
+    "Kilsirivi": "604301",
+    "Kirumambakkam": "607402",
+    "Korkadu": "605110",
+    "Kottakuppam": "605104",
+    "Kuilapalayam": "605101",
+    "Lawspet": "605008",
+    "Maducore": "605105",
+    "Manamedu": "607402",
+    "Manapeth": "607402",
+    "Mandagapet": "605106",
+    "Mangalam": "605110",
+    "Mannadipattu": "605501",
+    "Morattandi": "605101",
+    "Mottoupalayam": "605009",
+    "Mouroungapakkam": "605004",
+    "Moutrepaleam": "605009",
+    "Mudaliarpet": "605004",
+    "Muthialpet": "605003",
+    "Mutrampattu": "605501",
+    "Nallavadu": "605007",
+    "Nellithoppe": "605005",
+    "Nettapakkam": "605106",
+    "Odiensalai": "605001",
+    "Ozhugarai": "605010",
+    "Padmin nagar": "605012",
+    "Pakkam": "605106",
+    "Pandakkal": "673310",
+    "Pillaichavady": "605014",
+    "Pillayarkuppam": "607402",
+    "Pondicherry": "605001",
+    "Pondicherry Bazaar": "605001",
+    "Pondicherry Courts": "605001",
+    "Pondicherry North": "605001",
+    "Pondicherry University": "605014",
+    "Pooranankuppam": "605007",
+    "Poothurai": "605111",
+    "Rayapudupakkam": "605111",
+    "Reddiyarpalayam": "605010",
+    "Saram(py)": "605013",
+    "Sedarapet": "605111",
+    "Seliamedu": "607402",
+    "Sellipet": "605501",
+    "Sri Aurobindo ashram": "605002",
+    "Sulthanpet": "605110",
+    "Thattanchavady": "605009",
+    "Thengaithittu": "605004",
+    "Thimmanaickenpalayam": "605007",
+    "Tirukkanur": "605501",
+    "Vadhanur": "605501",
+    "Veerampattinam": "605007",
+    "Venkata Nagar": "605011",
+    "Villiyanur": "605110",
+    "Vimacoundinpaleam": "605009",
+    "Viranam": "605106",
+    "Yanam": "533464",
+  };
+
+  // Area suggestions state
+  const [areaSuggestions, setAreaSuggestions] = useState([]);
+  const [showAreaSuggestions, setShowAreaSuggestions] = useState(false);
+
+  // Handle area input change with suggestions
+  const handleAreaInputChange = (e) => {
+    const value = e.target.value;
+    setFormData(prev => ({ ...prev, area: value }));
+
+    if (value.length > 0) {
+      const filtered = Object.keys(areaPincodeMap).filter(area =>
+        area.toLowerCase().includes(value.toLowerCase())
+      );
+      setAreaSuggestions(filtered);
+      setShowAreaSuggestions(filtered.length > 0);
+    } else {
+      setAreaSuggestions([]);
+      setShowAreaSuggestions(false);
+    }
+  };
+
+  // Handle area selection from suggestions
+  const handleAreaSelect = (selectedArea) => {
+    const pincode = areaPincodeMap[selectedArea] || "";
+    setFormData(prev => ({
+      ...prev,
+      area: selectedArea,
+      pinCode: pincode
+    }));
+    setShowAreaSuggestions(false);
+    setAreaSuggestions([]);
+  };
+
   useEffect(() => {
     if (isPreview || !window.google) return;
   
@@ -1196,17 +1309,55 @@ const handlePhotoUpload = async (e) => {
 
 
 
-const handleVideoChange = (e) => {
+const handleVideoChange = async (e) => {
   const selectedFiles = Array.from(e.target.files);
-  const maxSize = 100 * 1024 * 1024; // 50MB
+  const maxSize = 50 * 1024 * 1024; // 50MB
+  const intimationSize = 10 * 1024 * 1024; // 10MB
+  const validFiles = [];
 
-  const validFiles = selectedFiles.filter(file => {
-    if (file.size > maxSize) {
-      alert(`${file.name} exceeds the 50MB size limit.`);
-      return false;
+  setVideoError(""); // reset previous error
+
+  for (let file of selectedFiles) {
+    // ⚡ Intimation if >10MB
+    if (file.size > intimationSize && file.size <= maxSize) {
+      alert(`${file.name} is above 10MB. Large files may take longer to upload.`);
     }
-    return true;
-  });
+
+    // ❌ Reject if >50MB
+    if (file.size > maxSize) {
+      setVideoError(`${file.name} exceeds the 50MB size limit.`);
+      continue;
+    }
+
+    // ✅ Compress to 200KB before pushing
+    let compressedFile = file;
+    try {
+      setIsVideoCompressing(true);
+      setVideoCompressionProgress(0);
+      setVideoCompressionStatus(`Compressing ${file.name}...`);
+      
+      // Use propertyUtils compressVideo with progress callback
+      compressedFile = await compressVideo(
+        file,
+        (progress) => setVideoCompressionProgress(progress),
+        200 // Target 200KB
+      );
+      
+      setVideoCompressionStatus(`Compressed: ${(file.size / 1024 / 1024).toFixed(2)}MB → ${(compressedFile.size / 1024).toFixed(0)}KB`);
+    } catch (err) {
+      console.warn("Compression failed, using original file", err);
+      setVideoCompressionStatus(`Compression failed: ${err.message}`);
+      setVideoError(`Failed to compress ${file.name}: ${err.message}`);
+      compressedFile = file; // Use original as fallback
+    } finally {
+      setIsVideoCompressing(false);
+      setTimeout(() => setVideoCompressionStatus(''), 2000);
+    }
+
+    validFiles.push(compressedFile);
+  }
+
+  if (!validFiles.length) return;
 
   const totalCount = videos.length + validFiles.length;
   if (totalCount > 5) {
@@ -1977,7 +2128,7 @@ const handleEdit = () => {
   setIsPreview(false);
 };
 
-const isReadOnly = true; // set true to make it readonly
+const isReadOnly = false; // set true to make it readonly
 
   return (
          <motion.div
@@ -2022,7 +2173,7 @@ const isReadOnly = true; // set true to make it readonly
        <FaChevronLeft style={{ color: '#4F4B7E', transition: 'color 0.3s ease-in-out' , background:"transparent"}} />
      </button><h3 className="m-0" style={{fontSize:"18px"}}>EDIT PROPERTY</h3> </div>
  <div className="row w-100 mt-2">
-<h4 style={{ color: "rgb(10, 10, 10)", fontWeight: "bold", marginBottom: "10px" }}> Property Management</h4>     
+<h4 style={{ color: "rgb(10, 10, 10)", fontWeight: "bold", marginBottom: "10px" }}>Property Management</h4>     
 
 {message.text && (
   <div style={{ 
@@ -2121,7 +2272,7 @@ const isReadOnly = true; // set true to make it readonly
                   </label>
                 </div>
 
-                {/* Compression Progress Bar - Inline Style */}
+                {/* Compression Progress Bar - Inline Style for Images */}
                 {isCompressing && (
                   <div style={{
                     width: '100%',
@@ -2239,9 +2390,53 @@ onClick={() => removePhoto(index)}>
                   marginRight: '5px',
                 }}
               />
-              Upload Property Video
+              Upload Property Video upto 200KB
             </span>
           </label>
+
+          {/* Orange Progress Bar for Video Compression */}
+          {isVideoCompressing && (
+            <div style={{ 
+              backgroundColor: "#fff3e0", 
+              padding: "15px", 
+              borderRadius: "10px", 
+              marginTop: "10px",
+              marginBottom: "10px"
+            }}>
+              <div style={{ marginBottom: "5px", color: "#ff9800", fontWeight: "bold" }}>
+                🎬 {videoCompressionStatus || `Compressing... ${videoCompressionProgress}%`}
+              </div>
+              <div style={{ 
+                width: "100%", 
+                height: "10px", 
+                backgroundColor: "#ffe0b2", 
+                borderRadius: "5px",
+                overflow: "hidden"
+              }}>
+                <div style={{ 
+                  width: `${videoCompressionProgress}%`, 
+                  height: "100%", 
+                  background: "linear-gradient(90deg, #ff9800, #ff5722)",
+                  borderRadius: "5px",
+                  transition: "width 0.3s ease"
+                }}></div>
+              </div>
+            </div>
+          )}
+
+          {/* Display video error */}
+          {videoError && (
+            <div style={{ 
+              backgroundColor: "#ffebee", 
+              padding: "10px", 
+              borderRadius: "5px", 
+              color: "#c62828", 
+              marginTop: "10px",
+              marginBottom: "10px"
+            }}>
+              ⚠️ {videoError}
+            </div>
+          )}
 
           {/* Display the selected video */}
  {videos.length > 0 && (
@@ -4521,8 +4716,9 @@ onClick={() => removePhoto(index)}>
     <div
   style={{
     display: "flex",
-    alignItems: "stretch", // <- Stretch children vertically
+    alignItems: "stretch",
     width: "100%",
+    position: 'relative'
   }}
 > 
      <span
@@ -4532,7 +4728,7 @@ onClick={() => removePhoto(index)}>
       justifyContent: "center",
       padding: "0 14px",
       borderRight: "1px solid #4F4B7E",
-      background: "#fff", // optional
+      background: "#fff",
     }}
   >
  {fieldIcons.area}  <sup style={{ color: 'red' }}>*</sup></span>
@@ -4540,11 +4736,49 @@ onClick={() => removePhoto(index)}>
       type="text"
       name="area"
       value={formData.area}
-      onChange={handleFieldChange}
+      onChange={handleAreaInputChange}
+      disabled={isReadOnly}
       className="form-input m-0"
       placeholder="Area"
-        style={{ flex: '1', padding: '12px', fontSize: '14px', border: 'none', outline: 'none' , color:"grey"}}
+      autoComplete="off"
+      style={{ flex: '1', padding: '12px', fontSize: '14px', border: 'none', outline: 'none', color:"grey"}}
     />
+    {showAreaSuggestions && (
+      <div
+        style={{
+          position: 'absolute',
+          top: '100%',
+          left: 0,
+          right: 0,
+          background: '#fff',
+          border: '1px solid #e0e0e0',
+          borderRadius: '4px',
+          maxHeight: '250px',
+          overflowY: 'auto',
+          zIndex: 1000,
+          boxShadow: '0 4px 12px rgba(0, 0, 0, 0.1)',
+          marginTop: '4px'
+        }}
+      >
+        {areaSuggestions.map((suggestion, index) => (
+          <div
+            key={index}
+            onClick={() => handleAreaSelect(suggestion)}
+            style={{
+              padding: '10px 14px',
+              cursor: 'pointer',
+              borderBottom: '1px solid #f0f0f0',
+              backgroundColor: '#fff',
+              transition: 'background-color 0.2s'
+            }}
+            onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#f5f5f5'}
+            onMouseLeave={(e) => e.currentTarget.style.backgroundColor = '#fff'}
+          >
+            {suggestion}
+          </div>
+        ))}
+      </div>
+    )}
   </div>
    {formData.area && (
       <GoCheckCircleFill style={{ color: "green", margin: "5px" }} />
@@ -5293,6 +5527,9 @@ const isDescription = detail.label === "Description";
 // const columnClass = isDescription ? "col-12" : "col-6";
 const columnClass = isDescription ? "col-12" : "col-6";
 
+// Check if this is an address field that should allow full text wrapping
+const isAddressField = ["Country", "State", "City", "District", "Nagar", "Area", "Street Name", "Door Number", "pinCode", "location Coordinates"].includes(detail.label);
+
 return (
   <div key={index} className={columnClass}>
     <div
@@ -5300,7 +5537,7 @@ return (
       style={{
         // backgroundColor: "#F9F9F9", // Background for the item
         width: "100%",
-        height: isDescription ? "auto" : "55px",
+        height: isDescription || isAddressField ? "auto" : "55px",
         wordBreak: "break-word",
         // height: detail.label === "Description" || detail.value === formData.description ? "auto" : "100px", // Full height for description
       }}
@@ -5308,7 +5545,7 @@ return (
       <span className="me-3 fs-3" style={{ color: "#4F4B7E" }}>
         {detail.icon} 
       </span>
-      <div>
+      <div style={{ width: "100%", display: "flex", flexDirection: "column" }}>
       {!isDescription && <span className="mb-1" style={{fontSize:"12px", color:"grey"}}>{detail.label || "N/A"}</span>}  {/* ✅ Hide label for description */}
 
       {/* <h6 className="mb-1">{isDescription ? "Description" : detail.label || "N/A"}</h6> */}
@@ -5320,16 +5557,13 @@ return (
             fontWeight:"600",
             padding: "10px",
             borderRadius: "5px",
-            width: "100%", // Ensure the value takes full width
+            width: "100%",
+            whiteSpace: "normal",
+            wordBreak: "break-word",
+            overflowWrap: "break-word",
           }}
         >
-{detail.value
-  ? ["Country", "State", "City", "District", "Nagar", "Area", "Street Name", "Door Number", "pinCode", "location Coordinates"].includes(detail.label)
-    ? typeof detail.value === "string"
-        ? `${detail.value.slice(0, 8)}...`
-        : JSON.stringify(detail.value)
-      : detail.value
-    : "N/A"}        </p>
+{detail.value || "N/A"}        </p>
       </div>
     </div>
   </div>
@@ -5401,7 +5635,7 @@ return (
 
         <button className="submit-button"
         onClick={handleCombinedClick}
-              disabled={isProcessing}
+              disabled={isProcessing || isVideoCompressing}
                         style={{
                 padding: "12px 20px",
                 fontSize: "16px",
@@ -5409,7 +5643,8 @@ return (
                  border: "none",
   background: 'linear-gradient(145deg, #4a90e2, #007bff)',
           color: "#ffffff",
-                cursor: "pointer",
+                cursor: isProcessing || isVideoCompressing ? "not-allowed" : "pointer",
+                opacity: isProcessing || isVideoCompressing ? 0.6 : 1,
                 position: "relative",
                 overflow: "hidden",
                 width: "150px",
