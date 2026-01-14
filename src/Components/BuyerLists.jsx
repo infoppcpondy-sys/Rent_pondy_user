@@ -1078,7 +1078,16 @@ const BuyerLists = () => {
                       <button
                         onClick={handleMatchClick}
                         className="btn text-white px-3 py-1 mx-1"
-                        style={{ background: "#2F747F", fontSize: "13px" }}
+                        style={{ background: "#28a745", fontSize: "13px" }}
+                        onMouseOver={(e) => {
+                          e.target.style.background = "#218838";
+                          e.target.style.fontWeight = 600;
+                          e.target.style.transition = "background 0.3s ease";
+                        }}
+                        onMouseOut={(e) => {
+                          e.target.style.background = "#28a745";
+                          e.target.style.fontWeight = 400;
+                        }}
                       >
                         Match Prop
                       </button>

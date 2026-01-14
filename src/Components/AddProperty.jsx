@@ -1179,6 +1179,10 @@ const filteredDetailsList = propertyDetailsList.filter((item) => {
   
   
   const [dataList, setDataList] = useState({});
+  const [disabledFields, setDisabledFields] = useState({
+    bedrooms: false,
+    floorNo: false
+  });
 
   const fetchDropdownData = async () => {
     try {
@@ -1196,6 +1200,37 @@ const filteredDetailsList = propertyDetailsList.filter((item) => {
   useEffect(() => {
     fetchDropdownData();
   }, []);
+
+  // Handle property type changes - set bedrooms and floor to "Not Applicable" for certain types
+  useEffect(() => {
+    const nonApplicablePropertyTypes = ['plot', 'land', 'agricultural land'];
+    const isNonApplicableType = nonApplicablePropertyTypes.includes(formData.propertyType?.toLowerCase());
+
+    if (isNonApplicableType) {
+      // Set fields to "Not Applicable" and disable them
+      setFormData(prev => ({
+        ...prev,
+        bedrooms: 'Not Applicable',
+        floorNo: 'Not Applicable'
+      }));
+      setDisabledFields({
+        bedrooms: true,
+        floorNo: true
+      });
+    } else {
+      // Enable fields and clear values for other property types
+      setDisabledFields({
+        bedrooms: false,
+        floorNo: false
+      });
+      // Only clear if they were set to "Not Applicable"
+      setFormData(prev => ({
+        ...prev,
+        bedrooms: prev.bedrooms === 'Not Applicable' ? '' : prev.bedrooms,
+        floorNo: prev.floorNo === 'Not Applicable' ? '' : prev.floorNo
+      }));
+    }
+  }, [formData.propertyType]);
 
   const handleClick = (e) => {
     e.preventDefault();
@@ -1457,6 +1492,11 @@ const compressVideo = async (file) => {
 
    const handleFieldChange = (e) => {
   const { name, value } = e.target;
+
+  // Prevent changes to disabled fields
+  if (disabledFields[name]) {
+    return;
+  }
 
   let updatedValue = value;
 

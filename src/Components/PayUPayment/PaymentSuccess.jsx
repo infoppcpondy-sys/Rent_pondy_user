@@ -2,6 +2,8 @@
 
 import React from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
+import { useEffect } from 'react';
+
 
 const PaymentSuccess = () => {
   const searchParams = new URLSearchParams(useLocation().search);
@@ -24,9 +26,20 @@ const PaymentSuccess = () => {
      const navigate = useNavigate();
 
   const handleClick = () => {
-    navigate('/mobileviews');  // navigate to a route
-  };
+     
+    navigate('/my-property');  // navigate to a route
+  };useEffect(() => {
+  if (status === 'success') {
+    const timer = setTimeout(() => {
+      navigate('/my-property');
+    }, 3000); // 3 seconds
+
+    return () => clearTimeout(timer);
+  }
+}, [status, navigate]);
+
   return (
+
     // <div style={{ textAlign: 'center', padding: '20px' }}>
     //   <h2>✅ Payment Successful!</h2>
     //   <p><strong>Transaction ID:</strong> {mihpayid}</p>
@@ -210,7 +223,7 @@ const PaymentSuccess = () => {
         }}
         onClick={handleClick}  
         >
-          Back to Home
+          Back to My property
         </button>
       </div>
     </div>

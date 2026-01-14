@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from "react";
 import "./AnimatedHomeLogo.css";
-import homesIcon from "../Assets/homes.png";
+import homesIcon from "../Assets/Rent Property-01.png";
 
 const AnimatedHomeLogo = () => {
   const [isAnimating, setIsAnimating] = useState(false);

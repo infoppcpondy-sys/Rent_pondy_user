@@ -5,7 +5,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { FaHome, FaBuilding, FaLightbulb, FaUserCircle, FaRocket, FaCogs, FaInfoCircle, FaRegAddressCard, FaShare, FaStar, FaShieldAlt, FaUsers, FaEnvelope, FaRegBell, FaShippingFast } from 'react-icons/fa';
 import logo from "../Assets/rentpondylogo.png";
 import { useNavigate, useLocation } from 'react-router-dom';
-import { MdClose, MdRefresh, MdPolicy } from "react-icons/md";
+import { MdClose, MdPolicy, MdRefresh } from "react-icons/md";
 import { FaPhone } from "react-icons/fa6";
 import { RiApps2AiFill } from 'react-icons/ri';
 import { HiDocumentText } from 'react-icons/hi2';
@@ -191,7 +191,7 @@ const SidebarApp = () => {
 
     <div className="ms-md-3 ms-2">
       <h6 style={{ margin: 0 }}>
-        <span style={{ color: "#28a745", fontWeight: "bold", fontSize: "18px" }}>RENT</span>
+        <span style={{ color: "white", fontWeight: "bold", fontSize: "18px" }}>RENT</span>
         <span style={{ color: "white", fontWeight: "bold", fontSize: "18px" }}> PONDY</span>
       </h6>
 
@@ -639,31 +639,32 @@ const SidebarApp = () => {
             <button 
               onClick={handleRefresh} 
               style={{ 
-                padding: "8px 12px", 
+                padding: "4px 6px", 
                 cursor: "pointer", 
-                background: "linear-gradient(135deg, #2563eb 0%, #1e40af 100%)",
+                background: "#A0A0A0",
                 border: "none",
-                borderRadius: "8px",
-                color: "white",
+                borderRadius: "6px",
                 display: "flex",
                 alignItems: "center",
                 justifyContent: "center",
                 transition: "all 0.3s cubic-bezier(0.34, 1.56, 0.64, 1)",
+                width: "32px",
+                height: "32px",
               }}
               onMouseEnter={(e) => {
                 e.currentTarget.style.transform = "scale(1.1) rotate(20deg)";
-                e.currentTarget.style.boxShadow = "0 4px 16px rgba(37, 99, 235, 0.5)";
+                e.currentTarget.style.background = "#808080";
               }}
               onMouseLeave={(e) => {
                 e.currentTarget.style.transform = "scale(1) rotate(0deg)";
-                e.currentTarget.style.boxShadow = "none";
+                e.currentTarget.style.background = "#A0A0A0";
               }}
               title="Refresh Page"
               aria-label="Refresh"
             >
-              <MdRefresh size={20} />
+              <MdRefresh size={20} color="white" />
             </button>
-            <button className="btn border-0" style={{ fontWeight: "bold", padding: "0" }} onClick={handleBellClick}>
+            <button className="btn border-0" style={{ fontWeight: "bold", padding: "8px 12px", display: "flex", alignItems: "center", justifyContent: "center" }} onClick={handleBellClick}>
               <FaRegBell color="#4F4B7E" size={24} />
             </button>
 

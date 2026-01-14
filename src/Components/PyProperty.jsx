@@ -3048,6 +3048,7 @@ import minprice from "../Assets/Price Mini-01.png";
 
 import bestTimeToCall from '../Assets/best_time.png';
 import pinCode from '../Assets/alt_mob.PNG';
+import FloatingSearchButton from './FloatingSearchButton';
 import locationCoordinates from '../Assets/alt_mob.PNG';
 import rentType from '../Assets/rent_type.PNG';
 import pet from '../Assets/pet.PNG';
@@ -4639,7 +4640,7 @@ useEffect(() => {
          type="button"
          className="btn w-100"
          style={{
-           backgroundColor: hoverSearch ? '#4F4B7E' : '#4F4B7E',
+           backgroundColor: hoverSearch ? '#4f4b7e' : '#4F4B7E',
            color: '#fff',
            border: 'none',
          }}
@@ -6177,6 +6178,7 @@ justifyContent: "space-between",
       </div>
       </Col>
       </Row>
+      <FloatingSearchButton />
       </Container>
   );
 };
