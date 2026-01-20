@@ -1,6 +1,7 @@
 
 import React, { useState, useEffect } from 'react';
 import App from '../App'
+import '../App.css';
 import Nopage from './Nopage'
 import Building from './Building'
 import MobileViews from './MoblieViews'

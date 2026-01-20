@@ -10,9 +10,8 @@ import { store } from './red/store';
 const root = ReactDOM.createRoot(document.getElementById('root'));
 root.render(
     <Provider store={store}>
-    <RouterPage />
-    {/* <Apps /> */}
-  </Provider>
+      <RouterPage />
+    </Provider>
 );
 
 reportWebVitals();

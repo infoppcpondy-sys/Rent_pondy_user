@@ -736,7 +736,10 @@
 //          <h5 className="modal-title" id="filterPopupLabel">Search Property</h5>
 //          <button type="button" className="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
 //        </div>
-//        <div className="modal-body">
+//        <div className="modal-body" style={{
+//          padding: '24px',
+//          background: 'linear-gradient(135deg, #ffffff 0%, #f8f9ff 100%)'
+//        }}>
        
 //       <div className="form-group">
 //         <div className="input-card p-0 rounded-2" style={{ 
@@ -744,9 +747,12 @@
 //           alignItems: 'center', 
 //           justifyContent: 'space-between', 
 //           width: '100%',  
-//           boxShadow: '0 4px 10px rgba(38, 104, 190, 0.1)',
-//           background: "#fff",
-//           paddingRight: "10px"
+//           boxShadow: '0 6px 16px rgba(79, 75, 126, 0.12)',
+//           background: "linear-gradient(135deg, #ffffff 0%, #f8f9ff 100%)",
+//           paddingRight: "10px",
+//           border: '2px solid transparent',
+//           transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
+//           borderRadius: '10px'
 //         }}>
           
           
@@ -1415,6 +1421,15 @@
 //            backgroundColor: hoverSearch ? '#4F4B7E' : '#4F4B7E',
 //            color: '#fff',
 //            border: 'none',
+//            fontWeight: '600',
+//            letterSpacing: '0.5px',
+//            borderRadius: '8px',
+//            transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
+//            textTransform: 'uppercase',
+//            fontSize: '13px',
+//            padding: '12px 24px',
+//            boxShadow: hoverSearch ? '0 12px 28px rgba(79, 75, 126, 0.3)' : '0 4px 12px rgba(79, 75, 126, 0.15)',
+//            transform: hoverSearch ? 'translateY(-2px)' : 'translateY(0)'
 //          }}
 //          onMouseEnter={() => setHoverSearch(true)}
 //          onMouseLeave={() => setHoverSearch(false)}
@@ -1429,7 +1444,16 @@
 //          style={{
 //            backgroundColor: hoverAdvance ? '#4F4B7E' : 'transparent',
 //            color: hoverAdvance ? '#fff' : '#4F4B7E',
-//            border: `1px solid #4F4B7E`,
+//            border: `2px solid #4F4B7E`,
+//            fontWeight: '600',
+//            letterSpacing: '0.5px',
+//            borderRadius: '8px',
+//            transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
+//            textTransform: 'uppercase',
+//            fontSize: '13px',
+//            padding: '12px 24px',
+//            boxShadow: hoverAdvance ? '0 12px 28px rgba(79, 75, 126, 0.25)' : 'none',
+//            transform: hoverAdvance ? 'translateY(-2px)' : 'translateY(0)'
 //          }}
 //          onMouseEnter={() => setHoverAdvance(true)}
 //          onMouseLeave={() => setHoverAdvance(false)}
@@ -3062,6 +3086,7 @@ import { LiaCitySolid } from "react-icons/lia";
 import { GoCheckCircleFill } from "react-icons/go";
 import { FcSearch } from "react-icons/fc";
 import maplocation from "../Assets/maplocation.png";
+import NoPropertyPopup from './NoPropertyPopup';
 
 const PyProperty = () => {
     const [imageCounts, setImageCounts] = useState({}); // Store image count for each property
@@ -3073,6 +3098,7 @@ const PyProperty = () => {
   const [error, setError] = useState("");
   const navigate = useNavigate();
   const [loading, setLoading] = useState(true);
+  const [showNoProperty, setShowNoProperty] = useState(false);
   const location = useLocation();
     const storedPhoneNumber = location.state?.phoneNumber || localStorage.getItem("phoneNumber") || "";
     const [clickedProperties, setclickedProperties] = useState([]);
@@ -3332,8 +3358,8 @@ useEffect(() => {
         }));
 
       const allProperties = [...featuredProperties, ...activeProperties].sort((a, b) => {
-        const aDate = new Date(a.updatedAt || a.createdAt);
-        const bDate = new Date(b.updatedAt || b.createdAt);
+        const aDate = new Date(a.createdAt);
+        const bDate = new Date(b.createdAt);
         return bDate - aDate; // Newest first
       });
 
@@ -3417,12 +3443,128 @@ useEffect(() => {
     maxPrice: '', 
     propertyMode: '', 
     city: '' ,
+    area: '',
+    pinCode: '',
      propertyType: '',
       rentType: '',
       bedrooms: '',
      floorNo: '',
      state:""
   });
+  
+  // Navbar search box state
+  const [navbarSearchValue, setNavbarSearchValue] = useState("");
+  const [navbarAreaSuggestions, setNavbarAreaSuggestions] = useState([]);
+  const [showNavbarAreaSuggestions, setShowNavbarAreaSuggestions] = useState(false);
+  
+  // Area to Pincode mapping
+  const areaPincodeMap = {
+    "Abishegapakkam": "605007",
+    "Ariyankuppam": "605007",
+    "Arumbarthapuram": "605110",
+    "Bahoor": "607402",
+    "Bommayarpalayam": "605104",
+    "Botanical Garden": "605001",
+    "Calapet": "605014",
+    "Courivinatham": "607402",
+    "Dhanvantry Nagar": "605006",
+    "Embalam": "605106",
+    "Irumbai": "605111",
+    "Karayamputhur": "605106",
+    "Karikalambakkam": "605007",
+    "Kariyamanikam": "605106",
+    "Kijour": "605106",
+    "Kilpudupattu": "605014",
+    "Kilsirivi": "604301",
+    "Kirumambakkam": "607402",
+    "Korkadu": "605110",
+    "Kottakuppam": "605104",
+    "Kuilapalayam": "605101",
+    "Lawspet": "605008",
+    "Maducore": "605105",
+    "Manamedu": "607402",
+    "Manapeth": "607402",
+    "Mandagapet": "605106",
+    "Mangalam": "605110",
+    "Mannadipattu": "605501",
+    "Morattandi": "605101",
+    "Mottoupalayam": "605009",
+    "Mouroungapakkam": "605004",
+    "Moutrepaleam": "605009",
+    "Mudaliarpet": "605004",
+    "Muthialpet": "605003",
+    "Mutrampattu": "605501",
+    "Nallavadu": "605007",
+    "Nellithoppe": "605005",
+    "Nettapakkam": "605106",
+    "Odiensalai": "605001",
+    "Ozhugarai": "605010",
+    "Padmin nagar": "605012",
+    "Pakkam": "605106",
+    "Pandakkal": "673310",
+    "Pillaichavady": "605014",
+    "Pillayarkuppam": "607402",
+    "Pondicherry": "605001",
+    "Pondicherry Bazaar": "605001",
+    "Pondicherry Courts": "605001",
+    "Pondicherry North": "605001",
+    "Pondicherry University": "605014",
+    "Pooranankuppam": "605007",
+    "Poothurai": "605111",
+    "Rayapudupakkam": "605111",
+    "Reddiyarpalayam": "605010",
+    "Saram(py)": "605013",
+    "Sedarapet": "605111",
+    "Seliamedu": "607402",
+    "Sellipet": "605501",
+    "Sri Aurobindo ashram": "605002",
+    "Sulthanpet": "605110",
+    "Thattanchavady": "605009",
+    "Thengaithittu": "605004",
+    "Thimmanaickenpalayam": "605007",
+    "Tirukkanur": "605501",
+    "Vadhanur": "605501",
+    "Veerampattinam": "605007",
+    "Venkata Nagar": "605011",
+    "Villiyanur": "605110",
+    "Vimacoundinpaleam": "605009",
+    "Viranam": "605106",
+    "Yanam": "533464",
+  };
+  
+  // Handle navbar search box input change
+  const handleNavbarSearchChange = (e) => {
+    const value = e.target.value;
+    setNavbarSearchValue(value);
+
+    if (value.length > 0) {
+      const areaNames = Object.keys(areaPincodeMap);
+      // Search in both area names and pincodes
+      const filtered = areaNames.filter(area =>
+        area.toLowerCase().includes(value.toLowerCase()) ||
+        areaPincodeMap[area].includes(value)
+      );
+      setNavbarAreaSuggestions(filtered);
+      setShowNavbarAreaSuggestions(filtered.length > 0);
+    } else {
+      setNavbarAreaSuggestions([]);
+      setShowNavbarAreaSuggestions(false);
+    }
+  };
+
+  // Handle navbar area selection
+  const handleNavbarAreaSelect = (selectedArea) => {
+    const pincode = areaPincodeMap[selectedArea] || "";
+    setNavbarSearchValue(selectedArea);
+    setFilters(prev => ({
+      ...prev,
+      area: selectedArea,
+      pinCode: pincode
+    }));
+    setShowNavbarAreaSuggestions(false);
+    setNavbarAreaSuggestions([]);
+  };
+
         const [hoverSearch, setHoverSearch] = useState(false);
         const [hoverAdvance, setHoverAdvance] = useState(false);
       
@@ -3738,7 +3880,9 @@ useEffect(() => {
                  (filters.rentType ? property.rentType?.toLowerCase().includes(filters.rentType.toLowerCase()) : true) &&
          (filters.bedrooms ? property.bedrooms?.toLowerCase().includes(filters.bedrooms.toLowerCase()) : true) &&
          (filters.floorNo ? property.floorNo?.toLowerCase().includes(filters.floorNo.toLowerCase()) : true) &&
+         (filters.area ? property.area?.toLowerCase() === filters.area.toLowerCase() : true) &&
          (filters.city ? property.city?.toLowerCase().includes(filters.city.toLowerCase()) : true) &&
+         (filters.pinCode ? property.pinCode?.toString() === filters.pinCode.toString() : true) &&
          (filters.state ? property.state?.toLowerCase().includes(filters.state.toLowerCase()) : true);
    
        const priceMatch = 
@@ -3773,6 +3917,30 @@ useEffect(() => {
      
        return basicFilterMatch && priceMatch && advancedFilterMatch;
      });
+     
+     // Check if area or pincode search returned no results
+     // Using new NoPropertyPopup component for this functionality now
+     // useEffect(() => {
+     //   if ((filters.area || filters.pinCode) && filteredProperties.length === 0 && properties.length > 0) {
+     //     setShowNoPropertiesModal(true);
+     //     // Show modal with Bootstrap
+     //     const modalElement = document.getElementById('noSearchResultsModalPy');
+     //     if (modalElement && window.bootstrap) {
+     //       const modal = new window.bootstrap.Modal(modalElement);
+     //       modal.show();
+     //     }
+     //   }
+     // }, [filteredProperties, filters.area, filters.pinCode, properties.length]);
+     
+     // Show/hide NoProperty popup when area filter is applied and no properties found
+     useEffect(() => {
+       if (filters.area && filteredProperties.length === 0 && properties.length > 0) {
+         setShowNoProperty(true);
+       } else {
+         setShowNoProperty(false);
+       }
+     }, [filteredProperties, filters.area, properties.length]);
+     
 // useEffect(() => {
 //   if (filteredProperties.length > 0 && uploads.length > 0) {
 //     const merged = [];
@@ -3861,11 +4029,159 @@ useEffect(() => {
        }
      }, [isFilterPopupOpen]);
         
-
+     // Handle BACK button in No Property popup - resets filters
+     const handleNoPropertyBack = () => {
+       setFilters(prev => ({ ...prev, area: '', pinCode: '' }));
+       setNavbarSearchValue('');
+     };
 
   return (
     <Container fluid className="p-0 w-100 d-flex align-items-center justify-content-center ">
+      {/* No Property Found Popup */}
+      <NoPropertyPopup 
+        isOpen={showNoProperty} 
+        onClose={() => setShowNoProperty(false)}
+        onBack={handleNoPropertyBack}
+        filters={filters}
+      />
+      
       <Row className="g-3 w-100 ">
+        {/* Modern Horizontal Search Bar */}
+        <Col lg={12} className="p-0 m-0">
+          <div style={{
+            width: '100%',
+            padding: '2px 2px',
+            background: 'linear-gradient(135deg, #f5f6ff 0%, #ffffff 100%)',
+            borderBottom: '1px solid #e8e8ff',
+            position: 'relative'
+          }}>
+            <div style={{
+              maxWidth: '1000px',
+              margin: '0 auto',
+              position: 'relative'
+            }}>
+              {/* Modern Pill-Shaped Search Bar Container */}
+              <div
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  background: '#ffffff',
+                  borderRadius: '50px',
+                  boxShadow: '0 4px 16px rgba(79, 75, 126, 0.08)',
+                  overflow: 'hidden',
+                  border: '1.5px solid #e8e8ff',
+                  transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
+                  cursor: 'text',
+                  padding: '8px 12px'
+                }}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.boxShadow = '0 8px 24px rgba(79, 75, 126, 0.15)';
+                  e.currentTarget.style.borderColor = '#4F4B7E';
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.boxShadow = '0 4px 16px rgba(79, 75, 126, 0.08)';
+                  e.currentTarget.style.borderColor = '#e8e8ff';
+                }}
+              >
+                {/* Search Icon Left */}
+                <span
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    padding: '10px 14px',
+                    color: '#4F4B7E',
+                    transition: 'all 0.3s ease',
+                    fontSize: '16px'
+                  }}
+                >
+                  <BiSearchAlt size={20} />
+                </span>
+
+                {/* Search Input */}
+                <input
+                  type="text"
+                  value={navbarSearchValue}
+                  onChange={handleNavbarSearchChange}
+                  onFocus={() => {
+                    if (navbarSearchValue && navbarAreaSuggestions.length > 0) {
+                      setShowNavbarAreaSuggestions(true);
+                    }
+                  }}
+                  onBlur={() => {
+                    setTimeout(() => setShowNavbarAreaSuggestions(false), 200);
+                  }}
+                  placeholder="Enter Area Name or Pincode"
+                  aria-label="Search properties by area or pincode"
+                  style={{
+                    flex: '1',
+                    padding: '10px 8px',
+                    fontSize: '14px',
+                    border: 'none',
+                    outline: 'none',
+                    color: '#333',
+                    background: 'transparent',
+                    fontWeight: '500',
+                    transition: 'all 0.3s ease',
+                    letterSpacing: '0.3px'
+                  }}
+                />
+              </div>
+
+              {/* Modern Suggestions Dropdown */}
+              {showNavbarAreaSuggestions && navbarAreaSuggestions.length > 0 && (
+                <div
+                  style={{
+                    position: 'absolute',
+                    top: '100%',
+                    left: '0',
+                    right: '0',
+                    background: '#ffffff',
+                    border: '1.5px solid #e8e8ff',
+                    borderTop: 'none',
+                    borderRadius: '0 0 20px 20px',
+                    maxHeight: '320px',
+                    overflowY: 'auto',
+                    zIndex: 1001,
+                    boxShadow: '0 8px 24px rgba(79, 75, 126, 0.12)',
+                    marginTop: '-1px',
+                    animation: 'slideDown 0.25s cubic-bezier(0.4, 0, 0.2, 1) forwards'
+                  }}
+                >
+                  {navbarAreaSuggestions.map((areaItem, index) => (
+                    <div
+                      key={index}
+                      onMouseDown={() => handleNavbarAreaSelect(areaItem)}
+                      style={{
+                        padding: '12px 20px',
+                        cursor: 'pointer',
+                        transition: 'all 0.2s ease',
+                        borderBottom: index !== navbarAreaSuggestions.length - 1 ? '1px solid #f0f0f5' : 'none',
+                        display: 'flex',
+                        justifyContent: 'space-between',
+                        alignItems: 'center',
+                        background: 'transparent',
+                        position: 'relative',
+                        overflow: 'hidden'
+                      }}
+                      onMouseEnter={(e) => {
+                        e.currentTarget.style.background = '#f8f9ff';
+                        e.currentTarget.style.paddingLeft = '28px';
+                      }}
+                      onMouseLeave={(e) => {
+                        e.currentTarget.style.background = 'transparent';
+                        e.currentTarget.style.paddingLeft = '20px';
+                      }}
+                    >
+                      <span style={{ color: '#333', fontWeight: 500, fontSize: '13px', letterSpacing: '0.1px' }}>{areaItem}</span>
+                      <span style={{ color: '#a8a8d8', fontSize: '11px', marginLeft: '12px', fontWeight: 400 }}>{areaPincodeMap[areaItem]}</span>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          </div>
+        </Col>
         <Col lg={12} className="d-flex align-items-center justify-content-center">
            
          <div
@@ -6123,19 +6439,11 @@ justifyContent: "space-between",
                                        <div className="col-6 d-flex align-items-center mt-1 mb-1 ps-1 pe-1">
                  <img src={calendar} alt="" width={12} className="me-2" />
                  <span style={{ fontSize:'13px', color:'#5E5E5E', fontWeight: 500 }}>
-                   {
-                     property.updatedAt && property.updatedAt !== property.createdAt
-                       ? ` ${new Date(property.updatedAt).toLocaleDateString('en-IN', {
-                           year: 'numeric',
-                           month: 'short',
-                           day: 'numeric'
-                         })}`
-                       : ` ${new Date(property.createdAt).toLocaleDateString('en-IN', {
-                           year: 'numeric',
-                           month: 'short',
-                           day: 'numeric'
-                         })}`
-                   }
+                   {property.createdAt ? ` ${new Date(property.createdAt).toLocaleDateString('en-IN', {
+                       year: 'numeric',
+                       month: 'short',
+                       day: 'numeric'
+                     })}` : 'N/A'}
                  </span>
                </div>
                <div className="col-12 d-flex flex-col align-items-center mt-1 mb-1 ps-1">
@@ -6333,19 +6641,11 @@ justifyContent: "space-between",
                                        <div className="col-6 d-flex align-items-center mt-1 mb-1 ps-1 pe-1">
                  <img src={calendar} alt="" width={12} className="me-2" />
                  <span style={{ fontSize:'13px', color:'#5E5E5E', fontWeight: 500 }}>
-                   {
-                     property.updatedAt && property.updatedAt !== property.createdAt
-                       ? ` ${new Date(property.updatedAt).toLocaleDateString('en-IN', {
-                           year: 'numeric',
-                           month: 'short',
-                           day: 'numeric'
-                         })}`
-                       : ` ${new Date(property.createdAt).toLocaleDateString('en-IN', {
-                           year: 'numeric',
-                           month: 'short',
-                           day: 'numeric'
-                         })}`
-                   }
+                   {property.createdAt ? ` ${new Date(property.createdAt).toLocaleDateString('en-IN', {
+                       year: 'numeric',
+                       month: 'short',
+                       day: 'numeric'
+                     })}` : 'N/A'}
                  </span>
                </div>
                <div className="col-12 d-flex flex-col align-items-center mt-1 mb-1 ps-1">

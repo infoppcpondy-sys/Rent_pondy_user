@@ -324,34 +324,60 @@ navigate('/mobileviews');
             </div>
 
            <Form onSubmit={handleSendOtp}>
-                    <Form.Group className="mb-3" controlId="countryCode">
-                      <InputGroup style={{ maxWidth: 320, margin: '0 auto', borderRadius: 8, boxShadow: '0 2px 8px rgba(79,75,126,0.07)' }}>
-                        <InputGroup.Text className="border-0" style={{ backgroundColor: "#f5f5f5", borderTopLeftRadius: 8, borderBottomLeftRadius: 8 }}>
-                          <Flag code={selectedCountry} style={{ width: '22px', marginRight: '8px' }} />
-                        </InputGroup.Text>
-                        <Form.Select
-                          value={selectedCountry}
-                          onChange={handleCountryChange}
-                          aria-label="Select Country"
-                          style={{
-                            width: 'auto', maxWidth: '80px',
-                            backgroundColor: "#f5f5f5",
-                            color: '#4F4B7E',
-                            fontWeight: 600,
-                            border: 'none',
-                            borderRadius: 0,
-                            outline: 'none',
-                            cursor: 'pointer',
-                            fontFamily: 'Poppins, Inter, Arial, sans-serif',
-                            fontSize: 15
-                          }}
-                        >
-                          {countryCodes.map((country) => (
-                            <option className="text-dark" key={country.code} value={country.flag}>
-                              ({country.country}) {country.code}
-                            </option>
-                          ))}
-                        </Form.Select>
+                    <Form.Group className="mb-3" controlId="phoneInput">
+                      {/* Single row flex container for country code + phone number */}
+                      <div style={{
+                        display: 'flex',
+                        width: '100%',
+                        maxWidth: 320,
+                        margin: '0 auto',
+                        borderRadius: 8,
+                        backgroundColor: "#f5f5f5",
+                        boxShadow: '0 2px 8px rgba(79,75,126,0.07)',
+                        overflow: 'hidden',
+                        alignItems: 'center',
+                        flexWrap: 'nowrap',
+                        border: '2px solid transparent',
+                        transition: 'all 0.3s ease'
+                      }}>
+                        {/* Country Code Section */}
+                        <div style={{
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: '6px',
+                          padding: '0 12px',
+                          borderRight: '1px solid #e0e0e0',
+                          flexShrink: 0,
+                          height: '48px'
+                        }}>
+                          <Flag code={selectedCountry} style={{ width: '20px', height: '14px' }} />
+                          <Form.Select
+                            value={selectedCountry}
+                            onChange={handleCountryChange}
+                            aria-label="Select Country"
+                            style={{
+                              width: 'auto',
+                              backgroundColor: "transparent",
+                              color: '#4F4B7E',
+                              fontWeight: 600,
+                              border: 'none',
+                              outline: 'none',
+                              cursor: 'pointer',
+                              fontFamily: 'Poppins, Inter, Arial, sans-serif',
+                              fontSize: 13,
+                              padding: '4px 0',
+                              whiteSpace: 'nowrap'
+                            }}
+                          >
+                            {countryCodes.map((country) => (
+                              <option className="text-dark" key={country.code} value={country.flag}>
+                                ({country.country}) {country.code}
+                              </option>
+                            ))}
+                          </Form.Select>
+                        </div>
+
+                        {/* Phone Number Input */}
                         <Form.Control
                           type="tel"
                           placeholder="Enter Mobile No"
@@ -360,23 +386,32 @@ navigate('/mobileviews');
                           required
                           ref={phoneInputRef}
                           style={{
-                            width: '100%',
-                            backgroundColor: "#f5f5f5",
+                            flex: 1,
+                            backgroundColor: "transparent",
                             color: '#222',
                             fontWeight: 600,
                             border: 'none',
-                            borderTopRightRadius: 8,
-                            borderBottomRightRadius: 8,
                             fontFamily: 'Poppins, Inter, Arial, sans-serif',
-                            fontSize: 16,
+                            fontSize: 15,
                             outline: 'none',
                             boxShadow: 'none',
-                            paddingLeft: 12
+                            padding: '12px 16px',
+                            minWidth: 0,
+                            height: '48px',
+                            transition: 'all 0.3s ease'
                           }}
                           pattern="[0-9]{10,15}"
                           maxLength={15}
+                          onFocus={(e) => {
+                            e.target.parentElement.style.borderColor = '#4F4B7E';
+                            e.target.parentElement.style.boxShadow = '0 2px 12px rgba(79,75,126,0.15)';
+                          }}
+                          onBlur={(e) => {
+                            e.target.parentElement.style.borderColor = 'transparent';
+                            e.target.parentElement.style.boxShadow = '0 2px 8px rgba(79,75,126,0.07)';
+                          }}
                         />
-                      </InputGroup>
+                      </div>
                     </Form.Group>
                     <style>
                       {`
