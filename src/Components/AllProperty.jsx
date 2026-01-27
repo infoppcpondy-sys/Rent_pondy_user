@@ -3648,17 +3648,20 @@ const AllProperty = () => {
   const [hoverAdvance, setHoverAdvance] = useState(false);
   const [hoverHome, setHoverHome] = useState(false);
   const [showNoDataModal, setShowNoDataModal] = useState(false);
-  const [showNoProperty, setShowNoProperty] = useState(false);
   const [searchPerformed, setSearchPerformed] = useState(false);
 
   // Area suggestions state
   const [areaSuggestions, setAreaSuggestions] = useState([]);
   const [showAreaSuggestions, setShowAreaSuggestions] = useState(false);
+  const [pincodeSuggestions, setPincodeSuggestions] = useState([]);
+  const [showPincodeSuggestions, setShowPincodeSuggestions] = useState(false);
   
   // Navbar search box state
   const [navbarSearchValue, setNavbarSearchValue] = useState("");
   const [navbarAreaSuggestions, setNavbarAreaSuggestions] = useState([]);
   const [showNavbarAreaSuggestions, setShowNavbarAreaSuggestions] = useState(false);
+  const [navbarKeyboardIndex, setNavbarKeyboardIndex] = useState(-1); // For keyboard navigation
+  const navbarSearchInputRef = useRef(null);
 
   // Area to Pincode mapping
   const areaPincodeMap = {
@@ -3765,18 +3768,52 @@ const AllProperty = () => {
     setAreaSuggestions([]);
   };
 
+  // Handle pincode input change with suggestions
+  const handlePincodeInputChange = (e) => {
+    const value = e.target.value;
+    setFilters(prev => ({ ...prev, pinCode: value }));
+
+    if (value.length > 0) {
+      // Get all pincodes from areaPincodeMap
+      const allPincodes = Object.values(areaPincodeMap);
+      // Filter unique pincodes that match partial input
+      const filtered = [...new Set(allPincodes)].filter(pincode =>
+        pincode.includes(value)
+      );
+      setPincodeSuggestions(filtered);
+      setShowPincodeSuggestions(filtered.length > 0);
+    } else {
+      setPincodeSuggestions([]);
+      setShowPincodeSuggestions(false);
+    }
+  };
+
+  // Handle pincode selection from suggestions
+  const handlePincodeSelect = (selectedPincode) => {
+    setFilters(prev => ({
+      ...prev,
+      pinCode: selectedPincode
+    }));
+    setShowPincodeSuggestions(false);
+    setPincodeSuggestions([]);
+  };
+
   // Handle navbar search box input change
   const handleNavbarSearchChange = (e) => {
     const value = e.target.value;
     setNavbarSearchValue(value);
+    setNavbarKeyboardIndex(-1); // Reset keyboard index when typing
 
     if (value.length > 0) {
       const areaNames = Object.keys(areaPincodeMap);
-      // Search in both area names and pincodes
-      const filtered = areaNames.filter(area =>
-        area.toLowerCase().includes(value.toLowerCase()) ||
-        areaPincodeMap[area].includes(value)
-      );
+      // Search in both area names and pincodes (case-insensitive, partial match)
+      const filtered = areaNames.filter(area => {
+        const areaPincode = areaPincodeMap[area];
+        return (
+          area.toLowerCase().includes(value.toLowerCase()) ||
+          areaPincode.includes(value) // Partial pincode match (e.g., "605" matches "605007")
+        );
+      });
       setNavbarAreaSuggestions(filtered);
       setShowNavbarAreaSuggestions(filtered.length > 0);
     } else {
@@ -3785,10 +3822,41 @@ const AllProperty = () => {
     }
   };
 
+  // Handle keyboard navigation in suggestions
+  const handleNavbarKeyDown = (e) => {
+    if (!showNavbarAreaSuggestions || navbarAreaSuggestions.length === 0) return;
+
+    switch (e.key) {
+      case 'ArrowDown':
+        e.preventDefault();
+        setNavbarKeyboardIndex(prev => 
+          prev < navbarAreaSuggestions.length - 1 ? prev + 1 : prev
+        );
+        break;
+      case 'ArrowUp':
+        e.preventDefault();
+        setNavbarKeyboardIndex(prev => prev > 0 ? prev - 1 : -1);
+        break;
+      case 'Enter':
+        e.preventDefault();
+        if (navbarKeyboardIndex >= 0 && navbarAreaSuggestions[navbarKeyboardIndex]) {
+          handleNavbarAreaSelect(navbarAreaSuggestions[navbarKeyboardIndex]);
+        }
+        break;
+      case 'Escape':
+        e.preventDefault();
+        setShowNavbarAreaSuggestions(false);
+        break;
+      default:
+        break;
+    }
+  };
+
   // Handle navbar area selection
   const handleNavbarAreaSelect = (selectedArea) => {
     const pincode = areaPincodeMap[selectedArea] || "";
     setNavbarSearchValue(selectedArea);
+    // When selecting an area, set both area and pincode to enable proper filtering
     setFilters(prev => ({
       ...prev,
       area: selectedArea,
@@ -3796,6 +3864,20 @@ const AllProperty = () => {
     }));
     setShowNavbarAreaSuggestions(false);
     setNavbarAreaSuggestions([]);
+    setSearchPerformed(true); // Mark search as performed
+  };
+
+  // Clear search input, hide suggestions, and reset filters
+  const handleClearSearch = () => {
+    setNavbarSearchValue('');
+    setNavbarAreaSuggestions([]);
+    setShowNavbarAreaSuggestions(false);
+    setFilters(prev => ({
+      ...prev,
+      area: '',
+      pinCode: ''
+    }));
+    setSearchPerformed(false);
   };
 
   const [imageCounts, setImageCounts] = useState({}); // Store image count for each property
@@ -4610,11 +4692,14 @@ const fieldLabels = {
       (filters.rentType ? property.rentType?.toLowerCase().includes(filters.rentType.toLowerCase()) : true) &&
       (filters.bedrooms ? property.bedrooms?.toString().toLowerCase().includes(filters.bedrooms.toLowerCase()) : true) &&
       (filters.floorNo ? property.floorNo?.toString().toLowerCase().includes(filters.floorNo.toLowerCase()) : true) &&
-      (filters.area ? property.area?.toLowerCase() === filters.area.toLowerCase() : true) &&
       (filters.nagar ? property.nagar?.toLowerCase().includes(filters.nagar.toLowerCase()) : true) &&
       (filters.streetName ? property.streetName?.toLowerCase().includes(filters.streetName.toLowerCase()) : true) &&
-      (filters.pinCode ? property.pinCode?.toString() === filters.pinCode.toString() : true) &&
-      (filters.state ? property.state?.toLowerCase().includes(filters.state.toLowerCase()) : true);
+      (filters.state ? property.state?.toLowerCase().includes(filters.state.toLowerCase()) : true) &&
+      // Area OR Pincode filter - match if either area OR pincode matches
+      (filters.area || filters.pinCode ? 
+        (filters.area ? property.area?.toLowerCase() === filters.area.toLowerCase() : false) ||
+        (filters.pinCode ? property.pinCode?.toString().includes(filters.pinCode.toString()) : false)
+      : true);
 
     const priceMatch = 
       (filters.minPrice ? property.rentalAmount >= Number(filters.minPrice) : true) &&
@@ -4683,28 +4768,62 @@ const fieldLabels = {
   //   }
   // }, [filteredProperties, filters.area, filters.pinCode, properties.length]);
   
-  // Show/hide NoProperty popup when area filter is applied and no properties found
-  useEffect(() => {
-    if (filters.area && filteredProperties.length === 0 && properties.length > 0) {
-      setShowNoProperty(true);
-    } else {
-      setShowNoProperty(false);
-    }
-  }, [filteredProperties, filters.area, properties.length]);
   
+
 useEffect(() => {
   const stored = JSON.parse(localStorage.getItem('clickedCar')) || [];
   setClickedCar(stored);
 }, []);
 
-  const handleCardClick = (rentId, phoneNumber) => {
-    const stored = JSON.parse(localStorage.getItem('clickedCar')) || [];
-    if (!stored.includes(rentId)) {
-      stored.push(rentId);
-      localStorage.setItem('clickedCar', JSON.stringify(stored));
+const sendPropertyViewWhatsApp = async (property, viewerPhone) => {
+  try {
+    const ownerPhone = property.phoneNumber || "";
+    const cleanOwnerPhone = String(ownerPhone).replace(/\D/g, "");
+    const toOwner = cleanOwnerPhone.length === 10 ? `91${cleanOwnerPhone}` : cleanOwnerPhone;
+
+    const cleanViewerPhone = String(viewerPhone).replace(/\D/g, "");
+    const toViewer = cleanViewerPhone.length === 10 ? `91${cleanViewerPhone}` : cleanViewerPhone;
+
+    // Message to User
+    if (toViewer.length >= 12) {
+      const userMessage = `Hi There 👋\n\n✅ Your currently visit the property!\n\n🆔 Rent ID: ${property.rentId || "N/A"}\n📍 Location: ${property.area || property.city || "N/A"}\n👨‍💼 Owner: ${property.ownerName || "Owner"}\n📱 Phone: ${ownerPhone || "N/A"}\n\n❤️ We'll notify the owner about your action\n\nThank you for using Rent Pondy 🙏`;
+      
+      await axios.post(`${process.env.REACT_APP_API_URL}/send-message`, {
+        to: toViewer,
+        message: userMessage,
+      });
+      console.log("✅ WhatsApp message sent to viewer:", toViewer);
     }
-    navigate(`/detail/${rentId}`, { state: { phoneNumber } });
-  };
+
+    // Message to Owner
+    if (toOwner.length >= 12) {
+      const ownerMessage = `Hi There 👋\n\n✅ Your property has been viewed by ${viewerPhone || "N/A"}\n\n🏠 Property: ${property.propertyType || "Property"} (Rent ID: ${property.rentId})\n📍 Location: ${property.area || property.city || "N/A"}\n👨‍💼 Owner: ${property.ownerName || "Owner"}\n\nThank you for using Rent Pondy 🙏`;
+      
+      await axios.post(`${process.env.REACT_APP_API_URL}/send-message`, {
+        to: toOwner,
+        message: ownerMessage,
+      });
+      console.log("✅ WhatsApp message sent to owner:", toOwner);
+    }
+  } catch (whatsErr) {
+    console.log("⚠️ WhatsApp message failed (non-blocking):", whatsErr.message);
+  }
+};
+
+const handleCardClick = (rentId, ownerPhoneNumber, property) => {
+  const stored = JSON.parse(localStorage.getItem('clickedCar')) || [];
+  if (!stored.includes(rentId)) {
+    stored.push(rentId);
+    localStorage.setItem('clickedCar', JSON.stringify(stored));
+  }
+  
+  // Send WhatsApp messages
+  if (phoneNumber && property) {
+    sendPropertyViewWhatsApp(property, phoneNumber);
+  }
+  
+  navigate(`/detail/${rentId}`, { state: { phoneNumber } });
+};
 const totalUploads = useMemo(() => {
   return uploads.flatMap(upload =>
     (upload.images || []).map(img => ({
@@ -4766,13 +4885,7 @@ useEffect(() => {
         <title>Rental Property | Properties</title>
       </Helmet>
 
-      {/* No Property Found Popup */}
-      <NoPropertyPopup 
-        isOpen={showNoProperty} 
-        onClose={() => setShowNoProperty(false)}
-        onBack={handleNoPropertyBack}
-        filters={filters}
-      />
+
 
       {/* Hidden trigger button for filter popup */}
       <button
@@ -4788,9 +4901,9 @@ useEffect(() => {
         <Col lg={12} className="p-0 m-0">
           <div style={{
             width: '100%',
-            padding: '2px 2px',
-            background: 'linear-gradient(135deg, #f5f6ff 0%, #ffffff 100%)',
-            borderBottom: '1px solid #e8e8ff',
+            padding: '12px 2px',
+            background: 'linear-gradient(135deg, #f8f9ff 0%, #ffffff 100%)',
+            borderBottom: 'none',
             position: 'relative'
           }}>
             <div style={{
@@ -4803,22 +4916,24 @@ useEffect(() => {
                 style={{
                   display: 'flex',
                   alignItems: 'center',
-                  background: '#ffffff',
+                  background: 'linear-gradient(135deg, #ffffff 0%, #f0f2ff 100%)',
                   borderRadius: '50px',
-                  boxShadow: '0 4px 16px rgba(79, 75, 126, 0.08)',
+                  boxShadow: '0 8px 32px rgba(79, 75, 126, 0.12)',
                   overflow: 'hidden',
-                  border: '1.5px solid #e8e8ff',
+                  border: '2px solid #e0e5ff',
                   transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
                   cursor: 'text',
-                  padding: '8px 12px'
+                  padding: '8px 16px'
                 }}
                 onMouseEnter={(e) => {
-                  e.currentTarget.style.boxShadow = '0 8px 24px rgba(79, 75, 126, 0.15)';
+                  e.currentTarget.style.boxShadow = '0 12px 40px rgba(79, 75, 126, 0.2)';
                   e.currentTarget.style.borderColor = '#4F4B7E';
+                  e.currentTarget.style.background = 'linear-gradient(135deg, #ffffff 0%, #e8ecff 100%)';
                 }}
                 onMouseLeave={(e) => {
-                  e.currentTarget.style.boxShadow = '0 4px 16px rgba(79, 75, 126, 0.08)';
-                  e.currentTarget.style.borderColor = '#e8e8ff';
+                  e.currentTarget.style.boxShadow = '0 8px 32px rgba(79, 75, 126, 0.12)';
+                  e.currentTarget.style.borderColor = '#e0e5ff';
+                  e.currentTarget.style.background = 'linear-gradient(135deg, #ffffff 0%, #f0f2ff 100%)';
                 }}
               >
                 {/* Search Icon Left */}
@@ -4830,40 +4945,78 @@ useEffect(() => {
                     padding: '10px 14px',
                     color: '#4F4B7E',
                     transition: 'all 0.3s ease',
-                    fontSize: '16px'
+                    fontSize: '18px'
                   }}
                 >
                   <BiSearchAlt size={20} />
                 </span>
 
-                {/* Search Input */}
-                <input
-                  type="text"
-                  value={navbarSearchValue}
-                  onChange={handleNavbarSearchChange}
-                  onFocus={() => {
-                    if (navbarSearchValue && navbarAreaSuggestions.length > 0) {
-                      setShowNavbarAreaSuggestions(true);
-                    }
-                  }}
-                  onBlur={() => {
-                    setTimeout(() => setShowNavbarAreaSuggestions(false), 200);
-                  }}
-                  placeholder="Enter Area Name or Pincode"
-                  aria-label="Search properties by area or pincode"
-                  style={{
-                    flex: '1',
-                    padding: '10px 8px',
-                    fontSize: '14px',
-                    border: 'none',
-                    outline: 'none',
-                    color: '#111111',
-                    background: 'transparent',
-                    fontWeight: '500',
-                    transition: 'all 0.3s ease',
-                    letterSpacing: '0.3px'
-                  }}
-                />
+                {/* Search Input with Clear Button */}
+                <div style={{ flex: '1', position: 'relative', display: 'flex', alignItems: 'center' }}>
+                  <input
+                    ref={navbarSearchInputRef}
+                    type="text"
+                    value={navbarSearchValue}
+                    onChange={handleNavbarSearchChange}
+                    onKeyDown={handleNavbarKeyDown}
+                    onFocus={() => {
+                      if (navbarSearchValue && navbarAreaSuggestions.length > 0) {
+                        setShowNavbarAreaSuggestions(true);
+                      }
+                    }}
+                    onBlur={() => {
+                      setTimeout(() => setShowNavbarAreaSuggestions(false), 200);
+                    }}
+                    placeholder="🔍 Enter Area Name or Pincode"
+                    aria-label="Search properties by area or pincode"
+                    style={{
+                      flex: '1',
+                      padding: '12px 10px',
+                      paddingRight: navbarSearchValue ? '36px' : '10px',
+                      fontSize: '15px',
+                      border: 'none',
+                      outline: 'none',
+                      color: '#111111',
+                      background: 'transparent',
+                      fontWeight: '500',
+                      transition: 'all 0.3s ease',
+                      letterSpacing: '0.4px'
+                    }}
+                  />
+                  {/* Clear Button */}
+                  {navbarSearchValue && (
+                    <button
+                      onClick={handleClearSearch}
+                      onMouseDown={(e) => e.preventDefault()}
+                      style={{
+                        position: 'absolute',
+                        right: '10px',
+                        background: 'none',
+                        border: 'none',
+                        color: '#a8a8d8',
+                        fontSize: '18px',
+                        cursor: 'pointer',
+                        padding: '4px 8px',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        transition: 'all 0.2s ease',
+                        fontWeight: 'bold'
+                      }}
+                      onMouseEnter={(e) => {
+                        e.currentTarget.style.color = '#4F4B7E';
+                        e.currentTarget.style.transform = 'scale(1.2)';
+                      }}
+                      onMouseLeave={(e) => {
+                        e.currentTarget.style.color = '#a8a8d8';
+                        e.currentTarget.style.transform = 'scale(1)';
+                      }}
+                      title="Clear search"
+                    >
+                      ✕
+                    </button>
+                  )}
+                </div>
               </div>
 
               {/* Modern Suggestions Dropdown */}
@@ -4890,6 +5043,11 @@ useEffect(() => {
                     <div
                       key={index}
                       onMouseDown={() => handleNavbarAreaSelect(area)}
+                      onMouseEnter={(e) => {
+                        setNavbarKeyboardIndex(index);
+                        e.currentTarget.style.background = '#f8f9ff';
+                        e.currentTarget.style.paddingLeft = '28px';
+                      }}
                       style={{
                         padding: '12px 20px',
                         cursor: 'pointer',
@@ -4898,21 +5056,17 @@ useEffect(() => {
                         display: 'flex',
                         justifyContent: 'space-between',
                         alignItems: 'center',
-                        background: 'transparent',
+                        background: navbarKeyboardIndex === index ? '#f8f9ff' : 'transparent',
                         position: 'relative',
                         overflow: 'hidden'
                       }}
-                      onMouseEnter={(e) => {
-                        e.currentTarget.style.background = '#f8f9ff';
-                        e.currentTarget.style.paddingLeft = '28px';
-                      }}
                       onMouseLeave={(e) => {
-                        e.currentTarget.style.background = 'transparent';
+                        e.currentTarget.style.background = navbarKeyboardIndex === index ? '#f8f9ff' : 'transparent';
                         e.currentTarget.style.paddingLeft = '20px';
                       }}
                     >
                       <span style={{ color: '#333', fontWeight: 500, fontSize: '13px', letterSpacing: '0.1px' }}>{area}</span>
-                      <span style={{ color: '#a8a8d8', fontSize: '11px', marginLeft: '12px', fontWeight: 400 }}>{areaPincodeMap[area]}</span>
+                      <span style={{ color: '#a8a8d8', fontSize: '11px', marginLeft: '12px', fontWeight: 400 }}>– {areaPincodeMap[area]}</span>
                     </div>
                   ))}
                 </div>
@@ -4964,6 +5118,17 @@ useEffect(() => {
             animation: addPropertyPulse 1.6s ease-in-out infinite;
             animation-iteration-count: infinite;
             animation-delay: 0s;
+          }
+
+          /* Search bar placeholder styling */
+          input::placeholder {
+            color: #9b94d4;
+            font-weight: 500;
+            font-size: 15px;
+          }
+          
+          input:focus::placeholder {
+            color: #b3afd9;
           }
         `}</style>
         <Col lg={12} className="d-flex align-items-center justify-content-center pt-2 m-0">
@@ -5876,7 +6041,8 @@ useEffect(() => {
          width: '100%',  
          boxShadow: '0 4px 10px rgba(38, 104, 190, 0.1)',
          background: "#fff",
-         paddingRight: "10px"
+         paddingRight: "10px",
+         position: 'relative'
        }}>
          
        
@@ -5903,7 +6069,15 @@ useEffect(() => {
            type="text"
            name="pinCode"
            value={filters.pinCode}
-           onChange={handleFilterChange}
+           onChange={handlePincodeInputChange}
+           onFocus={() => {
+             if (filters.pinCode && pincodeSuggestions.length > 0) {
+               setShowPincodeSuggestions(true);
+             }
+           }}
+           onBlur={() => {
+             setTimeout(() => setShowPincodeSuggestions(false), 200);
+           }}
            className="form-input m-0"
            placeholder="Pincode"
              style={{ flex: '1', padding: '12px', fontSize: '14px', border: 'none', outline: 'none' , color:"grey"}}
@@ -5912,6 +6086,44 @@ useEffect(() => {
         {filters.pinCode && (
            <GoCheckCircleFill style={{ color: "green", margin: "5px" }} />
          )}
+
+       {/* Pincode Suggestions Dropdown */}
+       {showPincodeSuggestions && pincodeSuggestions.length > 0 && (
+         <div
+           style={{
+             position: "absolute",
+             top: "100%",
+             left: 0,
+             right: 0,
+             backgroundColor: "#fff",
+             border: "1px solid #4F4B7E",
+             borderRadius: "8px",
+             maxHeight: "200px",
+             overflowY: "auto",
+             zIndex: 1000,
+             boxShadow: "0 4px 12px rgba(0, 0, 0, 0.15)",
+             marginTop: "4px"
+           }}
+         >
+           {pincodeSuggestions.map((pincode, index) => (
+             <div
+               key={index}
+               onClick={() => handlePincodeSelect(pincode)}
+               style={{
+                 padding: "10px 15px",
+                 cursor: "pointer",
+                 borderBottom: index < pincodeSuggestions.length - 1 ? "1px solid #eee" : "none",
+                 color: "#333",
+                 fontSize: "13px"
+               }}
+               onMouseEnter={(e) => e.target.style.backgroundColor = "#f0f0f0"}
+               onMouseLeave={(e) => e.target.style.backgroundColor = "#fff"}
+             >
+               {pincode}
+             </div>
+           ))}
+         </div>
+       )}
      </div></div>
 
 
@@ -7616,7 +7828,7 @@ useEffect(() => {
           key={property._id}
           className="card mb-3 shadow rounded-4 col-12"
           style={{ width: '100%', height: 'auto', background: '#F9F9F9', overflow:'hidden' }}
-          onClick={() => handleCardClick(property.rentId, property.phoneNumber)}
+          onClick={() => handleCardClick(property.rentId, property.phoneNumber, property)}
         >
            <div className="row g-0 align-items-stretch">
 <div className="col-md-4 col-4 d-flex flex-column align-items-center">

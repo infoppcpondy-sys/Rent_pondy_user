@@ -3679,6 +3679,16 @@ const [canViewToday, setCanViewToday] = useState(true);
 
   const [isScrolling, setIsScrolling] = useState(false);
 
+  // WhatsApp notification states
+  const [showWhatsAppPopup, setShowWhatsAppPopup] = useState(false);
+  const [isSendingWhatsApp, setIsSendingWhatsApp] = useState(false);
+  const [photoRequestData, setPhotoRequestData] = useState(null);
+  
+  // WhatsApp states for favorite
+  const [showFavWhatsAppPopup, setShowFavWhatsAppPopup] = useState(false);
+  const [isSendingFavWhatsApp, setIsSendingFavWhatsApp] = useState(false);
+  const [favRequestData, setFavRequestData] = useState(null);
+
   useEffect(() => {
     let scrollTimeout;
 
@@ -3784,6 +3794,11 @@ const ReporthandleSubmit = async () => {
   }
 
   try {
+    console.log("⚠️ === REPORT FORM SUBMIT START ===");
+    console.log("⚠️ User Phone:", userPhoneNumber);
+    console.log("⚠️ Rent ID:", rentId);
+    console.log("⚠️ Reason:", reason);
+
     const response = await fetch(`${process.env.REACT_APP_API_URL}/report-property-rent`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -3797,12 +3812,25 @@ const ReporthandleSubmit = async () => {
 
     const result = await response.json();
 
-    if (response.ok && result.status === "reportProperties") {
+    console.log("⚠️ Report Response:", result);
+    console.log("⚠️ Status:", result.status);
+    console.log("⚠️ Owner Phone:", result.postedUserPhoneNumber);
+
+    if (response.ok && (result.status === "reportProperties" || result.status === "active")) {
       setPropertyClicked(true);
       setMessage(result.message || "Report submitted successfully.");
       setPopup(false);
       setComment(""); // ✅ Reset comment
       localStorage.setItem(`propertyReported-${rentId}`, JSON.stringify(true));
+      
+      console.log("⚠️ About to send WhatsApp messages...");
+      console.log("⚠️ User Phone for WhatsApp:", userPhoneNumber);
+      console.log("⚠️ Owner Phone for WhatsApp:", result.postedUserPhoneNumber);
+
+      // Send WhatsApp notifications to both owner and user
+      setTimeout(async () => {
+        await sendReportWhatsAppMessages(userPhoneNumber, result.postedUserPhoneNumber);
+      }, 500);
     } else if (result.status === "alreadyReported") {
       setPropertyClicked(true);
       setMessage("You have already submitted this report.");
@@ -3810,6 +3838,7 @@ const ReporthandleSubmit = async () => {
       setMessage(result.message || "Failed to submit report.");
     }
   } catch (error) {
+    console.error("⚠️ Error:", error);
     setMessage("An error occurred while submitting the report.");
   } finally {
     setTimeout(() => setMessage(""), 3000);
@@ -3877,6 +3906,13 @@ const ReporthandleSubmit = async () => {
     return;
   }
 
+  console.log("🔍 Help Submission Debug:", {
+    userPhoneNumber,
+    rentId,
+    selectHelpReason: reason,
+    comment,
+  });
+
   try {
     const response = await fetch(`${process.env.REACT_APP_API_URL}/need-help-rent`, {
       method: "POST",
@@ -3894,23 +3930,97 @@ const ReporthandleSubmit = async () => {
     if (response.ok && result.status === "needHelp") {
       setHelpClicked(true);
       setMessage("Help request submitted successfully.");
-      setPopup(false);
+      setReason(""); // ✅ Reset reason
       setComment(""); // ✅ Reset comment
+      setPopup(false);
       localStorage.setItem(`helpRequested-${rentId}`, "true");
+
+      // Send WhatsApp notification to admin
+      setTimeout(async () => {
+        await sendNeedHelpWhatsAppToAdmin(userPhoneNumber, reason, comment);
+      }, 300);
+
     } else if (result.status === "alreadyRequested") {
       setHelpClicked(true);
       setMessage("You have already submitted this help request.");
     } else {
       setMessage(result.message || "Failed to submit help request.");
+      console.log("❌ Help submission failed:", result);
     }
   } catch (error) {
+    console.error("🚨 Error in handleHelpSubmit:", error);
     setMessage("An error occurred while submitting help request.");
   } finally {
     setTimeout(() => setMessage(""), 3000);
   }
 };
 
+// WhatsApp notification for need help (to admin only)
+const sendNeedHelpWhatsAppToAdmin = async (userPhone, helpReason, helpComment) => {
+  try {
+    console.log("📞 === NEED HELP WHATSAPP TO ADMIN START ===");
+    console.log("📞 User Phone:", userPhone);
+    console.log("📞 Help Reason:", helpReason);
+    console.log("📞 Help Comment:", helpComment);
 
+    const adminPhone = "8122714364";
+    const propertyLocation = [
+      propertyDetails?.streetName,
+      propertyDetails?.area,
+      propertyDetails?.city,
+    ]
+      .filter(part => part && part.trim() !== "")
+      .join(", ") || "Property Location";
+
+    // Format admin phone (already in proper format)
+    const adminPhoneFormatted = `91${adminPhone}`;
+
+    console.log("📞 Admin Phone (formatted):", adminPhoneFormatted);
+
+    if (adminPhoneFormatted.length < 12) {
+      console.warn("📞 Admin phone validation failed");
+      return;
+    }
+
+    // Message to admin with user's full phone number
+    const messageToAdmin = `🆘 NEED HELP REQUEST - Rent Pondy
+
+📞 User Phone: ${userPhone}
+🆔 Rent ID: ${rentId || "N/A"}
+📍 Location: ${propertyLocation}
+👨‍💼 Owner: ${propertyDetails?.ownerName || "N/A"}
+
+🎯 Help Reason: ${helpReason}
+
+💬 User Comment:
+${helpComment || "No comment provided"}
+
+═══════════════════════════════════
+Please respond to the user as soon as possible.
+═══════════════════════════════════`;
+
+    console.log("📞 === MESSAGE TO ADMIN ===\n", messageToAdmin);
+
+    // Send to admin
+    console.log("📞 Sending help request to admin...");
+    try {
+      const adminResponse = await axios.post(`${process.env.REACT_APP_API_URL}/send-message`, {
+        to: adminPhoneFormatted,
+        message: messageToAdmin,
+      });
+      console.log("✅ Admin help notification sent:", adminResponse.status);
+    } catch (adminErr) {
+      console.error("❌ Admin notification error:", adminErr.message);
+      if (adminErr.response?.data) {
+        console.error("❌ Response:", adminErr.response.data);
+      }
+    }
+
+    console.log("✅ === NEED HELP WHATSAPP TO ADMIN COMPLETE ===");
+  } catch (error) {
+    console.error("❌ WhatsApp error:", error);
+  }
+};
 
   
 
@@ -3990,6 +4100,14 @@ const matchedFields = location.state?.matchedFields; // may be undefined
 
   const toggleShareOptions = () => {
     setShowShareOptions((prev) => !prev);
+    
+    // Send WhatsApp notifications when share button is clicked
+    const storedPhoneNumber = localStorage.getItem("phoneNumber");
+    if (storedPhoneNumber && propertyDetails?.phoneNumber) {
+      setTimeout(async () => {
+        await sendShareWhatsAppMessages(storedPhoneNumber, propertyDetails.phoneNumber);
+      }, 300);
+    }
   };
  const handleCopy = async () => {
     try {
@@ -4415,38 +4533,181 @@ const storeUserViewedProperty = async (phoneNumber, rentId) => {
 
 
 const handleSubmit = async ({ offeredPrice, rentId }) => {
+  console.log("💰 === OFFER SUBMIT START ===");
   const storedPhoneNumber = localStorage.getItem("phoneNumber");
+  console.log("💰 Stored Phone from localStorage:", storedPhoneNumber);
+  console.log("💰 Offered Price:", offeredPrice);
+  console.log("💰 Rent ID:", rentId);
 
   if (!storedPhoneNumber || !rentId || !offeredPrice) {
+    console.warn("⚠️ VALIDATION FAILED - Missing required fields");
+    console.warn("⚠️ storedPhoneNumber:", storedPhoneNumber);
+    console.warn("⚠️ rentId:", rentId);
+    console.warn("⚠️ offeredPrice:", offeredPrice);
     setMessage("offeredPrice, Phone Number, and Property ID are required.");
     return;
   }
 
   try {
+    console.log("💰 Calling /offer-rent API...");
     const response = await axios.post(`${process.env.REACT_APP_API_URL}/offer-rent`, {
       offeredPrice,
       phoneNumber: storedPhoneNumber,
       rentId,
     });
 
-    const { message, status } = response.data;
+    console.log("💰 /offer-rent Response:", response.data);
+    const { message, status, offer } = response.data;
 
-    if (status === "offerSaved") {
+    // Check if offer exists in response (success indicator)
+    if (offer || status === "offerSaved" || status === "offerUpdated") {
+      console.log("✅ Offer saved successfully");
       setMessage("Offer saved successfully.");
       setOfferedPrice('');
-    } else if (status === "offerUpdated") {
-      setMessage("Offer updated successfully.");
+
+      // Send WhatsApp messages after successful offer submission
+      try {
+        console.log("💰 === WHATSAPP MESSAGING START ===");
+        
+        console.log("💰 propertyDetails:", propertyDetails);
+        console.log("💰 property:", property);
+
+        const ownerName = propertyDetails?.ownerName || property?.ownerName || "Owner";
+        const ownerPhone = propertyDetails?.phoneNumber || property?.phoneNumber || "";
+        const userName = localStorage.getItem("userName") || "User";
+        
+        console.log("💰 Owner Name:", ownerName);
+        console.log("💰 Owner Phone (raw):", ownerPhone);
+        console.log("💰 User Name:", userName);
+        
+        // Build property location from propertyDetails
+        const propertyLocation = [
+          propertyDetails?.streetName,
+          propertyDetails?.area,
+          propertyDetails?.city,
+        ]
+          .filter(part => part && part.trim() !== "")
+          .join(", ") || "Property Location";
+
+        console.log("💰 Property Location:", propertyLocation);
+
+        // Format owner phone number
+        const ownerMobileNumber = String(ownerPhone).replace(/\D/g, "");
+        console.log("💰 Owner Mobile (stripped):", ownerMobileNumber);
+        const ownerTo = ownerMobileNumber.length === 10 ? `91${ownerMobileNumber}` : ownerMobileNumber;
+        console.log("💰 Owner Mobile (formatted):", ownerTo);
+
+        // Format user phone number
+        const userMobileNumber = String(storedPhoneNumber).replace(/\D/g, "");
+        console.log("💰 User Mobile (stripped):", userMobileNumber);
+        const userTo = userMobileNumber.length === 10 ? `91${userMobileNumber}` : userMobileNumber;
+        console.log("💰 User Mobile (formatted):", userTo);
+
+        // Validation for both phone numbers
+        if (ownerTo.length < 12) {
+          console.warn("⚠️ VALIDATION FAILED - Owner phone too short:", ownerTo, "length:", ownerTo.length);
+        } else if (userTo.length < 12) {
+          console.warn("⚠️ VALIDATION FAILED - User phone too short:", userTo, "length:", userTo.length);
+        } else {
+          console.log("✅ Phone validation PASSED");
+          
+          // Message for owner
+          const messageToOwner = `Hi ${ownerName} 👋\n\n💰 A user has made an offer on your property on Rent Pondy!\n\nOffer Details:\n💵 Offered Rent: ₹${offeredPrice}/month\n🆔 Rent ID: ${rentId}\n📍 Property: ${propertyLocation}\n👤 User: ${userName}\n📞 Contact: ${storedPhoneNumber}\n\nPlease review the offer and respond at your earliest convenience.\n\nThank you for using Rent Pondy 🙏`;
+
+          // Message for user
+          const messageToUser = `Hi ${userName} 👋\n\n✅ Your offer has been submitted successfully!\n\nOffer Details:\n💵 Offered Rent: ₹${offeredPrice}/month\n🆔 Rent ID: ${rentId}\n📍 Property: ${propertyLocation}\n👨‍💼 Owner: ${ownerName}\n📞 Owner Contact: ${ownerPhone}\n\n⏳ The owner will review your offer shortly.\n\nThank you for using Rent Pondy 🙏`;
+
+          console.log("💰 === MESSAGE TO OWNER ===\n", messageToOwner);
+          console.log("💰 === MESSAGE TO USER ===\n", messageToUser);
+
+          // Send WhatsApp message to owner
+          console.log("💰 Sending message to owner...");
+          console.log("💰 API URL:", process.env.REACT_APP_API_URL);
+          console.log("💰 Owner phone (to):", ownerTo);
+          console.log("💰 Message length:", messageToOwner.length);
+          
+          try {
+            const ownerResponse = await axios.post(`${process.env.REACT_APP_API_URL}/send-message`, {
+              to: ownerTo,
+              message: messageToOwner,
+            });
+            console.log("✅ Owner response status:", ownerResponse.status);
+            console.log("✅ Owner response data:", ownerResponse.data);
+            console.log("✅ Message sent to owner:", ownerTo);
+          } catch (ownerErr) {
+            console.error("❌ Owner WhatsApp API Error:", ownerErr.message);
+            if (ownerErr.response) {
+              console.error("❌ Owner API Status:", ownerErr.response.status);
+              console.error("❌ Owner API Response:", ownerErr.response.data);
+            } else if (ownerErr.request) {
+              console.error("❌ Owner API No Response:", ownerErr.request);
+            }
+            throw ownerErr;
+          }
+
+          // Send WhatsApp message to user
+          console.log("💰 Sending message to user...");
+          console.log("💰 User phone (to):", userTo);
+          console.log("💰 Message length:", messageToUser.length);
+          
+          try {
+            const userResponse = await axios.post(`${process.env.REACT_APP_API_URL}/send-message`, {
+              to: userTo,
+              message: messageToUser,
+            });
+            console.log("✅ User response status:", userResponse.status);
+            console.log("✅ User response data:", userResponse.data);
+            console.log("✅ Message sent to user:", userTo);
+          } catch (userErr) {
+            console.error("❌ User WhatsApp API Error:", userErr.message);
+            if (userErr.response) {
+              console.error("❌ User API Status:", userErr.response.status);
+              console.error("❌ User API Response:", userErr.response.data);
+            } else if (userErr.request) {
+              console.error("❌ User API No Response:", userErr.request);
+            }
+            throw userErr;
+          }
+          
+          console.log("✅ === WHATSAPP MESSAGES SENT SUCCESSFULLY ===");
+        }
+      } catch (whatsErr) {
+        console.error("❌ === WHATSAPP MESSAGE ERROR ===");
+        console.error("❌ Error type:", whatsErr.constructor.name);
+        console.error("❌ Error message:", whatsErr.message);
+        console.error("❌ Full error object:", whatsErr);
+        
+        if (whatsErr.response) {
+          console.error("❌ HTTP Response Status:", whatsErr.response.status);
+          console.error("❌ HTTP Response Data:", whatsErr.response.data);
+          console.error("❌ HTTP Response Headers:", whatsErr.response.headers);
+        } else if (whatsErr.request) {
+          console.error("❌ Request made but no response received:", whatsErr.request);
+        } else {
+          console.error("❌ Error during request setup:", whatsErr.message);
+        }
+        
+        console.log("⚠️ WhatsApp offer message failed (non-blocking) - continuing with offer submission");
+        // Non-blocking - don't fail the offer if WhatsApp fails
+      }
     } else {
+      console.warn("⚠️ Unexpected status:", status);
       setMessage(message || "Offer submitted.");
     }
   } catch (error) {
+    console.error("❌ Offer save error - Full error object:", error);
+    console.error("❌ Error message:", error.message);
+    if (error.response) {
+      console.error("❌ Response status:", error.response.status);
+      console.error("❌ Response data:", error.response.data);
+    }
     const errMsg = error.response?.data?.message || "Error saving offer.";
     setMessage(errMsg);
   } finally {
+    console.log("💰 === OFFER SUBMIT FINALLY ===");
     setPendingOfferData(null);
   }
 };
-
 
       
   useEffect(() => {
@@ -4816,7 +5077,169 @@ const scrollToContact = () => {
 
 
 
-  const handleAddressRequest = async () => {
+// WhatsApp notification for address request (to both owner and user)
+const sendAddressRequestWhatsAppMessages = async (userPhone, ownerPhone) => {
+  try {
+    console.log("📍 === ADDRESS REQUEST WHATSAPP START ===");
+    console.log("📍 User Phone:", userPhone);
+    console.log("📍 Owner Phone:", ownerPhone);
+
+    const ownerName = propertyDetails?.ownerName || property?.ownerName || "Owner";
+    const userName = localStorage.getItem("userName") || "User";
+    const propertyLocation = [
+      propertyDetails?.streetName,
+      propertyDetails?.area,
+      propertyDetails?.city,
+    ]
+      .filter(part => part && part.trim() !== "")
+      .join(", ") || "Property Location";
+
+    console.log("📍 Owner Name:", ownerName);
+    console.log("📍 User Name:", userName);
+    console.log("📍 Property Location:", propertyLocation);
+
+    // Format phone numbers
+    const userMobileNumber = String(userPhone).replace(/\D/g, "");
+    const userTo = userMobileNumber.length === 10 ? `91${userMobileNumber}` : userMobileNumber;
+    
+    const ownerMobileNumber = String(ownerPhone).replace(/\D/g, "");
+    const ownerTo = ownerMobileNumber.length === 10 ? `91${ownerMobileNumber}` : ownerMobileNumber;
+
+    console.log("📍 User Phone (formatted):", userTo);
+    console.log("📍 Owner Phone (formatted):", ownerTo);
+
+    if (userTo.length < 12 || ownerTo.length < 12) {
+      console.warn("⚠️ Phone validation failed");
+      return;
+    }
+
+    // Message to owner: User requested address
+    const messageToOwner = `Hello ${ownerName} 👋\n\nA user has requested your property address on Rent Pondy App!\n\n📋 Property Details:\n🆔 Rent ID: ${rentId}\n👤 User Name: ${userName}\n📞 User Phone: ${userPhone}\n📍 Location: ${propertyLocation}\n\nGreeting: They want to view the complete address of your property.\n\nBest regards,\nRent Pondy Team`;
+
+    // Message to user: Address requested confirmation
+    const messageToUser = `Hello ${userName} 👋\n\nYour request for property address has been sent to the owner on Rent Pondy App!\n\n📋 Property Details:\n🆔 Rent ID: ${rentId}\n👨‍💼 Owner Name: ${ownerName}\n📞 Owner Phone: ${ownerPhone}\n📍 Location: ${propertyLocation}\n\nGreeting: The owner will share the complete address soon.\n\nBest regards,\nRent Pondy Team`;
+
+    console.log("📍 === MESSAGE TO OWNER ===\n", messageToOwner);
+    console.log("📍 === MESSAGE TO USER ===\n", messageToUser);
+
+    // Send to owner
+    console.log("📍 Sending address request notification to owner...");
+    try {
+      const ownerResponse = await axios.post(`${process.env.REACT_APP_API_URL}/send-message`, {
+        to: ownerTo,
+        message: messageToOwner,
+      });
+      console.log("✅ Owner address request sent:", ownerResponse.status);
+    } catch (ownerErr) {
+      console.error("❌ Owner notification error:", ownerErr.message);
+      if (ownerErr.response?.data) {
+        console.error("❌ Response:", ownerErr.response.data);
+      }
+    }
+
+    // Send to user
+    console.log("📍 Sending address request confirmation to user...");
+    try {
+      const userResponse = await axios.post(`${process.env.REACT_APP_API_URL}/send-message`, {
+        to: userTo,
+        message: messageToUser,
+      });
+      console.log("✅ User address request confirmation sent:", userResponse.status);
+    } catch (userErr) {
+      console.error("❌ User notification error:", userErr.message);
+      if (userErr.response?.data) {
+        console.error("❌ Response:", userErr.response.data);
+      }
+    }
+
+    console.log("✅ === ADDRESS REQUEST WHATSAPP COMPLETE ===");
+  } catch (error) {
+    console.error("❌ WhatsApp error:", error);
+  }
+};
+
+// WhatsApp notification for call (to both owner and user)
+const sendCallWhatsAppMessages = async (userPhone, ownerPhone) => {
+  try {
+    console.log("📞 === CALL NOTIFICATION WHATSAPP START ===");
+    console.log("📞 User Phone:", userPhone);
+    console.log("📞 Owner Phone:", ownerPhone);
+
+    const ownerName = propertyDetails?.ownerName || property?.ownerName || "Owner";
+    const userName = localStorage.getItem("userName") || "User";
+    const propertyLocation = [
+      propertyDetails?.streetName,
+      propertyDetails?.area,
+      propertyDetails?.city,
+    ]
+      .filter(part => part && part.trim() !== "")
+      .join(", ") || "Property Location";
+
+    console.log("📞 Owner Name:", ownerName);
+    console.log("📞 User Name:", userName);
+    console.log("📞 Property Location:", propertyLocation);
+
+    // Format phone numbers
+    const userMobileNumber = String(userPhone).replace(/\D/g, "");
+    const userTo = userMobileNumber.length === 10 ? `91${userMobileNumber}` : userMobileNumber;
+    
+    const ownerMobileNumber = String(ownerPhone).replace(/\D/g, "");
+    const ownerTo = ownerMobileNumber.length === 10 ? `91${ownerMobileNumber}` : ownerMobileNumber;
+
+    console.log("📞 User Phone (formatted):", userTo);
+    console.log("📞 Owner Phone (formatted):", ownerTo);
+
+    if (userTo.length < 12 || ownerTo.length < 12) {
+      console.warn("⚠️ Phone validation failed");
+      return;
+    }
+
+    // Message to owner: User is calling
+    const messageToOwner = `Hello ${ownerName} 👋\n\nA user is calling you from Rent Pondy App!\n\n📋 Property Details:\n🆔 Rent ID: ${rentId}\n👤 User Name: ${userName}\n📞 User Phone: ${userPhone}\n📍 Location: ${propertyLocation}\n\nGreeting: Be ready to answer the call and discuss the property details.\n\nBest regards,\nRent Pondy Team`;
+
+    // Message to user: Calling confirmation
+    const messageToUser = `Hello ${userName} 👋\n\nYou are calling the owner from Rent Pondy App!\n\n📋 Property Details:\n🆔 Rent ID: ${rentId}\n👨‍💼 Owner Name: ${ownerName}\n📞 Owner Phone: ${ownerPhone}\n📍 Location: ${propertyLocation}\n\nGreeting: Have a great conversation about the property.\n\nBest regards,\nRent Pondy Team`;
+
+    console.log("📞 === MESSAGE TO OWNER ===\n", messageToOwner);
+    console.log("📞 === MESSAGE TO USER ===\n", messageToUser);
+
+    // Send to owner
+    console.log("📞 Sending call notification to owner...");
+    try {
+      const ownerResponse = await axios.post(`${process.env.REACT_APP_API_URL}/send-message`, {
+        to: ownerTo,
+        message: messageToOwner,
+      });
+      console.log("✅ Owner call notification sent:", ownerResponse.status);
+    } catch (ownerErr) {
+      console.error("❌ Owner notification error:", ownerErr.message);
+      if (ownerErr.response?.data) {
+        console.error("❌ Response:", ownerErr.response.data);
+      }
+    }
+
+    // Send to user
+    console.log("📞 Sending call confirmation to user...");
+    try {
+      const userResponse = await axios.post(`${process.env.REACT_APP_API_URL}/send-message`, {
+        to: userTo,
+        message: messageToUser,
+      });
+      console.log("✅ User call confirmation sent:", userResponse.status);
+    } catch (userErr) {
+      console.error("❌ User notification error:", userErr.message);
+      if (userErr.response?.data) {
+        console.error("❌ Response:", userErr.response.data);
+      }
+    }
+
+    console.log("✅ === CALL NOTIFICATION WHATSAPP COMPLETE ===");
+  } catch (error) {
+    console.error("❌ WhatsApp error:", error);
+  }
+};
+
+const handleAddressRequest = async () => {
   const storedPhoneNumber = localStorage.getItem("phoneNumber");
 
   if (!storedPhoneNumber || !propertyDetails.rentId) {
@@ -4831,6 +5254,11 @@ const scrollToContact = () => {
     });
 
     setMessage(response.data.message);
+
+    // Send WhatsApp notifications to both owner and user
+    setTimeout(() => {
+      sendAddressRequestWhatsAppMessages(storedPhoneNumber, propertyDetails?.phoneNumber);
+    }, 500);
   } catch (error) {
     setMessage(error.response?.data?.message || "Failed to send address request.");
   }
@@ -4937,6 +5365,11 @@ const handleOwnerContactClick = async () => {
         `Contact shared. You have ${remainingContacts} / ${contactLimitPerDay} remaining today.`
       );
 
+      // ✅ Send WhatsApp notifications for contact request
+      setTimeout(() => {
+        sendContactRequestWhatsAppMessages(storedPhoneNumber, postedUserPhoneNumber);
+      }, 500);
+
       setTimeout(scrollToContact, 100);
     }
   } catch (error) {
@@ -4948,6 +5381,91 @@ const handleOwnerContactClick = async () => {
     }
   }
 };
+
+// WhatsApp notification for contact request (to both owner and user)
+const sendContactRequestWhatsAppMessages = async (userPhone, ownerPhone) => {
+  try {
+    console.log("💬 === CONTACT REQUEST WHATSAPP START ===");
+    console.log("💬 User Phone:", userPhone);
+    console.log("💬 Owner Phone:", ownerPhone);
+
+    const ownerName = propertyDetails?.ownerName || property?.ownerName || "Owner";
+    const userName = localStorage.getItem("userName") || "User";
+    const rentalAmount = propertyDetails?.rentalAmount || 0;
+    const propertyLocation = [
+      propertyDetails?.streetName,
+      propertyDetails?.area,
+      propertyDetails?.city,
+    ]
+      .filter(part => part && part.trim() !== "")
+      .join(", ") || "Property Location";
+
+    console.log("💬 Owner Name:", ownerName);
+    console.log("💬 User Name:", userName);
+    console.log("💬 Rental Amount:", rentalAmount);
+    console.log("💬 Property Location:", propertyLocation);
+
+    // Format phone numbers
+    const userMobileNumber = String(userPhone).replace(/\D/g, "");
+    const userTo = userMobileNumber.length === 10 ? `91${userMobileNumber}` : userMobileNumber;
+    
+    const ownerMobileNumber = String(ownerPhone).replace(/\D/g, "");
+    const ownerTo = ownerMobileNumber.length === 10 ? `91${ownerMobileNumber}` : ownerMobileNumber;
+
+    console.log("💬 User Phone (formatted):", userTo);
+    console.log("💬 Owner Phone (formatted):", ownerTo);
+
+    if (userTo.length < 12 || ownerTo.length < 12) {
+      console.warn("⚠️ Phone validation failed");
+      return;
+    }
+
+    // Message to owner: Someone viewed contact details
+    const messageToOwner = `Hello ${ownerName} 👋\n\nSomeone has viewed your contact details on Rent Pondy App!\n\n📋 Property Details:\n🆔 Rent ID: ${rentId}\n👤 User Name: ${userName}\n📞 User Phone: ${userPhone}\n\nGreeting: They are interested in connecting with you about your property.\n\nBest regards,\nRent Pondy Team`;
+
+    // Message to user: Confirming contact details shared
+    const messageToUser = `Hello ${userName} 👋\n\nYou have successfully viewed the owner's contact details on Rent Pondy App!\n\n📋 Property Details:\n🆔 Rent ID: ${rentId}\n👨‍💼 Owner Name: ${ownerName}\n📞 Owner Phone: ${ownerPhone}\n\nGreeting: You can now reach out directly to the owner to discuss the property.\n\nBest regards,\nRent Pondy Team`;
+
+    console.log("💬 === MESSAGE TO OWNER ===\n", messageToOwner);
+    console.log("💬 === MESSAGE TO USER ===\n", messageToUser);
+
+    // Send to owner
+    console.log("💬 Sending contact notification to owner...");
+    try {
+      const ownerResponse = await axios.post(`${process.env.REACT_APP_API_URL}/send-message`, {
+        to: ownerTo,
+        message: messageToOwner,
+      });
+      console.log("✅ Owner contact notification sent:", ownerResponse.status);
+    } catch (ownerErr) {
+      console.error("❌ Owner notification error:", ownerErr.message);
+      if (ownerErr.response?.data) {
+        console.error("❌ Response:", ownerErr.response.data);
+      }
+    }
+
+    // Send to user
+    console.log("💬 Sending contact confirmation to user...");
+    try {
+      const userResponse = await axios.post(`${process.env.REACT_APP_API_URL}/send-message`, {
+        to: userTo,
+        message: messageToUser,
+      });
+      console.log("✅ User contact confirmation sent:", userResponse.status);
+    } catch (userErr) {
+      console.error("❌ User notification error:", userErr.message);
+      if (userErr.response?.data) {
+        console.error("❌ Response:", userErr.response.data);
+      }
+    }
+
+    console.log("✅ === CONTACT REQUEST WHATSAPP COMPLETE ===");
+  } catch (error) {
+    console.error("❌ Contact request WhatsApp error:", error.message);
+    // Non-blocking - don't fail contact sharing if WhatsApp fails
+  }
+};
+
 
 
 // const handleInterestClick = async () => {
@@ -5004,38 +5522,56 @@ const handleInterestClick = async () => {
   try {
     if (alreadySent) {
       // 🔁 REMOVE INTEREST
+      console.log("🔁 === REMOVE INTEREST START ===");
       const response = await axios.post(`${process.env.REACT_APP_API_URL}/remove-interest-rent`, {
         phoneNumber: storedPhoneNumber,
         rentId,
       });
 
+      console.log("🔁 Remove Interest Response:", response.data);
+
       if (response.data.status === "interestRemoved") {
         setMessage("Interest removed successfully.");
         setInterestClicked(false);
         localStorage.removeItem(interestKey);
+        console.log("✅ Interest removed successfully");
       } else {
         setMessage("Failed to remove interest.");
       }
     } else {
       // ✅ SEND INTEREST
+      console.log("⭐ === SEND INTEREST START ===");
       const response = await axios.post(`${process.env.REACT_APP_API_URL}/send-interests-rent`, {
         phoneNumber: storedPhoneNumber,
         rentId,
       });
 
-      const { message, status } = response.data;
+      console.log("⭐ Send Interest Response:", response.data);
 
-      if (status === "sendInterest") {
-        setMessage("Interest sent successfully!");
+      const { message, status, postedUserPhoneNumber, ownerName } = response.data;
+
+      console.log("⭐ Status:", status);
+      console.log("⭐ Owner Phone:", postedUserPhoneNumber);
+      console.log("⭐ User Phone:", storedPhoneNumber);
+
+      if (status === "sendInterest" || status === "alreadySaved") {
+        setMessage(message || "Interest sent successfully!");
         setInterestClicked(true);
         localStorage.setItem(interestKey, "true");
-      } else if (status === "alreadySaved") {
-        setMessage("Interest already recorded for this property.");
-        setInterestClicked(true);
-        localStorage.setItem(interestKey, "true");
+        
+        console.log("⭐ About to send WhatsApp messages...");
+        console.log("⭐ User Phone for WhatsApp:", storedPhoneNumber);
+        console.log("⭐ Owner Phone for WhatsApp:", postedUserPhoneNumber);
+        console.log("⭐ Owner Name for WhatsApp:", ownerName);
+
+        // Send WhatsApp notifications to both owner and user with owner name from response
+        setTimeout(async () => {
+          await sendInterestWhatsAppMessages(storedPhoneNumber, postedUserPhoneNumber, ownerName);
+        }, 500);
       }
     }
   } catch (error) {
+    console.error("⭐ Error:", error);
     const errMsg = error.response?.data?.message || "Something went wrong.";
     setMessage(errMsg);
   }
@@ -5043,6 +5579,288 @@ const handleInterestClick = async () => {
 
 
 
+
+// WhatsApp notification for send interest (to both owner and user)
+const sendInterestWhatsAppMessages = async (userPhone, ownerPhone, apiOwnerName) => {
+  try {
+    console.log("⭐ === SEND INTEREST WHATSAPP START ===");
+    console.log("⭐ User Phone:", userPhone);
+    console.log("⭐ Owner Phone:", ownerPhone);
+    console.log("⭐ API Owner Name:", apiOwnerName);
+
+    const ownerName = apiOwnerName || propertyDetails?.ownerName || property?.ownerName || "Owner";
+    const userName = localStorage.getItem("userName") || "User";
+    const propertyLocation = [
+      propertyDetails?.streetName,
+      propertyDetails?.area,
+      propertyDetails?.city,
+    ]
+      .filter(part => part && part.trim() !== "")
+      .join(", ") || "Property Location";
+
+    console.log("⭐ Owner Name:", ownerName);
+    console.log("⭐ User Name:", userName);
+    console.log("⭐ Property Location:", propertyLocation);
+
+    // Format phone numbers
+    const userMobileNumber = String(userPhone).replace(/\D/g, "");
+    const userTo = userMobileNumber.length === 10 ? `91${userMobileNumber}` : userMobileNumber;
+    
+    const ownerMobileNumber = String(ownerPhone).replace(/\D/g, "");
+    const ownerTo = ownerMobileNumber.length === 10 ? `91${ownerMobileNumber}` : ownerMobileNumber;
+
+    console.log("⭐ User Phone (formatted):", userTo);
+    console.log("⭐ Owner Phone (formatted):", ownerTo);
+
+    if (userTo.length < 12 || ownerTo.length < 12) {
+      console.warn("⚠️ Phone validation failed");
+      return;
+    }
+
+    // Message to owner: User sent interest
+    const messageToOwner = `Hello ${ownerName} 👋\n\nA user has shown interest in your property on Rent Pondy App!\n\n📋 Property Details:\n🆔 Rent ID: ${rentId}\n👤 User Name: ${userName}\n📞 User Phone: ${userPhone}\n📍 Location: ${propertyLocation}\n\nGreeting: They are very interested in your property and want to connect.\n\nBest regards,\nRent Pondy Team`;
+
+    // Message to user: Interest sent confirmation
+    const messageToUser = `Hello ${userName} 👋\n\nYour interest has been sent to the owner on Rent Pondy App!\n\n📋 Property Details:\n🆔 Rent ID: ${rentId}\n👨‍💼 Owner Name: ${ownerName}\n📞 Owner Phone: ${ownerPhone}\n📍 Location: ${propertyLocation}\n\nGreeting: The owner will be notified about your interest soon.\n\nBest regards,\nRent Pondy Team`;
+
+    console.log("⭐ === MESSAGE TO OWNER ===\n", messageToOwner);
+    console.log("⭐ === MESSAGE TO USER ===\n", messageToUser);
+
+    // Send to owner
+    console.log("⭐ Sending interest notification to owner...");
+    try {
+      const ownerResponse = await axios.post(`${process.env.REACT_APP_API_URL}/send-message`, {
+        to: ownerTo,
+        message: messageToOwner,
+      });
+      console.log("✅ Owner interest notification sent:", ownerResponse.status);
+    } catch (ownerErr) {
+      console.error("❌ Owner notification error:", ownerErr.message);
+      if (ownerErr.response?.data) {
+        console.error("❌ Response:", ownerErr.response.data);
+      }
+    }
+
+    // Send to user
+    console.log("⭐ Sending interest confirmation to user...");
+    try {
+      const userResponse = await axios.post(`${process.env.REACT_APP_API_URL}/send-message`, {
+        to: userTo,
+        message: messageToUser,
+      });
+      console.log("✅ User interest confirmation sent:", userResponse.status);
+    } catch (userErr) {
+      console.error("❌ User notification error:", userErr.message);
+      if (userErr.response?.data) {
+        console.error("❌ Response:", userErr.response.data);
+      }
+    }
+
+    console.log("✅ === SEND INTEREST WHATSAPP COMPLETE ===");
+  } catch (error) {
+    console.error("❌ WhatsApp error:", error);
+  }
+};
+
+// WhatsApp notification for report (to both owner and user)
+const sendReportWhatsAppMessages = async (userPhone, ownerPhone) => {
+  try {
+    console.log("⚠️ === REPORT PROPERTY WHATSAPP START ===");
+    console.log("⚠️ User Phone:", userPhone);
+    console.log("⚠️ Owner Phone:", ownerPhone);
+
+    const ownerName = propertyDetails?.ownerName || property?.ownerName || "Owner";
+    const propertyLocation = [
+      propertyDetails?.streetName,
+      propertyDetails?.area,
+      propertyDetails?.city,
+    ]
+      .filter(part => part && part.trim() !== "")
+      .join(", ") || "Property Location";
+
+    console.log("⚠️ Owner Name:", ownerName);
+    console.log("⚠️ Property Location:", propertyLocation);
+
+    // Format phone numbers
+    const userMobileNumber = String(userPhone).replace(/\D/g, "");
+    const userTo = userMobileNumber.length === 10 ? `91${userMobileNumber}` : userMobileNumber;
+    
+    const ownerMobileNumber = String(ownerPhone).replace(/\D/g, "");
+    const ownerTo = ownerMobileNumber.length === 10 ? `91${ownerMobileNumber}` : ownerMobileNumber;
+
+    console.log("⚠️ User Phone (formatted):", userTo);
+    console.log("⚠️ Owner Phone (formatted):", ownerTo);
+
+    if (userTo.length < 12 || ownerTo.length < 12) {
+      console.warn("⚠️ Phone validation failed");
+      return;
+    }
+
+    // Message to user: Report submitted confirmation
+    const messageToUser = `Hi There 👋
+
+✅ Your currently report the property
+
+🆔 Rent ID: ${rentId || "N/A"}
+📍 Location: ${propertyLocation}
+👨‍💼 Owner: ${ownerName}
+
+❤️ We'll notify the owner about your action
+
+Thank you for using Rent Pondy 🙏`;
+
+    // Message to owner: Property reported
+    const messageToOwner = `Hi There 👋
+
+✅ Your property is report by user
+
+👨‍💼 Owner: ${ownerName}
+❤️ Phone no: ${userPhone}
+
+if you need help contact rent pondy
+ph.no: 8300622013
+email: info.rentpondy@gmail.com
+
+Thank you for using Rent Pondy 🙏`;
+
+    console.log("⚠️ === MESSAGE TO USER ===\n", messageToUser);
+    console.log("⚠️ === MESSAGE TO OWNER ===\n", messageToOwner);
+
+    // Send to user
+    console.log("⚠️ Sending report confirmation to user...");
+    try {
+      const userResponse = await axios.post(`${process.env.REACT_APP_API_URL}/send-message`, {
+        to: userTo,
+        message: messageToUser,
+      });
+      console.log("✅ User report confirmation sent:", userResponse.status);
+    } catch (userErr) {
+      console.error("❌ User notification error:", userErr.message);
+      if (userErr.response?.data) {
+        console.error("❌ Response:", userErr.response.data);
+      }
+    }
+
+    // Send to owner
+    console.log("⚠️ Sending report notification to owner...");
+    try {
+      const ownerResponse = await axios.post(`${process.env.REACT_APP_API_URL}/send-message`, {
+        to: ownerTo,
+        message: messageToOwner,
+      });
+      console.log("✅ Owner report notification sent:", ownerResponse.status);
+    } catch (ownerErr) {
+      console.error("❌ Owner notification error:", ownerErr.message);
+      if (ownerErr.response?.data) {
+        console.error("❌ Response:", ownerErr.response.data);
+      }
+    }
+
+    console.log("✅ === REPORT PROPERTY WHATSAPP COMPLETE ===");
+  } catch (error) {
+    console.error("❌ WhatsApp error:", error);
+  }
+};
+
+// WhatsApp notification for share button (to both owner and user)
+const sendShareWhatsAppMessages = async (userPhone, ownerPhone) => {
+  try {
+    console.log("📤 === SHARE WHATSAPP START ===");
+    console.log("📤 User Phone:", userPhone);
+    console.log("📤 Owner Phone:", ownerPhone);
+
+    const userMobileNumber = String(userPhone).replace(/\D/g, "");
+    const userTo = userMobileNumber.length === 10 ? `91${userMobileNumber}` : userMobileNumber;
+
+    const ownerMobileNumber = String(ownerPhone).replace(/\D/g, "");
+    const ownerTo = ownerMobileNumber.length === 10 ? `91${ownerMobileNumber}` : ownerMobileNumber;
+
+    console.log("📤 User Phone (formatted):", userTo);
+    console.log("📤 Owner Phone (formatted):", ownerTo);
+
+    if (userTo.length < 12 || ownerTo.length < 12) {
+      console.warn("📤 Phone validation failed");
+      return;
+    }
+
+    const propertyLocation = [
+      propertyDetails?.streetName,
+      propertyDetails?.areaName,
+      propertyDetails?.city,
+    ]
+      .filter(Boolean)
+      .join(", ");
+
+    const ownerName = propertyDetails?.firstName || "Property Owner";
+    const rentId = propertyDetails?.rentId || "N/A";
+
+    // Message to user
+    const messageToUser = `🔗 PROPERTY SHARED
+👋 Hi There!
+
+✅ You've shared this property with your network
+🏠 Property: ${ownerName}'s Home
+📍 Location: ${propertyLocation}
+🆔 Rent ID: ${rentId}
+
+💡 Share this link with friends and family who might be interested!
+
+
+Thank you for using Rent Pondy! 🙏`;
+
+    // Message to owner
+    const messageToOwner = `🔗 PROPERTY SHARED
+👋 Hi ${ownerName}!
+
+✅ Your property has been shared by a user
+🏠 Property: Your Home
+📍 Location: ${propertyLocation}
+👤 Shared by: ${userPhone}
+🆔 Rent ID: ${rentId}
+
+💡 More visibility = More interested buyers/renters!
+
+
+Thank you for using Rent Pondy! 🙏`;
+
+    console.log("📤 === MESSAGE TO USER ===\n", messageToUser);
+    console.log("📤 === MESSAGE TO OWNER ===\n", messageToOwner);
+
+    // Send to user
+    console.log("📤 Sending share confirmation to user...");
+    try {
+      const userResponse = await axios.post(`${process.env.REACT_APP_API_URL}/send-message`, {
+        to: userTo,
+        message: messageToUser,
+      });
+      console.log("✅ User share confirmation sent:", userResponse.status);
+    } catch (userErr) {
+      console.error("❌ User notification error:", userErr.message);
+      if (userErr.response?.data) {
+        console.error("❌ Response:", userErr.response.data);
+      }
+    }
+
+    // Send to owner
+    console.log("📤 Sending share notification to owner...");
+    try {
+      const ownerResponse = await axios.post(`${process.env.REACT_APP_API_URL}/send-message`, {
+        to: ownerTo,
+        message: messageToOwner,
+      });
+      console.log("✅ Owner share notification sent:", ownerResponse.status);
+    } catch (ownerErr) {
+      console.error("❌ Owner notification error:", ownerErr.message);
+      if (ownerErr.response?.data) {
+        console.error("❌ Response:", ownerErr.response.data);
+      }
+    }
+
+    console.log("✅ === SHARE WHATSAPP COMPLETE ===");
+  } catch (error) {
+    console.error("❌ WhatsApp error:", error);
+  }
+};
 
 const handleReportSoldOut = async () => {
     const storedPhoneNumber = localStorage.getItem("phoneNumber");
@@ -5053,18 +5871,30 @@ const handleReportSoldOut = async () => {
   }
 
   try {
+    console.log("🔴 === REPORT SOLD OUT START ===");
     const response = await axios.post(`${process.env.REACT_APP_API_URL}/report-sold-out-rent`, {
       phoneNumber:storedPhoneNumber,
       rentId,
     });
 
+    console.log("🔴 Report Sold Out Response:", response.data);
     const { message, status, postedUserPhoneNumber } = response.data;
 
-    if (status === "soldOut") {
-      setMessage(`Property reported as sold out.`);
+    console.log("🔴 Status:", status);
+    console.log("🔴 Owner Phone:", postedUserPhoneNumber);
+    console.log("🔴 User Phone:", storedPhoneNumber);
+
+    if (status === "active" || status === "soldOut") {
+      setMessage(message || `Property reported as sold out.`);
       setPostedUserPhoneNumber(postedUserPhoneNumber);
       setSoldOutClicked(true);
       localStorage.setItem(`soldOutReported-${rentId}`, JSON.stringify(true));
+      
+      console.log("🔴 About to send WhatsApp messages...");
+      // Send WhatsApp notifications to both owner and user
+      setTimeout(async () => {
+        await sendReportWhatsAppMessages(storedPhoneNumber, postedUserPhoneNumber);
+      }, 500);
     } else if (status === "alreadyReported") {
       setMessage("This property is already reported as sold out.");
     }
@@ -5074,28 +5904,47 @@ const handleReportSoldOut = async () => {
 };
 
 const handleReportProperty = async () => {
-  if (!phoneNumber || !rentId) {
+  const storedPhoneNumber = localStorage.getItem("phoneNumber");
+  
+  if (!storedPhoneNumber || !rentId) {
     setMessage("Phone number and Property ID are required.");
     return;
   }
 
   try {
+    console.log("⚠️ === REPORT PROPERTY START ===");
     const response = await axios.post(`${process.env.REACT_APP_API_URL}/report-property`, {
-      phoneNumber,
+      phoneNumber: storedPhoneNumber,
       rentId,
     });
 
+    console.log("⚠️ Report Property Response:", response.data);
+
     const { status, message, postedUserPhoneNumber } = response.data;
 
-    if (status === "reportProperties") {
-      setMessage(`Property reported. Owner's Phone: ${postedUserPhoneNumber}`);
+    console.log("⚠️ Status:", status);
+    console.log("⚠️ Owner Phone:", postedUserPhoneNumber);
+    console.log("⚠️ User Phone:", storedPhoneNumber);
+
+    if (status === "reportProperties" || status === "active") {
+      setMessage(message || `Property reported successfully!`);
       setPostedUserPhoneNumber(postedUserPhoneNumber);
       setPropertyClicked(true);
       localStorage.setItem(`propertyReported-${rentId}`, JSON.stringify(true));
+      
+      console.log("⚠️ About to send WhatsApp messages...");
+      console.log("⚠️ User Phone for WhatsApp:", storedPhoneNumber);
+      console.log("⚠️ Owner Phone for WhatsApp:", postedUserPhoneNumber);
+
+      // Send WhatsApp notifications to both owner and user
+      setTimeout(async () => {
+        await sendReportWhatsAppMessages(storedPhoneNumber, postedUserPhoneNumber);
+      }, 500);
     } else if (status === "alreadySaved") {
       setMessage("This property has already been reported.");
     }
   } catch (error) {
+    console.error("⚠️ Error:", error);
     setMessage(error.response?.data?.message || "Failed to report the property.");
   }
 };
@@ -5223,18 +6072,28 @@ const handleHeartClick = async () => {
     : `${process.env.REACT_APP_API_URL}/add-favorite-rent`;
 
   try {
+    console.log("❤️ Favorite Request - Phone:", storedPhoneNumber, "Rent ID:", rentId, "Adding:", !isHeartClicked);
+    
     const response = await axios.post(apiEndpoint, {
       phoneNumber: storedPhoneNumber,
       rentId,
     });
 
-    const { status, message, postedUserPhoneNumber } = response.data;
+    console.log("❤️ Favorite Response:", response.data);
+    const { status, message, postedUserPhoneNumber, favoriteData } = response.data;
 
     if (status === "favorite") {
       setIsHeartClicked(true);
       setMessage("Favorite request sent.");
       setPostedUserPhoneNumber(postedUserPhoneNumber);
       localStorage.setItem(`isHeartClicked-${rentId}`, "true");
+      
+      // Store favorite data and show WhatsApp popup - use full response.data if favoriteData doesn't exist
+      const favData = favoriteData || response.data;
+      console.log("❤️ Setting Favorite Data:", favData);
+      setFavRequestData(favData);
+      console.log("❤️ Showing Favorite WhatsApp popup");
+      setShowFavWhatsAppPopup(true);
     } else if (status === "favoriteRemoved") {
       setIsHeartClicked(false);
       setMessage("Your favorite was removed.");
@@ -5242,6 +6101,7 @@ const handleHeartClick = async () => {
       localStorage.setItem(`isHeartClicked-${rentId}`, "false");
     }
   } catch (error) {
+    console.error("❌ Favorite Error:", error);
     const errorMessage = error.response?.data?.message || "Something went wrong. Please try again.";
     setMessage(errorMessage);
     setIsHeartClicked(isHeartClicked); // Maintain previous state
@@ -5321,20 +6181,212 @@ const handlePhotoRequest = () => {
 
 const confirmPhotoRequest = async () => {
   try {
+    const storedPhoneNumber = localStorage.getItem("phoneNumber");
+    console.log("📸 Photo Request - Phone:", storedPhoneNumber, "Rent ID:", property?.rentId);
+    
     const response = await axios.post(`${process.env.REACT_APP_API_URL}/photo-request-rent`, {
       rentId: property.rentId,
-      requesterPhoneNumber: userPhoneNumber,
+      requesterPhoneNumber: storedPhoneNumber,
     });
 
+    console.log("📸 Photo Request Response:", response.data);
     setMessage("Photo request submitted successfully!");
     setPhotoRequested(true);
     localStorage.setItem(`photoRequested-${property.rentId}`, JSON.stringify(true));
+    
+    // Store the photo request response data - use full response.data if photoRequest doesn't exist
+    const photoData = response.data?.photoRequest || response.data;
+    console.log("📸 Setting Photo Request Data:", photoData);
+    setPhotoRequestData(photoData);
+    
+    // Show WhatsApp popup after photo request is confirmed
+    console.log("📸 Showing WhatsApp popup");
+    setShowWhatsAppPopup(true);
   } catch (error) {
+    console.error("❌ Photo Request Error:", error);
     setMessage(error.response?.data?.message || "Failed to submit photo request.");
   } finally {
     setShowPopup(false);
     setTimeout(() => setMessage(""), 3000);
   }
+};
+
+
+
+// Handle WhatsApp notification sending (Send to both owner and requester)
+const handleSendWhatsAppMessage = async () => {
+  try {
+    console.log("📨 Sending WhatsApp Messages...");
+    setIsSendingWhatsApp(true);
+    
+    if (!photoRequestData) {
+      console.error("❌ Photo request data is null:", photoRequestData);
+      alert("Photo request data not found. Please try again.");
+      setIsSendingWhatsApp(false);
+      return;
+    }
+
+    console.log("📊 Photo Request Data:", photoRequestData);
+    
+    const ownerName = property?.ownerName || "Owner";
+    const ownerPhone = photoRequestData.postedUserPhoneNumber || "";
+    const requesterPhone = localStorage.getItem("phoneNumber") || "";
+    const rentId = photoRequestData.rentId || property?.rentId || "";
+    
+    // Build property location from response data
+    const propertyLocation = [
+      photoRequestData.streetName,
+      photoRequestData.area,
+      photoRequestData.city,
+      photoRequestData.district
+    ]
+      .filter(part => part && part.trim() !== "")
+      .join(", ") || "Property Location";
+
+    // Format owner phone number
+    const ownerMobileNumber = String(ownerPhone).replace(/\D/g, "");
+    const ownerTo = ownerMobileNumber.length === 10 ? `91${ownerMobileNumber}` : ownerMobileNumber;
+
+    // Format requester phone number
+    const requesterMobileNumber = String(requesterPhone).replace(/\D/g, "");
+    const requesterTo = requesterMobileNumber.length === 10 ? `91${requesterMobileNumber}` : requesterMobileNumber;
+
+    // Validation for both phone numbers
+    if (ownerTo.length < 12) {
+      alert("Invalid owner phone number format. Please check and try again.");
+      setIsSendingWhatsApp(false);
+      return;
+    }
+
+    if (requesterTo.length < 12) {
+      alert("Invalid requester phone number format. Please check and try again.");
+      setIsSendingWhatsApp(false);
+      return;
+    }
+
+    // Message for owner (Updated to focus on photo request)
+    const messageToOwner = `Hi ${ownerName} 👋\n\n📸 A user has requested photos for your property on Rent Pondy.\n\nKindly upload updated property photos in the Rent Pondy app at your convenience.\n\n👤 Requested by: User\n📞 Contact Number: ${requesterPhone}\n\nOur team may also contact you for photo verification, if required.\n\nThank you for choosing Rent Pondy 🙏`;
+
+    // Message for requester
+    const messageToRequester = `Hi There 👋\n\n✅ Your photo request has been submitted successfully!\n\n🆔 Rent ID: ${rentId}\n📍 Property: ${propertyLocation}\n👨‍💼 Owner: ${ownerName}\n\n📸 We'll notify the owner about your request.\n\nThank you for using Rent Pondy 🙏`;
+
+    // Send WhatsApp message to owner
+    await axios.post(`${process.env.REACT_APP_API_URL}/send-message`, {
+      to: ownerTo,
+      message: messageToOwner,
+    });
+
+    // Send WhatsApp message to requester
+    await axios.post(`${process.env.REACT_APP_API_URL}/send-message`, {
+      to: requesterTo,
+      message: messageToRequester,
+    });
+
+    console.log("✅ WhatsApp messages sent successfully!");
+    console.log("   - Owner: ", ownerTo);
+    console.log("   - Requester: ", requesterTo);
+    alert("✅ WhatsApp notifications sent to both owner and you!");
+    setShowWhatsAppPopup(false);
+  } catch (error) {
+    console.log("⚠️ WhatsApp message failed (non-blocking):", error.message);
+    alert("⚠️ WhatsApp message failed. Please try again later.");
+    setShowWhatsAppPopup(false);
+  } finally {
+    setIsSendingWhatsApp(false);
+  }
+};
+
+// Handle canceling WhatsApp notification
+const handleCancelWhatsApp = () => {
+  setShowWhatsAppPopup(false);
+};
+
+// Handle WhatsApp notification sending for Favorite (Send to both owner and user)
+const handleSendFavWhatsAppMessage = async () => {
+  try {
+    console.log("❤️ Sending Favorite WhatsApp Messages...");
+    setIsSendingFavWhatsApp(true);
+    
+    if (!favRequestData) {
+      console.error("❌ Favorite data is null:", favRequestData);
+      alert("Favorite data not found. Please try again.");
+      setIsSendingFavWhatsApp(false);
+      return;
+    }
+
+    console.log("📊 Favorite Data:", favRequestData);
+    
+    const ownerName = property?.ownerName || "Owner";
+    const ownerPhone = favRequestData.postedUserPhoneNumber || "";
+    const requesterPhone = localStorage.getItem("phoneNumber") || "";
+    const rentId = favRequestData.rentId || property?.rentId || "";
+    
+    // Build property location from response data
+    const propertyLocation = [
+      favRequestData.streetName,
+      favRequestData.area,
+      favRequestData.city,
+      favRequestData.district
+    ]
+      .filter(part => part && part.trim() !== "")
+      .join(", ") || "Property Location";
+
+    // Format owner phone number
+    const ownerMobileNumber = String(ownerPhone).replace(/\D/g, "");
+    const ownerTo = ownerMobileNumber.length === 10 ? `91${ownerMobileNumber}` : ownerMobileNumber;
+
+    // Format requester phone number
+    const requesterMobileNumber = String(requesterPhone).replace(/\D/g, "");
+    const requesterTo = requesterMobileNumber.length === 10 ? `91${requesterMobileNumber}` : requesterMobileNumber;
+
+    // Validation for both phone numbers
+    if (ownerTo.length < 12) {
+      alert("Invalid owner phone number format. Please check and try again.");
+      setIsSendingFavWhatsApp(false);
+      return;
+    }
+
+    if (requesterTo.length < 12) {
+      alert("Invalid requester phone number format. Please check and try again.");
+      setIsSendingFavWhatsApp(false);
+      return;
+    }
+
+    // Message for owner
+    const messageToOwner = `Hi ${ownerName} 👋\n\n❤️ A user has favorited your property on Rent Pondy.\n\nKindly contact to the user in the Rent Pondy app at your convenience.\n\n👤 Requested by: User\n📞 Contact Number: ${requesterPhone}\n\nOur team may also contact the user if required.\n\nThank you for choosing Rent Pondy 🙏`;
+
+    // Message for requester (user who favorited)
+    const messageToRequester = `Hi There 👋\n\n✅ Your favorite the property has been submitted successfully!\n\n🆔 Rent ID: ${rentId}\n📍 Property: ${propertyLocation}\n👨‍💼 Owner: ${ownerName}\n\n❤️ We'll notify the owner about your favorite.\n\nThank you for using Rent Pondy 🙏`;
+
+    // Send WhatsApp message to owner
+    await axios.post(`${process.env.REACT_APP_API_URL}/send-message`, {
+      to: ownerTo,
+      message: messageToOwner,
+    });
+
+    // Send WhatsApp message to requester
+    await axios.post(`${process.env.REACT_APP_API_URL}/send-message`, {
+      to: requesterTo,
+      message: messageToRequester,
+    });
+
+    console.log("✅ WhatsApp favorite messages sent successfully!");
+    console.log("   - Owner: ", ownerTo);
+    console.log("   - User: ", requesterTo);
+    alert("✅ WhatsApp notifications sent to both owner and you!");
+    setShowFavWhatsAppPopup(false);
+  } catch (error) {
+    console.log("⚠️ WhatsApp message failed (non-blocking):", error.message);
+    alert("⚠️ WhatsApp message failed. Please try again later.");
+    setShowFavWhatsAppPopup(false);
+  } finally {
+    setIsSendingFavWhatsApp(false);
+  }
+};
+
+// Handle canceling favorite WhatsApp notification
+const handleCancelFavWhatsApp = () => {
+  setShowFavWhatsAppPopup(false);
 };
 
 const currentUrl = `${window.location.origin}${location.pathname}`; // <- Works for localhost or live
@@ -5945,11 +6997,12 @@ paddingLeft:"10px"
         <form
   onSubmit={(e) => {
     e.preventDefault();
-    if (!offeredPrice || !phoneNumber || !rentId) {
-      setMessage("rentalAmount, Phone number, and Property ID are required.");
+    const storedPhone = localStorage.getItem("phoneNumber");
+    if (!offeredPrice || !storedPhone || !rentId) {
+      setMessage("Offer amount, Phone number, and Property ID are required.");
       return;
     }
-    setPendingOfferData({ offeredPrice, phoneNumber, rentId });
+    setPendingOfferData({ offeredPrice, phoneNumber: storedPhone, rentId });
     setShowConfirmModal(true);
   }}
   className="d-flex mb-0"
@@ -6315,7 +7368,13 @@ const isMatched = isFieldMatched(detail.label, detail.value, matchedFields);
         );
         
         console.log("Contact send response:", response.data);
-         window.location.href = `tel:${finalContactNumber}`;
+
+        // Send WhatsApp notifications to both owner and user
+        setTimeout(() => {
+          sendCallWhatsAppMessages(storedPhoneNumber, finalContactNumber);
+        }, 500);
+        
+        window.location.href = `tel:${finalContactNumber}`;
       } catch (error) {
         console.error("Error recording contact:", error);
         // Still initiate the call even if recording fails
@@ -6919,7 +7978,10 @@ const isMatched = isFieldMatched(detail.label, detail.value, matchedFields);
           <Form.Select
             className="form-select ps-5 fw-bold text-center bg-light border-0 rounded popSelect"
             value={reason}
-            onChange={(e) => setReason(e.target.value)}
+            onChange={(e) => {
+              console.log("📝 Reason changed to:", e.target.value);
+              setReason(e.target.value);
+            }}
           >
             <option value="">Select Reason</option>
             {popupType === "report" ? (
@@ -6935,14 +7997,19 @@ const isMatched = isFieldMatched(detail.label, detail.value, matchedFields);
               <>
                 <option value="Help Me to Buy this Property">Help Me to Buy this Property</option>
                 <option value="Book for Property Visit">Book for Property Visit</option>
-                <option value="Loan Help">Loan Help</option>
+                <option value="Interested in Renting This House">Interested in Renting This House</option>
+                <option value="Schedule a House Visit">Schedule a House Visit</option>
+                <option value="Advance / Deposit Clarification">Advance / Deposit Clarification</option>
+                <option value="Other Rental Enquiry">Other Rental Enquiry</option>
+                <option value="Negotiation Support">Negotiation Support</option>
+                {/* <option value="Loan Help">Loan Help</option>
                 <option value="Property Valuation">Property Valuation</option>
                 <option value="Document Verification">Document Verification</option>
                 <option value="Property Surveying">Property Surveying</option>
                 <option value="EC">EC</option>
                 <option value="Patta Name Change">Patta Name Change</option>
                 <option value="Registration Help">Registration Help</option>
-                <option value="Others">Others</option>
+                <option value="Others">Others</option> */}
               </>
             )}
           </Form.Select>
@@ -7194,6 +8261,250 @@ Home</button>
             })
           )}
         </Carousel>
+      )}
+
+      {/* WhatsApp Confirmation Popup */}
+      {showWhatsAppPopup && (
+        <div style={{
+          position: 'fixed',
+          top: 0,
+          left: 0,
+          width: '100%',
+          height: '100%',
+          backgroundColor: 'rgba(0, 0, 0, 0.5)',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          zIndex: 2000,
+        }}>
+          <div style={{
+            backgroundColor: 'white',
+            borderRadius: '15px',
+            padding: '25px',
+            maxWidth: '400px',
+            width: '90%',
+            boxShadow: '0 8px 16px rgba(0, 0, 0, 0.2)',
+            textAlign: 'center',
+            fontFamily: 'Inter, sans-serif',
+          }}>
+            <div style={{
+              fontSize: '40px',
+              marginBottom: '15px',
+            }}>
+              💬
+            </div>
+            
+            <h3 style={{
+              color: '#0B57CF',
+              fontWeight: 'bold',
+              marginBottom: '10px',
+            }}>
+              Send WhatsApp Notification
+            </h3>
+            
+            <p style={{
+              color: '#666',
+              fontSize: '14px',
+              marginBottom: '15px',
+              lineHeight: '1.5',
+            }}>
+              Do you want to send a WhatsApp notification to the owner to confirm that their property has been added successfully?
+            </p>
+
+            <div style={{
+              backgroundColor: '#f5f5f5',
+              borderRadius: '10px',
+              padding: '12px',
+              marginBottom: '20px',
+              textAlign: 'left',
+              fontSize: '13px',
+              color: '#333',
+            }}>
+              <div><strong>Owner:</strong> {property?.ownerName || 'N/A'}</div>
+              <div><strong>Rent ID:</strong> {photoRequestData?.rentId || property?.rentId || 'N/A'}</div>
+              <div><strong>Phone:</strong> {photoRequestData?.postedUserPhoneNumber || 'N/A'}</div>
+              <div><strong>Location:</strong> {photoRequestData ? [photoRequestData.streetName, photoRequestData.area, photoRequestData.city].filter(p => p && p.trim() !== "").join(", ") : property?.rentalPropertyAddress || 'N/A'}</div>
+            </div>
+
+            <div style={{
+              display: 'flex',
+              gap: '10px',
+              justifyContent: 'center',
+            }}>
+              <button
+                onClick={handleCancelWhatsApp}
+                disabled={isSendingWhatsApp}
+                style={{
+                  flex: 1,
+                  padding: '10px 20px',
+                  border: '2px solid #ddd',
+                  backgroundColor: '#fff',
+                  color: '#666',
+                  borderRadius: '8px',
+                  fontSize: '14px',
+                  fontWeight: '600',
+                  cursor: isSendingWhatsApp ? 'not-allowed' : 'pointer',
+                  opacity: isSendingWhatsApp ? 0.6 : 1,
+                }}
+              >
+                No, Skip
+              </button>
+              
+              <button
+                onClick={handleSendWhatsAppMessage}
+                disabled={isSendingWhatsApp}
+                style={{
+                  flex: 1,
+                  padding: '10px 20px',
+                  border: 'none',
+                  backgroundColor: isSendingWhatsApp ? '#ccc' : '#25D366',
+                  color: 'white',
+                  borderRadius: '8px',
+                  fontSize: '14px',
+                  fontWeight: '600',
+                  cursor: isSendingWhatsApp ? 'not-allowed' : 'pointer',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  gap: '8px',
+                }}
+              >
+                {isSendingWhatsApp ? (
+                  <>
+                    <span>Sending...</span>
+                  </>
+                ) : (
+                  <>
+                    <FaWhatsapp size={16} />
+                    Yes, Send
+                  </>
+                )}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Favorite WhatsApp Confirmation Popup */}
+      {showFavWhatsAppPopup && (
+        <div style={{
+          position: 'fixed',
+          top: 0,
+          left: 0,
+          width: '100%',
+          height: '100%',
+          backgroundColor: 'rgba(0, 0, 0, 0.5)',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          zIndex: 2000,
+        }}>
+          <div style={{
+            backgroundColor: 'white',
+            borderRadius: '15px',
+            padding: '25px',
+            maxWidth: '400px',
+            width: '90%',
+            boxShadow: '0 8px 16px rgba(0, 0, 0, 0.2)',
+            textAlign: 'center',
+            fontFamily: 'Inter, sans-serif',
+          }}>
+            <div style={{
+              fontSize: '40px',
+              marginBottom: '15px',
+            }}>
+              ❤️
+            </div>
+            
+            <h3 style={{
+              color: '#0B57CF',
+              fontWeight: 'bold',
+              marginBottom: '10px',
+            }}>
+              Send Favorite Notification
+            </h3>
+            
+            <p style={{
+              color: '#666',
+              fontSize: '14px',
+              marginBottom: '15px',
+              lineHeight: '1.5',
+            }}>
+              Do you want to send a WhatsApp notification to the owner to let them know you favorited their property?
+            </p>
+
+            <div style={{
+              backgroundColor: '#f5f5f5',
+              borderRadius: '10px',
+              padding: '12px',
+              marginBottom: '20px',
+              textAlign: 'left',
+              fontSize: '13px',
+              color: '#333',
+            }}>
+              <div><strong>Owner:</strong> {property?.ownerName || 'N/A'}</div>
+              <div><strong>Rent ID:</strong> {favRequestData?.rentId || property?.rentId || 'N/A'}</div>
+              <div><strong>Phone:</strong> {favRequestData?.postedUserPhoneNumber || 'N/A'}</div>
+              <div><strong>Location:</strong> {favRequestData ? [favRequestData.streetName, favRequestData.area, favRequestData.city].filter(p => p && p.trim() !== "").join(", ") : property?.rentalPropertyAddress || 'N/A'}</div>
+            </div>
+
+            <div style={{
+              display: 'flex',
+              gap: '10px',
+              justifyContent: 'center',
+            }}>
+              <button
+                onClick={handleCancelFavWhatsApp}
+                disabled={isSendingFavWhatsApp}
+                style={{
+                  flex: 1,
+                  padding: '10px 20px',
+                  border: '2px solid #ddd',
+                  backgroundColor: '#fff',
+                  color: '#666',
+                  borderRadius: '8px',
+                  fontSize: '14px',
+                  fontWeight: '600',
+                  cursor: isSendingFavWhatsApp ? 'not-allowed' : 'pointer',
+                  opacity: isSendingFavWhatsApp ? 0.6 : 1,
+                }}
+              >
+                No, Skip
+              </button>
+              
+              <button
+                onClick={handleSendFavWhatsAppMessage}
+                disabled={isSendingFavWhatsApp}
+                style={{
+                  flex: 1,
+                  padding: '10px 20px',
+                  border: 'none',
+                  backgroundColor: isSendingFavWhatsApp ? '#ccc' : '#25D366',
+                  color: 'white',
+                  borderRadius: '8px',
+                  fontSize: '14px',
+                  fontWeight: '600',
+                  cursor: isSendingFavWhatsApp ? 'not-allowed' : 'pointer',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  gap: '8px',
+                }}
+              >
+                {isSendingFavWhatsApp ? (
+                  <>
+                    <span>Sending...</span>
+                  </>
+                ) : (
+                  <>
+                    <FaWhatsapp size={16} />
+                    Yes, Send
+                  </>
+                )}
+              </button>
+            </div>
+          </div>
+        </div>
       )}
 
     </div>
