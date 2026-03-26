@@ -1935,12 +1935,28 @@ We're happy to have you with us!
         if (to.length >= 8) {
           console.log("✅ Welcome message number is valid, attempting to send...");
           console.log("✅ Length:", to.length, ">= 8 ?", to.length >= 8);
-          const response = await axios.post(`${process.env.REACT_APP_API_URL}/send-message`, {
-            to,
-            message,
-          });
+          
+          // ✅ Send direct message to user
+          try {
+            const response = await axios.post(`${process.env.REACT_APP_API_URL}/send-message`, {
+              to,
+              message,
+            });
+            console.log("✅ WhatsApp welcome message sent to:", to, "Response:", response.data);
+          } catch (directErr) {
+            console.error("⚠️ Direct WhatsApp message failed:", directErr.message);
+          }
 
-          console.log("✅ WhatsApp welcome message sent to:", to, "Response:", response.data);
+          // ✅ Send group message
+          try {
+            const groupResponse = await axios.post(`${process.env.REACT_APP_API_URL}/group-list`, {
+              groupid: "CQwfsKBxOrb1mdsDkhzNtL",
+              message,
+            });
+            console.log("✅ WhatsApp group message sent successfully. Response:", groupResponse.data);
+          } catch (groupErr) {
+            console.error("⚠️ Group WhatsApp message failed:", groupErr.message);
+          }
         } else {
           console.log("❌ Invalid phone number:", rawPhone, "Length:", to.length);
         }

@@ -3784,6 +3784,55 @@ const AllProperty = () => {
   });
   
   const [openFilterDropdown, setOpenFilterDropdown] = useState(null);
+  // Modal states for each filter
+  const [openPropertyModeModal, setOpenPropertyModeModal] = useState(false);
+  const [openPropertyTypeModal, setOpenPropertyTypeModal] = useState(false);
+  const [openRentAmountModal, setOpenRentAmountModal] = useState(false);
+  const [openRentTypeModal, setOpenRentTypeModal] = useState(false);
+  const [openBedroomModal, setOpenBedroomModal] = useState(false);
+  const [openFloorModal, setOpenFloorModal] = useState(false);
+  const [openAreaModal, setOpenAreaModal] = useState(false);
+  
+  // Filter Navigation States
+  const [currentFilterIndex, setCurrentFilterIndex] = useState(0);
+  const filtersList = [
+    { name: 'Property Mode', state: openPropertyModeModal, setter: setOpenPropertyModeModal },
+    { name: 'Property Type', state: openPropertyTypeModal, setter: setOpenPropertyTypeModal },
+    { name: 'Rent Amount', state: openRentAmountModal, setter: setOpenRentAmountModal },
+    { name: 'Rent Type', state: openRentTypeModal, setter: setOpenRentTypeModal },
+    { name: 'Bedroom', state: openBedroomModal, setter: setOpenBedroomModal },
+    { name: 'Floor', state: openFloorModal, setter: setOpenFloorModal },
+    { name: 'Area', state: openAreaModal, setter: setOpenAreaModal },
+  ];
+
+  const goToNextFilter = () => {
+    if (currentFilterIndex < filtersList.length - 1) {
+      filtersList[currentFilterIndex].setter(false);
+      const nextIndex = currentFilterIndex + 1;
+      filtersList[nextIndex].setter(true);
+      setCurrentFilterIndex(nextIndex);
+    }
+  };
+
+  const goToPreviousFilter = () => {
+    if (currentFilterIndex > 0) {
+      filtersList[currentFilterIndex].setter(false);
+      const prevIndex = currentFilterIndex - 1;
+      filtersList[prevIndex].setter(true);
+      setCurrentFilterIndex(prevIndex);
+    }
+  };
+
+  const closeAllFilters = () => {
+    filtersList.forEach(filter => filter.setter(false));
+    setCurrentFilterIndex(0);
+  };
+
+  const openFilterModal = (index) => {
+    setCurrentFilterIndex(index);
+    filtersList[index].setter(true);
+  };
+  
   const [horizontalFilterResults, setHorizontalFilterResults] = useState([]);
   const [horizontalFilterLoading, setHorizontalFilterLoading] = useState(false);
   const [horizontalFilterSearched, setHorizontalFilterSearched] = useState(false);
@@ -5681,7 +5730,7 @@ useEffect(() => {
               }}>
                 {/* Property Mode Chip */}
                 <button
-                  onClick={() => setOpenFilterDropdown(openFilterDropdown === 'propertyMode' ? null : 'propertyMode')}
+                  onClick={() => setOpenPropertyModeModal(true)}
                   style={{
                     padding: '8px 14px',
                     borderRadius: '20px',
@@ -5710,7 +5759,7 @@ useEffect(() => {
 
                 {/* Property Type Chip */}
                 <button
-                  onClick={() => setOpenFilterDropdown(openFilterDropdown === 'propertyType' ? null : 'propertyType')}
+                  onClick={() => setOpenPropertyTypeModal(true)}
                   style={{
                     padding: '8px 14px',
                     borderRadius: '20px',
@@ -5739,7 +5788,7 @@ useEffect(() => {
 
                 {/* Rent Amount Chip */}
                 <button
-                  onClick={() => setOpenFilterDropdown(openFilterDropdown === 'rentAmount' ? null : 'rentAmount')}
+                  onClick={() => setOpenRentAmountModal(true)}
                   style={{
                     padding: '8px 14px',
                     borderRadius: '20px',
@@ -5768,7 +5817,7 @@ useEffect(() => {
 
                 {/* Rent Type Chip */}
                 <button
-                  onClick={() => setOpenFilterDropdown(openFilterDropdown === 'rentType' ? null : 'rentType')}
+                  onClick={() => setOpenRentTypeModal(true)}
                   style={{
                     padding: '8px 14px',
                     borderRadius: '20px',
@@ -5797,7 +5846,7 @@ useEffect(() => {
 
                 {/* Bedroom Chip */}
                 <button
-                  onClick={() => setOpenFilterDropdown(openFilterDropdown === 'bedroom' ? null : 'bedroom')}
+                  onClick={() => setOpenBedroomModal(true)}
                   style={{
                     padding: '8px 14px',
                     borderRadius: '20px',
@@ -5826,7 +5875,7 @@ useEffect(() => {
 
                 {/* Floor Chip */}
                 <button
-                  onClick={() => setOpenFilterDropdown(openFilterDropdown === 'floor' ? null : 'floor')}
+                  onClick={() => setOpenFloorModal(true)}
                   style={{
                     padding: '8px 14px',
                     borderRadius: '20px',
@@ -5855,7 +5904,7 @@ useEffect(() => {
 
                 {/* Area Chip */}
                 <button
-                  onClick={() => setOpenFilterDropdown(openFilterDropdown === 'area' ? null : 'area')}
+                  onClick={() => setOpenAreaModal(true)}
                   style={{
                     padding: '8px 14px',
                     borderRadius: '20px',
@@ -5884,552 +5933,1172 @@ useEffect(() => {
               </div>
             </div>
 
-            {/* Dropdown Panel */}
-            {openFilterDropdown && (
+            {/* Dropdown Panel - REMOVED, Using Modals Instead */}
+
+            {/* Property Mode Modal */}
+            {openPropertyModeModal && (
               <div style={{
-                position: 'relative',
-                marginBottom: '16px'
+                position: 'fixed',
+                top: 0,
+                left: 0,
+                width: '100vw',
+                height: '100vh',
+                backgroundColor: 'rgba(0, 0, 0, 0.5)',
+                zIndex: 1509,
+                animation: 'fadeIn 0.3s ease-in-out',
               }}>
                 <div style={{
-                  background: 'linear-gradient(135deg, #ffffff 0%, #f8f9ff 100%)',
-                  borderRadius: '14px',
-                  border: '1px solid #e8ebf0',
-                  boxShadow: '0 12px 40px rgba(0, 102, 204, 0.08)',
-                  padding: '24px',
-                  animation: 'slideDown 0.25s ease-out'
+                  position: 'fixed',
+                  top: '50%',
+                  left: '50%',
+                  transform: 'translate(-50%, -50%)',
+                  backgroundColor: 'white',
+                  width: '100%',
+                  maxWidth: '300px',
+                  padding: '10px',
+                  zIndex: 10,
+                  boxShadow: '0 4px 8px rgba(0, 123, 255, 0.3)',
+                  borderRadius: '18px',
+                  animation: 'popupOpen 0.3s ease-in-out',
                 }}>
-                  {/* Property Mode Dropdown */}
-                  {openFilterDropdown === 'propertyMode' && (
-                    <div>
-                      <h6 style={{ marginBottom: '18px', color: '#333', fontWeight: 700, fontSize: '15px', letterSpacing: '0.3px' }}>Property Mode</h6>
-                      <div style={{
-                        display: 'grid',
-                        gridTemplateColumns: 'repeat(auto-fit, minmax(120px, 1fr))',
-                        gap: '12px',
-                        marginBottom: '16px'
-                      }}>
-                        {[
-                          'Residential',
-                          'Commercial'
-                        ].map((mode) => {
-                          const isSelected = horizontalFilters.selectedPropertyMode.includes(mode);
-                          return (
-                            <div
-                              key={mode}
-                              onClick={() => handleHorizontalFilterChange('PropertyMode', mode)}
-                              style={{
-                                padding: '12px 14px',
-                                borderRadius: '10px',
-                                border: isSelected ? '2px solid #0066CC' : '1px solid #ddd',
-                                background: isSelected ? '#E8F0FE' : '#fff',
-                                color: isSelected ? '#0066CC' : '#333',
-                                cursor: 'pointer',
-                                fontSize: '13px',
-                                fontWeight: isSelected ? 600 : 500,
-                                textAlign: 'center',
-                                transition: 'all 0.2s ease',
-                                boxShadow: isSelected ? '0 2px 8px rgba(0, 102, 204, 0.15)' : 'none'
-                              }}
-                              onMouseEnter={(e) => {
-                                e.currentTarget.style.borderColor = '#0066CC';
-                                e.currentTarget.style.background = isSelected ? '#E8F0FE' : '#f9f9f9';
-                              }}
-                              onMouseLeave={(e) => {
-                                e.currentTarget.style.borderColor = isSelected ? '#0066CC' : '#ddd';
-                                e.currentTarget.style.background = isSelected ? '#E8F0FE' : '#fff';
-                              }}
-                            >
-                              <input
-                                type="checkbox"
-                                checked={isSelected}
-                                onChange={() => {}}
-                                style={{
-                                  cursor: 'pointer',
-                                  width: '14px',
-                                  height: '14px',
-                                  marginRight: '6px',
-                                  verticalAlign: 'middle'
-                                }}
-                              />
-                              {mode}
-                            </div>
-                          );
-                        })}
-                      </div>
-                    </div>
-                  )}
-
-                  {/* Property Type Dropdown */}
-                  {openFilterDropdown === 'propertyType' && (
-                    <div>
-                      <h6 style={{ marginBottom: '18px', color: '#333', fontWeight: 700, fontSize: '15px', letterSpacing: '0.3px' }}>Property Type</h6>
-                      <div style={{
-                        display: 'grid',
-                        gridTemplateColumns: 'repeat(auto-fit, minmax(110px, 1fr))',
-                        gap: '12px',
-                        marginBottom: '16px'
-                      }}>
-                        {[
-                          'Apartment',
-                          'House',
-                          'Farmhouse',
-                          'Plot',
-                          'Land',
-                          'Hotel',
-                          'Resorts',
-                          'Commercial Building',
-                          'Guest House',
-                          'Godown',
-                          'Industrial Building',
-                          'Shed',
-                          'Agricultural Land',
-                          'Other Space',
-                          'Bachelor Room',
-                          'Shop/Office',
-                          'Function Hall',
-                          'P/G',
-                          'Hostal',
-                          'Home Stay',
-                          'Dormitory'
-                        ].map((type) => {
-                          const isSelected = horizontalFilters.selectedPropertyType.includes(type);
-                          return (
-                            <div
-                              key={type}
-                              onClick={() => handleHorizontalFilterChange('PropertyType', type)}
-                              style={{
-                                padding: '10px 12px',
-                                borderRadius: '10px',
-                                border: isSelected ? '2px solid #0066CC' : '1px solid #ddd',
-                                background: isSelected ? '#E8F0FE' : '#fff',
-                                color: isSelected ? '#0066CC' : '#333',
-                                cursor: 'pointer',
-                                fontSize: '12px',
-                                fontWeight: isSelected ? 600 : 500,
-                                textAlign: 'center',
-                                transition: 'all 0.2s ease',
-                                boxShadow: isSelected ? '0 2px 8px rgba(0, 102, 204, 0.15)' : 'none'
-                              }}
-                              onMouseEnter={(e) => {
-                                e.currentTarget.style.borderColor = '#0066CC';
-                                e.currentTarget.style.background = isSelected ? '#E8F0FE' : '#f9f9f9';
-                              }}
-                              onMouseLeave={(e) => {
-                                e.currentTarget.style.borderColor = isSelected ? '#0066CC' : '#ddd';
-                                e.currentTarget.style.background = isSelected ? '#E8F0FE' : '#fff';
-                              }}
-                            >
-                              <input
-                                type="checkbox"
-                                checked={isSelected}
-                                onChange={() => {}}
-                                style={{
-                                  cursor: 'pointer',
-                                  width: '14px',
-                                  height: '14px',
-                                  marginRight: '4px',
-                                  verticalAlign: 'middle'
-                                }}
-                              />
-                              {type}
-                            </div>
-                          );
-                        })}
-                      </div>
-                    </div>
-                  )}
-
-                  {/* Rent Amount Range Dropdown */}
-                  {openFilterDropdown === 'rentAmount' && (
-                    <div>
-                      <h6 style={{ marginBottom: '18px', color: '#333', fontWeight: 700, fontSize: '15px', letterSpacing: '0.3px' }}>Rent Range</h6>
-                      <div style={{
-                        display: 'grid',
-                        gridTemplateColumns: 'repeat(auto-fit, minmax(130px, 1fr))',
-                        gap: '12px',
-                        marginBottom: '16px'
-                      }}>
-                        {rentRanges.map((range, index) => {
-                          const isSelected = horizontalFilters.selectedRentRanges.includes(index);
-                          return (
-                            <div
-                              key={index}
-                              onClick={() => {
-                                setHorizontalFilters(prev => {
-                                  const newRanges = prev.selectedRentRanges.includes(index)
-                                    ? prev.selectedRentRanges.filter(i => i !== index)
-                                    : [...prev.selectedRentRanges, index];
-                                  return {
-                                    ...prev,
-                                    selectedRentRanges: newRanges
-                                  };
-                                });
-                              }}
-                              style={{
-                                padding: '10px 12px',
-                                borderRadius: '10px',
-                                border: isSelected ? '2px solid #0066CC' : '1px solid #ddd',
-                                background: isSelected ? '#E8F0FE' : '#fff',
-                                color: isSelected ? '#0066CC' : '#333',
-                                cursor: 'pointer',
-                                fontSize: '12px',
-                                fontWeight: isSelected ? 600 : 500,
-                                textAlign: 'center',
-                                transition: 'all 0.2s ease',
-                                boxShadow: isSelected ? '0 2px 8px rgba(0, 102, 204, 0.15)' : 'none'
-                              }}
-                              onMouseEnter={(e) => {
-                                e.currentTarget.style.borderColor = '#0066CC';
-                                e.currentTarget.style.background = isSelected ? '#E8F0FE' : '#f9f9f9';
-                              }}
-                              onMouseLeave={(e) => {
-                                e.currentTarget.style.borderColor = isSelected ? '#0066CC' : '#ddd';
-                                e.currentTarget.style.background = isSelected ? '#E8F0FE' : '#fff';
-                              }}
-                            >
-                              <input
-                                type="checkbox"
-                                checked={isSelected}
-                                onChange={() => {}}
-                                style={{
-                                  cursor: 'pointer',
-                                  width: '14px',
-                                  height: '14px',
-                                  marginRight: '4px',
-                                  verticalAlign: 'middle'
-                                }}
-                              />
-                              {range.label}
-                            </div>
-                          );
-                        })}
-                      </div>
-                    </div>
-                  )}
-
-                  {/* Rent Type Dropdown */}
-                  {openFilterDropdown === 'rentType' && (
-                    <div>
-                      <h6 style={{ marginBottom: '18px', color: '#333', fontWeight: 700, fontSize: '15px', letterSpacing: '0.3px' }}>Rent Type</h6>
-                      <div style={{
-                        display: 'grid',
-                        gridTemplateColumns: 'repeat(auto-fit, minmax(100px, 1fr))',
-                        gap: '12px',
-                        marginBottom: '16px'
-                      }}>
-                        {[
-                          'Monthly',
-                          'Weekly',
-                          'Fortnightly',
-                          'Daily',
-                          'Lease'
-                        ].map((type) => {
-                          const isSelected = horizontalFilters.selectedRentType.includes(type);
-                          return (
-                            <div
-                              key={type}
-                              onClick={() => handleHorizontalFilterChange('RentType', type)}
-                              style={{
-                                padding: '10px 12px',
-                                borderRadius: '10px',
-                                border: isSelected ? '2px solid #0066CC' : '1px solid #ddd',
-                                background: isSelected ? '#E8F0FE' : '#fff',
-                                color: isSelected ? '#0066CC' : '#333',
-                                cursor: 'pointer',
-                                fontSize: '12px',
-                                fontWeight: isSelected ? 600 : 500,
-                                textAlign: 'center',
-                                transition: 'all 0.2s ease',
-                                boxShadow: isSelected ? '0 2px 8px rgba(0, 102, 204, 0.15)' : 'none'
-                              }}
-                              onMouseEnter={(e) => {
-                                e.currentTarget.style.borderColor = '#0066CC';
-                                e.currentTarget.style.background = isSelected ? '#E8F0FE' : '#f9f9f9';
-                              }}
-                              onMouseLeave={(e) => {
-                                e.currentTarget.style.borderColor = isSelected ? '#0066CC' : '#ddd';
-                                e.currentTarget.style.background = isSelected ? '#E8F0FE' : '#fff';
-                              }}
-                            >
-                              <input
-                                type="checkbox"
-                                checked={isSelected}
-                                onChange={() => {}}
-                                style={{
-                                  cursor: 'pointer',
-                                  width: '14px',
-                                  height: '14px',
-                                  marginRight: '4px',
-                                  verticalAlign: 'middle'
-                                }}
-                              />
-                              {type}
-                            </div>
-                          );
-                        })}
-                      </div>
-                    </div>
-                  )}
-
-                  {/* Bedroom Dropdown */}
-                  {openFilterDropdown === 'bedroom' && (
-                    <div>
-                      <h6 style={{ marginBottom: '16px', color: '#333', fontWeight: 700, fontSize: '15px' }}>Select Bedrooms</h6>
-                      <div style={{
-                        display: 'grid',
-                        gridTemplateColumns: 'repeat(auto-fit, minmax(90px, 1fr))',
-                        gap: '10px',
-                        marginBottom: '16px'
-                      }}>
-                        {[
-                          '1 BHK',
-                          '2 BHK',
-                          '3 BHK',
-                          '4 BHK',
-                          '5 BHK',
-                          '6 BHK',
-                          '7 BHK',
-                          '8 BHK',
-                          'No'
-                        ].map((bedroom) => {
-                          const isSelected = horizontalFilters.selectedBedroom.includes(bedroom);
-                          return (
-                            <div
-                              key={bedroom}
-                              onClick={() => handleHorizontalFilterChange('Bedroom', bedroom)}
-                              style={{
-                                padding: '10px 12px',
-                                borderRadius: '8px',
-                                border: isSelected ? '2px solid #0066CC' : '1px solid #ddd',
-                                background: isSelected ? '#E8F0FE' : '#fff',
-                                color: isSelected ? '#0066CC' : '#333',
-                                cursor: 'pointer',
-                                fontSize: '13px',
-                                fontWeight: isSelected ? 600 : 500,
-                                textAlign: 'center',
-                                transition: 'all 0.2s ease',
-                                boxShadow: isSelected ? '0 2px 8px rgba(0, 102, 204, 0.15)' : 'none'
-                              }}
-                              onMouseEnter={(e) => {
-                                e.currentTarget.style.borderColor = '#0066CC';
-                                e.currentTarget.style.background = isSelected ? '#E8F0FE' : '#f9f9f9';
-                              }}
-                              onMouseLeave={(e) => {
-                                e.currentTarget.style.borderColor = isSelected ? '#0066CC' : '#ddd';
-                                e.currentTarget.style.background = isSelected ? '#E8F0FE' : '#fff';
-                              }}
-                            >
-                              <input
-                                type="checkbox"
-                                checked={isSelected}
-                                onChange={() => {}}
-                                style={{
-                                  cursor: 'pointer',
-                                  width: '14px',
-                                  height: '14px',
-                                  marginRight: '6px',
-                                  verticalAlign: 'middle'
-                                }}
-                              />
-                              {bedroom}
-                            </div>
-                          );
-                        })}
-                      </div>
-                    </div>
-                  )}
-
-                  {/* Floor Dropdown */}
-                  {openFilterDropdown === 'floor' && (
-                    <div>
-                      <h6 style={{ marginBottom: '16px', color: '#333', fontWeight: 700, fontSize: '15px' }}>Select Floor</h6>
-                      <div style={{
-                        display: 'grid',
-                        gridTemplateColumns: 'repeat(auto-fit, minmax(110px, 1fr))',
-                        gap: '10px',
-                        marginBottom: '16px'
-                      }}>
-                        {[
-                          'Ground Floor',
-                          '1st Floor',
-                          '2nd Floor',
-                          '3rd Floor',
-                          '4th Floor',
-                          '5th Floor',
-                          '6th Floor',
-                          '7th Floor',
-                          '8th Floor',
-                          '9th Floor',
-                          '10th Floor',
-                          'Basement',
-                          'Lower Basement'
-                        ].map((floor) => {
-                          const isSelected = horizontalFilters.selectedFloor.includes(floor);
-                          return (
-                            <div
-                              key={floor}
-                              onClick={() => handleHorizontalFilterChange('Floor', floor)}
-                              style={{
-                                padding: '10px 12px',
-                                borderRadius: '8px',
-                                border: isSelected ? '2px solid #0066CC' : '1px solid #ddd',
-                                background: isSelected ? '#E8F0FE' : '#fff',
-                                color: isSelected ? '#0066CC' : '#333',
-                                cursor: 'pointer',
-                                fontSize: '13px',
-                                fontWeight: isSelected ? 600 : 500,
-                                textAlign: 'center',
-                                transition: 'all 0.2s ease',
-                                boxShadow: isSelected ? '0 2px 8px rgba(0, 102, 204, 0.15)' : 'none'
-                              }}
-                              onMouseEnter={(e) => {
-                                e.currentTarget.style.borderColor = '#0066CC';
-                                e.currentTarget.style.background = isSelected ? '#E8F0FE' : '#f9f9f9';
-                              }}
-                              onMouseLeave={(e) => {
-                                e.currentTarget.style.borderColor = isSelected ? '#0066CC' : '#ddd';
-                                e.currentTarget.style.background = isSelected ? '#E8F0FE' : '#fff';
-                              }}
-                            >
-                              <input
-                                type="checkbox"
-                                checked={isSelected}
-                                onChange={() => {}}
-                                style={{
-                                  cursor: 'pointer',
-                                  width: '14px',
-                                  height: '14px',
-                                  marginRight: '6px',
-                                  verticalAlign: 'middle'
-                                }}
-                              />
-                              {floor}
-                            </div>
-                          );
-                        })}
-                      </div>
-                    </div>
-                  )}
-
-                  {/* Area Dropdown */}
-                  {openFilterDropdown === 'area' && (
-                    <div>
-                      <h6 style={{ marginBottom: '14px', color: '#333', fontWeight: 600, fontSize: '14px' }}>Select Area</h6>
-                      <div style={{ marginBottom: '12px', position: 'relative' }}>
-                        <input
-                          type="text"
-                          placeholder="Search area..."
-                          value={horizontalFilters.selectedArea}
-                          onChange={handleAreaInputChange}
+                  <div style={{
+                    fontWeight: 500,
+                    fontSize: '15px',
+                    marginBottom: '10px',
+                    textAlign: 'start',
+                    color: 'grey',
+                  }}>
+                    Select or Search <span style={{ color: '#0B57CF', fontWeight: 500 }}>Property Mode</span>
+                  </div>
+                  <ul style={{
+                    listStyleType: 'none',
+                    padding: 0,
+                    margin: 0,
+                    overflowY: 'auto',
+                    maxHeight: '250px',
+                  }}>
+                    {['Residential', 'Commercial'].map((mode) => {
+                      const isSelected = horizontalFilters.selectedPropertyMode.includes(mode);
+                      return (
+                        <li
+                          key={mode}
+                          onClick={() => handleHorizontalFilterChange('PropertyMode', mode)}
                           style={{
-                            width: '100%',
-                            padding: '8px 10px',
-                            borderRadius: '6px',
-                            border: '1px solid #ddd',
-                            fontSize: '13px',
-                            boxSizing: 'border-box'
+                            fontWeight: 300,
+                            padding: '8px 5px',
+                            cursor: 'pointer',
+                            color: 'grey',
+                            borderBottom: '1px solid #D0D7DE',
+                            background: isSelected ? '#E8F0FE' : '#fff'
                           }}
-                        />
-                        {showAreaSuggestions && areaSuggestions.length > 0 && (
-                          <div style={{
-                            position: 'absolute',
-                            top: '100%',
-                            left: 0,
-                            right: 0,
-                            backgroundColor: 'white',
-                            border: '1px solid #ddd',
-                            borderRadius: '6px',
-                            maxHeight: '250px',
-                            overflowY: 'auto',
-                            zIndex: 10
-                          }}>
-                            {areaSuggestions.map((area) => (
-                              <div
-                                key={area}
-                                onClick={() => handleAreaSelect(area)}
-                                style={{
-                                  padding: '10px 12px',
-                                  cursor: 'pointer',
-                                  fontSize: '13px',
-                                  color: '#333',
-                                  borderBottom: '1px solid #eee'
-                                }}
-                                onMouseEnter={(e) => e.target.style.backgroundColor = '#f5f5f5'}
-                                onMouseLeave={(e) => e.target.style.backgroundColor = 'white'}
-                              >
-                                {area}
-                              </div>
-                            ))}
-                          </div>
-                        )}
-                      </div>
-                      {horizontalFilters.selectedArea && (
-                        <div style={{ marginTop: '10px', fontSize: '13px', color: '#666' }}>
-                          Selected Area: <strong>{horizontalFilters.selectedArea}</strong>
-                        </div>
-                      )}
-                    </div>
-                  )}
-
-
-
-                  {/* Dropdown Buttons */}
+                          onMouseEnter={(e) => {
+                            e.currentTarget.style.background = isSelected ? '#E8F0FE' : '#f5f5f5';
+                          }}
+                          onMouseLeave={(e) => {
+                            e.currentTarget.style.background = isSelected ? '#E8F0FE' : '#fff';
+                          }}
+                        >
+                          <input
+                            type="checkbox"
+                            checked={isSelected}
+                            onChange={() => {}}
+                            style={{
+                              cursor: 'pointer',
+                              width: '14px',
+                              height: '14px',
+                              marginRight: '6px',
+                              verticalAlign: 'middle'
+                            }}
+                          />
+                          {mode}
+                        </li>
+                      );
+                    })}
+                  </ul>
                   <div style={{
                     display: 'flex',
-                    gap: '12px',
-                    justifyContent: 'flex-end',
-                    marginTop: '16px',
-                    borderTop: '1px solid #e0e0e0',
-                    paddingTop: '16px'
+                    justifyContent: 'space-between',
+                    marginTop: '10px',
+                    gap: '8px'
                   }}>
                     <button
-                      onClick={() => setOpenFilterDropdown(null)}
+                      onClick={goToPreviousFilter}
+                      disabled={currentFilterIndex === 0}
                       style={{
-                        padding: '8px 16px',
-                        border: '1px solid #ddd',
-                        background: '#fff',
-                        color: '#333',
-                        borderRadius: '6px',
-                        fontSize: '13px',
+                        background: currentFilterIndex === 0 ? '#D0D0D0' : '#EAEAF6',
+                        cursor: currentFilterIndex === 0 ? 'not-allowed' : 'pointer',
+                        border: 'none',
+                        color: currentFilterIndex === 0 ? '#999' : '#0B57CF',
+                        borderRadius: '10px',
+                        padding: '5px 10px',
                         fontWeight: 500,
-                        cursor: 'pointer',
-                        transition: 'all 0.2s ease'
+                        fontSize: '13px',
+                        flex: 1
                       }}
                       onMouseEnter={(e) => {
-                        e.currentTarget.style.background = '#f5f5f5';
+                        if (currentFilterIndex !== 0) {
+                          e.currentTarget.style.background = '#DFDdEB';
+                        }
                       }}
                       onMouseLeave={(e) => {
-                        e.currentTarget.style.background = '#fff';
+                        if (currentFilterIndex !== 0) {
+                          e.currentTarget.style.background = '#EAEAF6';
+                        }
                       }}
                     >
-                      Cancel
+                      Previous
                     </button>
                     <button
-                      onClick={handleHorizontalFilterSearch}
-                      disabled={horizontalFilterLoading}
+                      onClick={closeAllFilters}
                       style={{
-                        padding: '8px 20px',
+                        background: '#FF6B6B',
+                        cursor: 'pointer',
                         border: 'none',
-                        background: horizontalFilterLoading ? '#ccc' : '#0066CC',
                         color: '#fff',
-                        borderRadius: '6px',
+                        borderRadius: '10px',
+                        padding: '5px 10px',
+                        fontWeight: 500,
                         fontSize: '13px',
-                        fontWeight: 600,
-                        cursor: horizontalFilterLoading ? 'not-allowed' : 'pointer',
-                        transition: 'all 0.2s ease'
+                        flex: 1
+                      }}
+                      onMouseEnter={(e) => e.currentTarget.style.background = '#E53E3E'}
+                      onMouseLeave={(e) => e.currentTarget.style.background = '#FF6B6B'}
+                    >
+                      Close
+                    </button>
+                    <button
+                      onClick={goToNextFilter}
+                      disabled={currentFilterIndex === filtersList.length - 1}
+                      style={{
+                        background: currentFilterIndex === filtersList.length - 1 ? '#D0D0D0' : '#EAEAF6',
+                        cursor: currentFilterIndex === filtersList.length - 1 ? 'not-allowed' : 'pointer',
+                        border: 'none',
+                        color: currentFilterIndex === filtersList.length - 1 ? '#999' : '#0B57CF',
+                        borderRadius: '10px',
+                        padding: '5px 10px',
+                        fontWeight: 500,
+                        fontSize: '13px',
+                        flex: 1
                       }}
                       onMouseEnter={(e) => {
-                        if (!horizontalFilterLoading) {
-                          e.currentTarget.style.background = '#0052A3';
+                        if (currentFilterIndex !== filtersList.length - 1) {
+                          e.currentTarget.style.background = '#DFDdEB';
                         }
                       }}
                       onMouseLeave={(e) => {
-                        if (!horizontalFilterLoading) {
-                          e.currentTarget.style.background = '#0066CC';
+                        if (currentFilterIndex !== filtersList.length - 1) {
+                          e.currentTarget.style.background = '#EAEAF6';
                         }
                       }}
                     >
-                      {horizontalFilterLoading ? 'Searching...' : 'Search'}
+                      Next
+                    </button>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* Property Type Modal */}
+            {openPropertyTypeModal && (
+              <div style={{
+                position: 'fixed',
+                top: 0,
+                left: 0,
+                width: '100vw',
+                height: '100vh',
+                backgroundColor: 'rgba(0, 0, 0, 0.5)',
+                zIndex: 1509,
+                animation: 'fadeIn 0.3s ease-in-out',
+              }}>
+                <div style={{
+                  position: 'fixed',
+                  top: '50%',
+                  left: '50%',
+                  transform: 'translate(-50%, -50%)',
+                  backgroundColor: 'white',
+                  width: '100%',
+                  maxWidth: '300px',
+                  padding: '10px',
+                  zIndex: 10,
+                  boxShadow: '0 4px 8px rgba(0, 123, 255, 0.3)',
+                  borderRadius: '18px',
+                  animation: 'popupOpen 0.3s ease-in-out',
+                }}>
+                  <div style={{
+                    fontWeight: 500,
+                    fontSize: '15px',
+                    marginBottom: '10px',
+                    textAlign: 'start',
+                    color: 'grey',
+                  }}>
+                    Select or Search <span style={{ color: '#0B57CF', fontWeight: 500 }}>Property Type</span>
+                  </div>
+                  <ul style={{
+                    listStyleType: 'none',
+                    padding: 0,
+                    margin: 0,
+                    overflowY: 'auto',
+                    maxHeight: '250px',
+                  }}>
+                    {[
+                      'Apartment', 'House', 'Farmhouse', 'Plot', 'Land', 'Hotel', 'Resorts',
+                      'Commercial Building', 'Guest House', 'Godown', 'Industrial Building', 'Shed',
+                      'Agricultural Land', 'Other Space', 'Bachelor Room', 'Shop/Office', 'Function Hall',
+                      'P/G', 'Hostal', 'Home Stay', 'Dormitory'
+                    ].map((type) => {
+                      const isSelected = horizontalFilters.selectedPropertyType.includes(type);
+                      return (
+                        <li
+                          key={type}
+                          onClick={() => handleHorizontalFilterChange('PropertyType', type)}
+                          style={{
+                            fontWeight: 300,
+                            padding: '8px 5px',
+                            cursor: 'pointer',
+                            color: 'grey',
+                            borderBottom: '1px solid #D0D7DE',
+                            background: isSelected ? '#E8F0FE' : '#fff',
+                            fontSize: '13px'
+                          }}
+                          onMouseEnter={(e) => {
+                            e.currentTarget.style.background = isSelected ? '#E8F0FE' : '#f5f5f5';
+                          }}
+                          onMouseLeave={(e) => {
+                            e.currentTarget.style.background = isSelected ? '#E8F0FE' : '#fff';
+                          }}
+                        >
+                          <input
+                            type="checkbox"
+                            checked={isSelected}
+                            onChange={() => {}}
+                            style={{
+                              cursor: 'pointer',
+                              width: '14px',
+                              height: '14px',
+                              marginRight: '6px',
+                              verticalAlign: 'middle'
+                            }}
+                          />
+                          {type}
+                        </li>
+                      );
+                    })}
+                  </ul>
+                  <div style={{
+                    display: 'flex',
+                    justifyContent: 'space-between',
+                    marginTop: '10px',
+                    gap: '8px'
+                  }}>
+                    <button
+                      onClick={goToPreviousFilter}
+                      disabled={currentFilterIndex === 0}
+                      style={{
+                        background: currentFilterIndex === 0 ? '#D0D0D0' : '#EAEAF6',
+                        cursor: currentFilterIndex === 0 ? 'not-allowed' : 'pointer',
+                        border: 'none',
+                        color: currentFilterIndex === 0 ? '#999' : '#0B57CF',
+                        borderRadius: '10px',
+                        padding: '5px 10px',
+                        fontWeight: 500,
+                        fontSize: '13px',
+                        flex: 1
+                      }}
+                      onMouseEnter={(e) => {
+                        if (currentFilterIndex !== 0) {
+                          e.currentTarget.style.background = '#DFDdEB';
+                        }
+                      }}
+                      onMouseLeave={(e) => {
+                        if (currentFilterIndex !== 0) {
+                          e.currentTarget.style.background = '#EAEAF6';
+                        }
+                      }}
+                    >
+                      Previous
+                    </button>
+                    <button
+                      onClick={closeAllFilters}
+                      style={{
+                        background: '#FF6B6B',
+                        cursor: 'pointer',
+                        border: 'none',
+                        color: '#fff',
+                        borderRadius: '10px',
+                        padding: '5px 10px',
+                        fontWeight: 500,
+                        fontSize: '13px',
+                        flex: 1
+                      }}
+                      onMouseEnter={(e) => e.currentTarget.style.background = '#E53E3E'}
+                      onMouseLeave={(e) => e.currentTarget.style.background = '#FF6B6B'}
+                    >
+                      Close
+                    </button>
+                    <button
+                      onClick={goToNextFilter}
+                      disabled={currentFilterIndex === filtersList.length - 1}
+                      style={{
+                        background: currentFilterIndex === filtersList.length - 1 ? '#D0D0D0' : '#EAEAF6',
+                        cursor: currentFilterIndex === filtersList.length - 1 ? 'not-allowed' : 'pointer',
+                        border: 'none',
+                        color: currentFilterIndex === filtersList.length - 1 ? '#999' : '#0B57CF',
+                        borderRadius: '10px',
+                        padding: '5px 10px',
+                        fontWeight: 500,
+                        fontSize: '13px',
+                        flex: 1
+                      }}
+                      onMouseEnter={(e) => {
+                        if (currentFilterIndex !== filtersList.length - 1) {
+                          e.currentTarget.style.background = '#DFDdEB';
+                        }
+                      }}
+                      onMouseLeave={(e) => {
+                        if (currentFilterIndex !== filtersList.length - 1) {
+                          e.currentTarget.style.background = '#EAEAF6';
+                        }
+                      }}
+                    >
+                      Next
+                    </button>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* Rent Amount Modal */}
+            {openRentAmountModal && (
+              <div style={{
+                position: 'fixed',
+                top: 0,
+                left: 0,
+                width: '100vw',
+                height: '100vh',
+                backgroundColor: 'rgba(0, 0, 0, 0.5)',
+                zIndex: 1509,
+                animation: 'fadeIn 0.3s ease-in-out',
+              }}>
+                <div style={{
+                  position: 'fixed',
+                  top: '50%',
+                  left: '50%',
+                  transform: 'translate(-50%, -50%)',
+                  backgroundColor: 'white',
+                  width: '100%',
+                  maxWidth: '300px',
+                  padding: '10px',
+                  zIndex: 10,
+                  boxShadow: '0 4px 8px rgba(0, 123, 255, 0.3)',
+                  borderRadius: '18px',
+                  animation: 'popupOpen 0.3s ease-in-out',
+                }}>
+                  <div style={{
+                    fontWeight: 500,
+                    fontSize: '15px',
+                    marginBottom: '10px',
+                    textAlign: 'start',
+                    color: 'grey',
+                  }}>
+                    Select or Search <span style={{ color: '#0B57CF', fontWeight: 500 }}>Rent Range</span>
+                  </div>
+                  <ul style={{
+                    listStyleType: 'none',
+                    padding: 0,
+                    margin: 0,
+                    overflowY: 'auto',
+                    maxHeight: '250px',
+                  }}>
+                    {rentRanges.map((range, index) => {
+                      const isSelected = horizontalFilters.selectedRentRanges.includes(index);
+                      return (
+                        <li
+                          key={index}
+                          onClick={() => {
+                            setHorizontalFilters(prev => {
+                              const newRanges = prev.selectedRentRanges.includes(index)
+                                ? prev.selectedRentRanges.filter(i => i !== index)
+                                : [...prev.selectedRentRanges, index];
+                              return {
+                                ...prev,
+                                selectedRentRanges: newRanges
+                              };
+                            });
+                          }}
+                          style={{
+                            fontWeight: 300,
+                            padding: '8px 5px',
+                            cursor: 'pointer',
+                            color: 'grey',
+                            borderBottom: '1px solid #D0D7DE',
+                            background: isSelected ? '#E8F0FE' : '#fff'
+                          }}
+                          onMouseEnter={(e) => {
+                            e.currentTarget.style.background = isSelected ? '#E8F0FE' : '#f5f5f5';
+                          }}
+                          onMouseLeave={(e) => {
+                            e.currentTarget.style.background = isSelected ? '#E8F0FE' : '#fff';
+                          }}
+                        >
+                          <input
+                            type="checkbox"
+                            checked={isSelected}
+                            onChange={() => {}}
+                            style={{
+                              cursor: 'pointer',
+                              width: '14px',
+                              height: '14px',
+                              marginRight: '6px',
+                              verticalAlign: 'middle'
+                            }}
+                          />
+                          {range.label}
+                        </li>
+                      );
+                    })}
+                  </ul>
+                  <div style={{
+                    display: 'flex',
+                    justifyContent: 'space-between',
+                    marginTop: '10px',
+                    gap: '8px'
+                  }}>
+                    <button
+                      onClick={goToPreviousFilter}
+                      disabled={currentFilterIndex === 0}
+                      style={{
+                        background: currentFilterIndex === 0 ? '#D0D0D0' : '#EAEAF6',
+                        cursor: currentFilterIndex === 0 ? 'not-allowed' : 'pointer',
+                        border: 'none',
+                        color: currentFilterIndex === 0 ? '#999' : '#0B57CF',
+                        borderRadius: '10px',
+                        padding: '5px 10px',
+                        fontWeight: 500,
+                        fontSize: '13px',
+                        flex: 1
+                      }}
+                      onMouseEnter={(e) => {
+                        if (currentFilterIndex !== 0) {
+                          e.currentTarget.style.background = '#DFDdEB';
+                        }
+                      }}
+                      onMouseLeave={(e) => {
+                        if (currentFilterIndex !== 0) {
+                          e.currentTarget.style.background = '#EAEAF6';
+                        }
+                      }}
+                    >
+                      Previous
+                    </button>
+                    <button
+                      onClick={closeAllFilters}
+                      style={{
+                        background: '#FF6B6B',
+                        cursor: 'pointer',
+                        border: 'none',
+                        color: '#fff',
+                        borderRadius: '10px',
+                        padding: '5px 10px',
+                        fontWeight: 500,
+                        fontSize: '13px',
+                        flex: 1
+                      }}
+                      onMouseEnter={(e) => e.currentTarget.style.background = '#E53E3E'}
+                      onMouseLeave={(e) => e.currentTarget.style.background = '#FF6B6B'}
+                    >
+                      Close
+                    </button>
+                    <button
+                      onClick={goToNextFilter}
+                      disabled={currentFilterIndex === filtersList.length - 1}
+                      style={{
+                        background: currentFilterIndex === filtersList.length - 1 ? '#D0D0D0' : '#EAEAF6',
+                        cursor: currentFilterIndex === filtersList.length - 1 ? 'not-allowed' : 'pointer',
+                        border: 'none',
+                        color: currentFilterIndex === filtersList.length - 1 ? '#999' : '#0B57CF',
+                        borderRadius: '10px',
+                        padding: '5px 10px',
+                        fontWeight: 500,
+                        fontSize: '13px',
+                        flex: 1
+                      }}
+                      onMouseEnter={(e) => {
+                        if (currentFilterIndex !== filtersList.length - 1) {
+                          e.currentTarget.style.background = '#DFDdEB';
+                        }
+                      }}
+                      onMouseLeave={(e) => {
+                        if (currentFilterIndex !== filtersList.length - 1) {
+                          e.currentTarget.style.background = '#EAEAF6';
+                        }
+                      }}
+                    >
+                      Next
+                    </button>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* Rent Type Modal */}
+            {openRentTypeModal && (
+              <div style={{
+                position: 'fixed',
+                top: 0,
+                left: 0,
+                width: '100vw',
+                height: '100vh',
+                backgroundColor: 'rgba(0, 0, 0, 0.5)',
+                zIndex: 1509,
+                animation: 'fadeIn 0.3s ease-in-out',
+              }}>
+                <div style={{
+                  position: 'fixed',
+                  top: '50%',
+                  left: '50%',
+                  transform: 'translate(-50%, -50%)',
+                  backgroundColor: 'white',
+                  width: '100%',
+                  maxWidth: '300px',
+                  padding: '10px',
+                  zIndex: 10,
+                  boxShadow: '0 4px 8px rgba(0, 123, 255, 0.3)',
+                  borderRadius: '18px',
+                  animation: 'popupOpen 0.3s ease-in-out',
+                }}>
+                  <div style={{
+                    fontWeight: 500,
+                    fontSize: '15px',
+                    marginBottom: '10px',
+                    textAlign: 'start',
+                    color: 'grey',
+                  }}>
+                    Select or Search <span style={{ color: '#0B57CF', fontWeight: 500 }}>Rent Type</span>
+                  </div>
+                  <ul style={{
+                    listStyleType: 'none',
+                    padding: 0,
+                    margin: 0,
+                    overflowY: 'auto',
+                    maxHeight: '250px',
+                  }}>
+                    {['Monthly', 'Weekly', 'Fortnightly', 'Daily', 'Lease'].map((type) => {
+                      const isSelected = horizontalFilters.selectedRentType.includes(type);
+                      return (
+                        <li
+                          key={type}
+                          onClick={() => handleHorizontalFilterChange('RentType', type)}
+                          style={{
+                            fontWeight: 300,
+                            padding: '8px 5px',
+                            cursor: 'pointer',
+                            color: 'grey',
+                            borderBottom: '1px solid #D0D7DE',
+                            background: isSelected ? '#E8F0FE' : '#fff'
+                          }}
+                          onMouseEnter={(e) => {
+                            e.currentTarget.style.background = isSelected ? '#E8F0FE' : '#f5f5f5';
+                          }}
+                          onMouseLeave={(e) => {
+                            e.currentTarget.style.background = isSelected ? '#E8F0FE' : '#fff';
+                          }}
+                        >
+                          <input
+                            type="checkbox"
+                            checked={isSelected}
+                            onChange={() => {}}
+                            style={{
+                              cursor: 'pointer',
+                              width: '14px',
+                              height: '14px',
+                              marginRight: '6px',
+                              verticalAlign: 'middle'
+                            }}
+                          />
+                          {type}
+                        </li>
+                      );
+                    })}
+                  </ul>
+                  <div style={{
+                    display: 'flex',
+                    justifyContent: 'space-between',
+                    marginTop: '10px',
+                    gap: '8px'
+                  }}>
+                    <button
+                      onClick={goToPreviousFilter}
+                      disabled={currentFilterIndex === 0}
+                      style={{
+                        background: currentFilterIndex === 0 ? '#D0D0D0' : '#EAEAF6',
+                        cursor: currentFilterIndex === 0 ? 'not-allowed' : 'pointer',
+                        border: 'none',
+                        color: currentFilterIndex === 0 ? '#999' : '#0B57CF',
+                        borderRadius: '10px',
+                        padding: '5px 10px',
+                        fontWeight: 500,
+                        fontSize: '13px',
+                        flex: 1
+                      }}
+                      onMouseEnter={(e) => {
+                        if (currentFilterIndex !== 0) {
+                          e.currentTarget.style.background = '#DFDdEB';
+                        }
+                      }}
+                      onMouseLeave={(e) => {
+                        if (currentFilterIndex !== 0) {
+                          e.currentTarget.style.background = '#EAEAF6';
+                        }
+                      }}
+                    >
+                      Previous
+                    </button>
+                    <button
+                      onClick={closeAllFilters}
+                      style={{
+                        background: '#FF6B6B',
+                        cursor: 'pointer',
+                        border: 'none',
+                        color: '#fff',
+                        borderRadius: '10px',
+                        padding: '5px 10px',
+                        fontWeight: 500,
+                        fontSize: '13px',
+                        flex: 1
+                      }}
+                      onMouseEnter={(e) => e.currentTarget.style.background = '#E53E3E'}
+                      onMouseLeave={(e) => e.currentTarget.style.background = '#FF6B6B'}
+                    >
+                      Close
+                    </button>
+                    <button
+                      onClick={goToNextFilter}
+                      disabled={currentFilterIndex === filtersList.length - 1}
+                      style={{
+                        background: currentFilterIndex === filtersList.length - 1 ? '#D0D0D0' : '#EAEAF6',
+                        cursor: currentFilterIndex === filtersList.length - 1 ? 'not-allowed' : 'pointer',
+                        border: 'none',
+                        color: currentFilterIndex === filtersList.length - 1 ? '#999' : '#0B57CF',
+                        borderRadius: '10px',
+                        padding: '5px 10px',
+                        fontWeight: 500,
+                        fontSize: '13px',
+                        flex: 1
+                      }}
+                      onMouseEnter={(e) => {
+                        if (currentFilterIndex !== filtersList.length - 1) {
+                          e.currentTarget.style.background = '#DFDdEB';
+                        }
+                      }}
+                      onMouseLeave={(e) => {
+                        if (currentFilterIndex !== filtersList.length - 1) {
+                          e.currentTarget.style.background = '#EAEAF6';
+                        }
+                      }}
+                    >
+                      Next
+                    </button>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* Bedroom Modal */}
+            {openBedroomModal && (
+              <div style={{
+                position: 'fixed',
+                top: 0,
+                left: 0,
+                width: '100vw',
+                height: '100vh',
+                backgroundColor: 'rgba(0, 0, 0, 0.5)',
+                zIndex: 1509,
+                animation: 'fadeIn 0.3s ease-in-out',
+              }}>
+                <div style={{
+                  position: 'fixed',
+                  top: '50%',
+                  left: '50%',
+                  transform: 'translate(-50%, -50%)',
+                  backgroundColor: 'white',
+                  width: '100%',
+                  maxWidth: '300px',
+                  padding: '10px',
+                  zIndex: 10,
+                  boxShadow: '0 4px 8px rgba(0, 123, 255, 0.3)',
+                  borderRadius: '18px',
+                  animation: 'popupOpen 0.3s ease-in-out',
+                }}>
+                  <div style={{
+                    fontWeight: 500,
+                    fontSize: '15px',
+                    marginBottom: '10px',
+                    textAlign: 'start',
+                    color: 'grey',
+                  }}>
+                    Select or Search <span style={{ color: '#0B57CF', fontWeight: 500 }}>Bedrooms</span>
+                  </div>
+                  <ul style={{
+                    listStyleType: 'none',
+                    padding: 0,
+                    margin: 0,
+                    overflowY: 'auto',
+                    maxHeight: '250px',
+                  }}>
+                    {['1 BHK', '2 BHK', '3 BHK', '4 BHK', '5 BHK', '6 BHK', '7 BHK', '8 BHK', 'No'].map((bedroom) => {
+                      const isSelected = horizontalFilters.selectedBedroom.includes(bedroom);
+                      return (
+                        <li
+                          key={bedroom}
+                          onClick={() => handleHorizontalFilterChange('Bedroom', bedroom)}
+                          style={{
+                            fontWeight: 300,
+                            padding: '8px 5px',
+                            cursor: 'pointer',
+                            color: 'grey',
+                            borderBottom: '1px solid #D0D7DE',
+                            background: isSelected ? '#E8F0FE' : '#fff'
+                          }}
+                          onMouseEnter={(e) => {
+                            e.currentTarget.style.background = isSelected ? '#E8F0FE' : '#f5f5f5';
+                          }}
+                          onMouseLeave={(e) => {
+                            e.currentTarget.style.background = isSelected ? '#E8F0FE' : '#fff';
+                          }}
+                        >
+                          <input
+                            type="checkbox"
+                            checked={isSelected}
+                            onChange={() => {}}
+                            style={{
+                              cursor: 'pointer',
+                              width: '14px',
+                              height: '14px',
+                              marginRight: '6px',
+                              verticalAlign: 'middle'
+                            }}
+                          />
+                          {bedroom}
+                        </li>
+                      );
+                    })}
+                  </ul>
+                  <div style={{
+                    display: 'flex',
+                    justifyContent: 'space-between',
+                    marginTop: '10px',
+                    gap: '8px'
+                  }}>
+                    <button
+                      onClick={goToPreviousFilter}
+                      disabled={currentFilterIndex === 0}
+                      style={{
+                        background: currentFilterIndex === 0 ? '#D0D0D0' : '#EAEAF6',
+                        cursor: currentFilterIndex === 0 ? 'not-allowed' : 'pointer',
+                        border: 'none',
+                        color: currentFilterIndex === 0 ? '#999' : '#0B57CF',
+                        borderRadius: '10px',
+                        padding: '5px 10px',
+                        fontWeight: 500,
+                        fontSize: '13px',
+                        flex: 1
+                      }}
+                      onMouseEnter={(e) => {
+                        if (currentFilterIndex !== 0) {
+                          e.currentTarget.style.background = '#DFDdEB';
+                        }
+                      }}
+                      onMouseLeave={(e) => {
+                        if (currentFilterIndex !== 0) {
+                          e.currentTarget.style.background = '#EAEAF6';
+                        }
+                      }}
+                    >
+                      Previous
+                    </button>
+                    <button
+                      onClick={closeAllFilters}
+                      style={{
+                        background: '#FF6B6B',
+                        cursor: 'pointer',
+                        border: 'none',
+                        color: '#fff',
+                        borderRadius: '10px',
+                        padding: '5px 10px',
+                        fontWeight: 500,
+                        fontSize: '13px',
+                        flex: 1
+                      }}
+                      onMouseEnter={(e) => e.currentTarget.style.background = '#E53E3E'}
+                      onMouseLeave={(e) => e.currentTarget.style.background = '#FF6B6B'}
+                    >
+                      Close
+                    </button>
+                    <button
+                      onClick={goToNextFilter}
+                      disabled={currentFilterIndex === filtersList.length - 1}
+                      style={{
+                        background: currentFilterIndex === filtersList.length - 1 ? '#D0D0D0' : '#EAEAF6',
+                        cursor: currentFilterIndex === filtersList.length - 1 ? 'not-allowed' : 'pointer',
+                        border: 'none',
+                        color: currentFilterIndex === filtersList.length - 1 ? '#999' : '#0B57CF',
+                        borderRadius: '10px',
+                        padding: '5px 10px',
+                        fontWeight: 500,
+                        fontSize: '13px',
+                        flex: 1
+                      }}
+                      onMouseEnter={(e) => {
+                        if (currentFilterIndex !== filtersList.length - 1) {
+                          e.currentTarget.style.background = '#DFDdEB';
+                        }
+                      }}
+                      onMouseLeave={(e) => {
+                        if (currentFilterIndex !== filtersList.length - 1) {
+                          e.currentTarget.style.background = '#EAEAF6';
+                        }
+                      }}
+                    >
+                      Next
+                    </button>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* Floor Modal */}
+            {openFloorModal && (
+              <div style={{
+                position: 'fixed',
+                top: 0,
+                left: 0,
+                width: '100vw',
+                height: '100vh',
+                backgroundColor: 'rgba(0, 0, 0, 0.5)',
+                zIndex: 1509,
+                animation: 'fadeIn 0.3s ease-in-out',
+              }}>
+                <div style={{
+                  position: 'fixed',
+                  top: '50%',
+                  left: '50%',
+                  transform: 'translate(-50%, -50%)',
+                  backgroundColor: 'white',
+                  width: '100%',
+                  maxWidth: '300px',
+                  padding: '10px',
+                  zIndex: 10,
+                  boxShadow: '0 4px 8px rgba(0, 123, 255, 0.3)',
+                  borderRadius: '18px',
+                  animation: 'popupOpen 0.3s ease-in-out',
+                }}>
+                  <div style={{
+                    fontWeight: 500,
+                    fontSize: '15px',
+                    marginBottom: '10px',
+                    textAlign: 'start',
+                    color: 'grey',
+                  }}>
+                    Select or Search <span style={{ color: '#0B57CF', fontWeight: 500 }}>Floor</span>
+                  </div>
+                  <ul style={{
+                    listStyleType: 'none',
+                    padding: 0,
+                    margin: 0,
+                    overflowY: 'auto',
+                    maxHeight: '250px',
+                  }}>
+                    {['Ground Floor', '1st Floor', '2nd Floor', '3rd Floor', '4th Floor', '5th Floor', '6th Floor', '7th Floor', '8th Floor', '9th Floor', '10th Floor', 'Basement', 'Lower Basement'].map((floor) => {
+                      const isSelected = horizontalFilters.selectedFloor.includes(floor);
+                      return (
+                        <li
+                          key={floor}
+                          onClick={() => handleHorizontalFilterChange('Floor', floor)}
+                          style={{
+                            fontWeight: 300,
+                            padding: '8px 5px',
+                            cursor: 'pointer',
+                            color: 'grey',
+                            borderBottom: '1px solid #D0D7DE',
+                            background: isSelected ? '#E8F0FE' : '#fff'
+                          }}
+                          onMouseEnter={(e) => {
+                            e.currentTarget.style.background = isSelected ? '#E8F0FE' : '#f5f5f5';
+                          }}
+                          onMouseLeave={(e) => {
+                            e.currentTarget.style.background = isSelected ? '#E8F0FE' : '#fff';
+                          }}
+                        >
+                          <input
+                            type="checkbox"
+                            checked={isSelected}
+                            onChange={() => {}}
+                            style={{
+                              cursor: 'pointer',
+                              width: '14px',
+                              height: '14px',
+                              marginRight: '6px',
+                              verticalAlign: 'middle'
+                            }}
+                          />
+                          {floor}
+                        </li>
+                      );
+                    })}
+                  </ul>
+                  <div style={{
+                    display: 'flex',
+                    justifyContent: 'space-between',
+                    marginTop: '10px',
+                    gap: '8px'
+                  }}>
+                    <button
+                      onClick={goToPreviousFilter}
+                      disabled={currentFilterIndex === 0}
+                      style={{
+                        background: currentFilterIndex === 0 ? '#D0D0D0' : '#EAEAF6',
+                        cursor: currentFilterIndex === 0 ? 'not-allowed' : 'pointer',
+                        border: 'none',
+                        color: currentFilterIndex === 0 ? '#999' : '#0B57CF',
+                        borderRadius: '10px',
+                        padding: '5px 10px',
+                        fontWeight: 500,
+                        fontSize: '13px',
+                        flex: 1
+                      }}
+                      onMouseEnter={(e) => {
+                        if (currentFilterIndex !== 0) {
+                          e.currentTarget.style.background = '#DFDdEB';
+                        }
+                      }}
+                      onMouseLeave={(e) => {
+                        if (currentFilterIndex !== 0) {
+                          e.currentTarget.style.background = '#EAEAF6';
+                        }
+                      }}
+                    >
+                      Previous
+                    </button>
+                    <button
+                      onClick={closeAllFilters}
+                      style={{
+                        background: '#FF6B6B',
+                        cursor: 'pointer',
+                        border: 'none',
+                        color: '#fff',
+                        borderRadius: '10px',
+                        padding: '5px 10px',
+                        fontWeight: 500,
+                        fontSize: '13px',
+                        flex: 1
+                      }}
+                      onMouseEnter={(e) => e.currentTarget.style.background = '#E53E3E'}
+                      onMouseLeave={(e) => e.currentTarget.style.background = '#FF6B6B'}
+                    >
+                      Close
+                    </button>
+                    <button
+                      onClick={goToNextFilter}
+                      disabled={currentFilterIndex === filtersList.length - 1}
+                      style={{
+                        background: currentFilterIndex === filtersList.length - 1 ? '#D0D0D0' : '#EAEAF6',
+                        cursor: currentFilterIndex === filtersList.length - 1 ? 'not-allowed' : 'pointer',
+                        border: 'none',
+                        color: currentFilterIndex === filtersList.length - 1 ? '#999' : '#0B57CF',
+                        borderRadius: '10px',
+                        padding: '5px 10px',
+                        fontWeight: 500,
+                        fontSize: '13px',
+                        flex: 1
+                      }}
+                      onMouseEnter={(e) => {
+                        if (currentFilterIndex !== filtersList.length - 1) {
+                          e.currentTarget.style.background = '#DFDdEB';
+                        }
+                      }}
+                      onMouseLeave={(e) => {
+                        if (currentFilterIndex !== filtersList.length - 1) {
+                          e.currentTarget.style.background = '#EAEAF6';
+                        }
+                      }}
+                    >
+                      Next
+                    </button>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* Area Modal */}
+            {openAreaModal && (
+              <div style={{
+                position: 'fixed',
+                top: 0,
+                left: 0,
+                width: '100vw',
+                height: '100vh',
+                backgroundColor: 'rgba(0, 0, 0, 0.5)',
+                zIndex: 1509,
+                animation: 'fadeIn 0.3s ease-in-out',
+              }}>
+                <div style={{
+                  position: 'fixed',
+                  top: '50%',
+                  left: '50%',
+                  transform: 'translate(-50%, -50%)',
+                  backgroundColor: 'white',
+                  width: '100%',
+                  maxWidth: '300px',
+                  padding: '10px',
+                  zIndex: 10,
+                  boxShadow: '0 4px 8px rgba(0, 123, 255, 0.3)',
+                  borderRadius: '18px',
+                  animation: 'popupOpen 0.3s ease-in-out',
+                }}>
+                  <div style={{
+                    fontWeight: 500,
+                    fontSize: '15px',
+                    marginBottom: '10px',
+                    textAlign: 'start',
+                    color: 'grey',
+                  }}>
+                    Select or Search <span style={{ color: '#0B57CF', fontWeight: 500 }}>Area</span>
+                  </div>
+                  <div style={{ marginBottom: '10px', position: 'relative' }}>
+                    <input
+                      type="text"
+                      placeholder="Search area..."
+                      value={horizontalFilters.selectedArea}
+                      onChange={handleAreaInputChange}
+                      style={{
+                        width: '100%',
+                        padding: '8px 10px',
+                        borderRadius: '8px',
+                        border: '1px solid #D0D7DE',
+                        fontSize: '13px',
+                        boxSizing: 'border-box',
+                        fontWeight: 300
+                      }}
+                    />
+                    {showAreaSuggestions && areaSuggestions.length > 0 && (
+                      <ul style={{
+                        position: 'absolute',
+                        top: '100%',
+                        left: 0,
+                        right: 0,
+                        backgroundColor: 'white',
+                        border: '1px solid #D0D7DE',
+                        borderRadius: '8px',
+                        maxHeight: '150px',
+                        overflowY: 'auto',
+                        zIndex: 10001,
+                        listStyleType: 'none',
+                        padding: '0',
+                        margin: '5px 0 0 0'
+                      }}>
+                        {areaSuggestions.map((area) => (
+                          <li
+                            key={area}
+                            onClick={() => handleAreaSelect(area)}
+                            style={{
+                              padding: '8px 10px',
+                              cursor: 'pointer',
+                              fontSize: '13px',
+                              color: '#666',
+                              borderBottom: '1px solid #E8E8E8',
+                              fontWeight: 300
+                            }}
+                            onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#f5f5f5'}
+                            onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'white'}
+                          >
+                            {area}
+                          </li>
+                        ))}
+                      </ul>
+                    )}
+                  </div>
+                  {horizontalFilters.selectedArea && (
+                    <div style={{ marginBottom: '10px', fontSize: '12px', color: '#666', fontWeight: 300 }}>
+                      Selected: <strong style={{ color: '#0B57CF' }}>{horizontalFilters.selectedArea}</strong>
+                    </div>
+                  )}
+                  <div style={{
+                    display: 'flex',
+                    justifyContent: 'space-between',
+                    marginTop: '10px',
+                    gap: '8px'
+                  }}>
+                    <button
+                      onClick={goToPreviousFilter}
+                      disabled={currentFilterIndex === 0}
+                      style={{
+                        background: currentFilterIndex === 0 ? '#D0D0D0' : '#EAEAF6',
+                        cursor: currentFilterIndex === 0 ? 'not-allowed' : 'pointer',
+                        border: 'none',
+                        color: currentFilterIndex === 0 ? '#999' : '#0B57CF',
+                        borderRadius: '10px',
+                        padding: '5px 10px',
+                        fontWeight: 500,
+                        fontSize: '13px',
+                        flex: 1
+                      }}
+                      onMouseEnter={(e) => {
+                        if (currentFilterIndex !== 0) {
+                          e.currentTarget.style.background = '#DFDdEB';
+                        }
+                      }}
+                      onMouseLeave={(e) => {
+                        if (currentFilterIndex !== 0) {
+                          e.currentTarget.style.background = '#EAEAF6';
+                        }
+                      }}
+                    >
+                      Previous
+                    </button>
+                    <button
+                      onClick={closeAllFilters}
+                      style={{
+                        background: '#FF6B6B',
+                        cursor: 'pointer',
+                        border: 'none',
+                        color: '#fff',
+                        borderRadius: '10px',
+                        padding: '5px 10px',
+                        fontWeight: 500,
+                        fontSize: '13px',
+                        flex: 1
+                      }}
+                      onMouseEnter={(e) => e.currentTarget.style.background = '#E53E3E'}
+                      onMouseLeave={(e) => e.currentTarget.style.background = '#FF6B6B'}
+                    >
+                      Close
+                    </button>
+                    <button
+                      onClick={goToNextFilter}
+                      disabled={currentFilterIndex === filtersList.length - 1}
+                      style={{
+                        background: currentFilterIndex === filtersList.length - 1 ? '#D0D0D0' : '#EAEAF6',
+                        cursor: currentFilterIndex === filtersList.length - 1 ? 'not-allowed' : 'pointer',
+                        border: 'none',
+                        color: currentFilterIndex === filtersList.length - 1 ? '#999' : '#0B57CF',
+                        borderRadius: '10px',
+                        padding: '5px 10px',
+                        fontWeight: 500,
+                        fontSize: '13px',
+                        flex: 1
+                      }}
+                      onMouseEnter={(e) => {
+                        if (currentFilterIndex !== filtersList.length - 1) {
+                          e.currentTarget.style.background = '#DFDdEB';
+                        }
+                      }}
+                      onMouseLeave={(e) => {
+                        if (currentFilterIndex !== filtersList.length - 1) {
+                          e.currentTarget.style.background = '#EAEAF6';
+                        }
+                      }}
+                    >
+                      Next
                     </button>
                   </div>
                 </div>
@@ -6441,6 +7110,34 @@ useEffect(() => {
                 from {
                   opacity: 0;
                   transform: translateY(-10px);
+                }
+                to {
+                  opacity: 1;
+                  transform: translateY(0);
+                }
+              }
+              @keyframes fadeIn {
+                from {
+                  opacity: 0;
+                }
+                to {
+                  opacity: 1;
+                }
+              }
+              @keyframes popupOpen {
+                from {
+                  opacity: 0;
+                  transform: scale(0.9);
+                }
+                to {
+                  opacity: 1;
+                  transform: scale(1);
+                }
+              }
+              @keyframes modalSlideUp {
+                from {
+                  opacity: 0;
+                  transform: translateY(30px);
                 }
                 to {
                   opacity: 1;
