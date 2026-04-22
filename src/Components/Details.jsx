@@ -3507,6 +3507,7 @@ import {
 import { Modal, Button, Form } from "react-bootstrap";
 import { FiAlertCircle } from "react-icons/fi";
 import ConfirmationModal from "./ConfirmationModal";
+import InsufficientPointsModal from "./InsufficientPointsModal";
 import { IoChevronBackSharp } from "react-icons/io5";
 import { GrFormNext, GrNext } from "react-icons/gr";
 import numberToWords from 'number-to-words';
@@ -3574,6 +3575,7 @@ import { GoCheckCircleFill } from "react-icons/go";
 import { motion } from 'framer-motion';
 import pic from '../Assets/Mask Group 3@2x.png'; // Correct path
 
+const POINTS_PER_CONTACT_VIEW = 10;
 
 const AnimatedHeart = ({ filled, onClick }) => {
   const [clicked, setClicked] = useState(false);
@@ -3982,33 +3984,22 @@ const sendNeedHelpWhatsAppToAdmin = async (userPhone, helpReason, helpComment) =
       return;
     }
 
-    // Message to admin with user's full phone number
-    const messageToAdmin = `🆘 NEED HELP REQUEST - Rent Pondy
-
-📞 User Phone: ${userPhone}
-🆔 Rent ID: ${rentId || "N/A"}
-📍 Location: ${propertyLocation}
-👨‍💼 Owner: ${propertyDetails?.ownerName || "N/A"}
-
-🎯 Help Reason: ${helpReason}
-
-💬 User Comment:
-${helpComment || "No comment provided"}
-
-═══════════════════════════════════
-Please respond to the user as soon as possible.
-═══════════════════════════════════`;
-
-    console.log("📞 === MESSAGE TO ADMIN ===\n", messageToAdmin);
-
-    // Send to admin
-    console.log("📞 Sending help request to admin...");
+    // Send to admin via queue (template-based)
+    console.log("📞 Queuing help request to admin...");
     try {
-      const adminResponse = await axios.post(`${process.env.REACT_APP_API_URL}/send-message`, {
+      const adminResponse = await axios.post(`${process.env.REACT_APP_API_URL}/queue-message`, {
         to: adminPhoneFormatted,
-        message: messageToAdmin,
+        category: "need-help",
+        data: {
+          userPhone,
+          rentId: rentId || "N/A",
+          location: propertyLocation,
+          ownerName: propertyDetails?.ownerName || "N/A",
+          reason: helpReason,
+          comment: helpComment || "No comment provided",
+        },
       });
-      console.log("✅ Admin help notification sent:", adminResponse.status);
+      console.log("✅ Admin help notification queued:", adminResponse.data);
     } catch (adminErr) {
       console.error("❌ Admin notification error:", adminErr.message);
       if (adminErr.response?.data) {
@@ -4050,6 +4041,8 @@ const [messageType, setMessageType] = React.useState("info"); // can be "error",
   const [userPhoneNumber, setUserPhoneNumber] = useState(null);
   const [actionMessage, setActionMessage] = useState(null);
   const [showContactDetails, setShowContactDetails] = useState(false);
+  const [pointsBalance, setPointsBalance] = useState(null);
+  const [showInsufficientPoints, setShowInsufficientPoints] = useState(false);
   const [favoritedUserPhoneNumbers, setFavoritedUserPhoneNumbers] = useState([]);
   const [property, setProperty] = useState(null);
   const [viewedProperties, setViewedProperties] = useState([]);
@@ -4618,53 +4611,25 @@ const handleSubmit = async ({ offeredPrice, rentId }) => {
         } else {
           console.log("✅ Phone validation PASSED");
           
-          // Message for owner
-          const messageToOwner = `Hi ${ownerName} 👋\n\n💰 A user has made an offer on your property on Rent Pondy!\n\nOffer Details:\n💵 Offered Rent: ₹${offeredPrice}/month\n🆔 Rent ID: ${rentId}\n📍 Property: ${propertyLocation}\n👤 User: ${userName}\n📞 Contact: ${storedPhoneNumber}\n\nPlease review the offer and respond at your earliest convenience.\n\nThank you for using Rent Pondy 🙏`;
+          const queueData = { ownerName, rentId, location: propertyLocation, userName, userPhone: storedPhoneNumber, ownerPhone, offerAmount: offeredPrice };
 
-          // Message for user
-          const messageToUser = `Hi ${userName} 👋\n\n✅ Your offer has been submitted successfully!\n\nOffer Details:\n💵 Offered Rent: ₹${offeredPrice}/month\n🆔 Rent ID: ${rentId}\n📍 Property: ${propertyLocation}\n👨‍💼 Owner: ${ownerName}\n📞 Owner Contact: ${ownerPhone}\n\n⏳ The owner will review your offer shortly.\n\nThank you for using Rent Pondy 🙏`;
-
-          console.log("💰 === MESSAGE TO OWNER ===\n", messageToOwner);
-          console.log("💰 === MESSAGE TO USER ===\n", messageToUser);
-
-          // Send WhatsApp message to owner
-          console.log("💰 Sending message to owner...");
-          console.log("💰 API URL:", process.env.REACT_APP_API_URL);
-          console.log("💰 Owner phone (to):", ownerTo);
-          console.log("💰 Message length:", messageToOwner.length);
-          
+          // Queue to owner
           try {
-            const ownerResponse = await axios.post(`${process.env.REACT_APP_API_URL}/send-message`, {
-              to: ownerTo,
-              message: messageToOwner,
+            const ownerResponse = await axios.post(`${process.env.REACT_APP_API_URL}/queue-message`, {
+              to: ownerTo, category: "offer-owner", data: queueData,
             });
-            console.log("✅ Owner response status:", ownerResponse.status);
-            console.log("✅ Owner response data:", ownerResponse.data);
-            console.log("✅ Message sent to owner:", ownerTo);
+            console.log("✅ Owner offer queued:", ownerResponse.data);
           } catch (ownerErr) {
-            console.error("❌ Owner WhatsApp API Error:", ownerErr.message);
-            if (ownerErr.response) {
-              console.error("❌ Owner API Status:", ownerErr.response.status);
-              console.error("❌ Owner API Response:", ownerErr.response.data);
-            } else if (ownerErr.request) {
-              console.error("❌ Owner API No Response:", ownerErr.request);
-            }
+            console.error("❌ Owner queue error:", ownerErr.message);
             throw ownerErr;
           }
 
-          // Send WhatsApp message to user
-          console.log("💰 Sending message to user...");
-          console.log("💰 User phone (to):", userTo);
-          console.log("💰 Message length:", messageToUser.length);
-          
+          // Queue to user
           try {
-            const userResponse = await axios.post(`${process.env.REACT_APP_API_URL}/send-message`, {
-              to: userTo,
-              message: messageToUser,
+            const userResponse = await axios.post(`${process.env.REACT_APP_API_URL}/queue-message`, {
+              to: userTo, category: "offer-user", data: queueData,
             });
-            console.log("✅ User response status:", userResponse.status);
-            console.log("✅ User response data:", userResponse.data);
-            console.log("✅ Message sent to user:", userTo);
+            console.log("✅ User offer queued:", userResponse.data);
           } catch (userErr) {
             console.error("❌ User WhatsApp API Error:", userErr.message);
             if (userErr.response) {
@@ -5186,46 +5151,19 @@ const sendAddressRequestWhatsAppMessages = async (userPhone, ownerPhone) => {
       return;
     }
 
-    // Message to owner: User requested address
-    const messageToOwner = `Hello ${ownerName} 👋\n\nA user has requested your property address on Rent Pondy App!\n\n📋 Property Details:\n🆔 Rent ID: ${rentId}\n👤 User Name: ${userName}\n📞 User Phone: ${userPhone}\n📍 Location: ${propertyLocation}\n\nGreeting: They want to view the complete address of your property.\n\nBest regards,\nRent Pondy Team`;
+    const queueData = { ownerName, userName, rentId, location: propertyLocation, userPhone, ownerPhone };
 
-    // Message to user: Address requested confirmation
-    const messageToUser = `Hello ${userName} 👋\n\nYour request for property address has been sent to the owner on Rent Pondy App!\n\n📋 Property Details:\n🆔 Rent ID: ${rentId}\n👨‍💼 Owner Name: ${ownerName}\n📞 Owner Phone: ${ownerPhone}\n📍 Location: ${propertyLocation}\n\nGreeting: The owner will share the complete address soon.\n\nBest regards,\nRent Pondy Team`;
-
-    console.log("📍 === MESSAGE TO OWNER ===\n", messageToOwner);
-    console.log("📍 === MESSAGE TO USER ===\n", messageToUser);
-
-    // Send to owner
-    console.log("📍 Sending address request notification to owner...");
     try {
-      const ownerResponse = await axios.post(`${process.env.REACT_APP_API_URL}/send-message`, {
-        to: ownerTo,
-        message: messageToOwner,
-      });
-      console.log("✅ Owner address request sent:", ownerResponse.status);
-    } catch (ownerErr) {
-      console.error("❌ Owner notification error:", ownerErr.message);
-      if (ownerErr.response?.data) {
-        console.error("❌ Response:", ownerErr.response.data);
-      }
-    }
+      await axios.post(`${process.env.REACT_APP_API_URL}/queue-message`, { to: ownerTo, category: "address-owner", data: queueData });
+      console.log("✅ Owner address request queued");
+    } catch (ownerErr) { console.error("❌ Owner queue error:", ownerErr.message); }
 
-    // Send to user
-    console.log("📍 Sending address request confirmation to user...");
     try {
-      const userResponse = await axios.post(`${process.env.REACT_APP_API_URL}/send-message`, {
-        to: userTo,
-        message: messageToUser,
-      });
-      console.log("✅ User address request confirmation sent:", userResponse.status);
-    } catch (userErr) {
-      console.error("❌ User notification error:", userErr.message);
-      if (userErr.response?.data) {
-        console.error("❌ Response:", userErr.response.data);
-      }
-    }
+      await axios.post(`${process.env.REACT_APP_API_URL}/queue-message`, { to: userTo, category: "address-user", data: queueData });
+      console.log("✅ User address request queued");
+    } catch (userErr) { console.error("❌ User queue error:", userErr.message); }
 
-    console.log("✅ === ADDRESS REQUEST WHATSAPP COMPLETE ===");
+    console.log("✅ === ADDRESS REQUEST QUEUED ===");
   } catch (error) {
     console.error("❌ WhatsApp error:", error);
   }
@@ -5267,23 +5205,17 @@ const sendCallWhatsAppMessages = async (userPhone, ownerPhone) => {
       return;
     }
 
-    // Message to owner: User is calling
-    const messageToOwner = `Hello ${ownerName} 👋\n\nA user is calling you from Rent Pondy App!\n\n📋 Property Details:\n🆔 Rent ID: ${rentId}\n👤 User Name: ${userName}\n📞 User Phone: ${userPhone}\n📍 Location: ${propertyLocation}\n\nGreeting: Be ready to answer the call and discuss the property details.\n\nBest regards,\nRent Pondy Team`;
+    const queueData = { ownerName, userName, rentId, location: propertyLocation, userPhone, ownerPhone };
 
-    // Message to user: Calling confirmation
-    const messageToUser = `Hello ${userName} 👋\n\nYou are calling the owner from Rent Pondy App!\n\n📋 Property Details:\n🆔 Rent ID: ${rentId}\n👨‍💼 Owner Name: ${ownerName}\n📞 Owner Phone: ${ownerPhone}\n📍 Location: ${propertyLocation}\n\nGreeting: Have a great conversation about the property.\n\nBest regards,\nRent Pondy Team`;
-
-    console.log("📞 === MESSAGE TO OWNER ===\n", messageToOwner);
-    console.log("📞 === MESSAGE TO USER ===\n", messageToUser);
-
-    // Send to owner
-    console.log("📞 Sending call notification to owner...");
+    // Send to owner (queued)
+    console.log("📞 Queuing call notification to owner...");
     try {
-      const ownerResponse = await axios.post(`${process.env.REACT_APP_API_URL}/send-message`, {
+      const ownerResponse = await axios.post(`${process.env.REACT_APP_API_URL}/queue-message`, {
         to: ownerTo,
-        message: messageToOwner,
+        category: "call-owner",
+        data: queueData,
       });
-      console.log("✅ Owner call notification sent:", ownerResponse.status);
+      console.log("✅ Owner call notification queued:", ownerResponse.data);
     } catch (ownerErr) {
       console.error("❌ Owner notification error:", ownerErr.message);
       if (ownerErr.response?.data) {
@@ -5291,14 +5223,15 @@ const sendCallWhatsAppMessages = async (userPhone, ownerPhone) => {
       }
     }
 
-    // Send to user
-    console.log("📞 Sending call confirmation to user...");
+    // Send to user (queued)
+    console.log("📞 Queuing call confirmation to user...");
     try {
-      const userResponse = await axios.post(`${process.env.REACT_APP_API_URL}/send-message`, {
+      const userResponse = await axios.post(`${process.env.REACT_APP_API_URL}/queue-message`, {
         to: userTo,
-        message: messageToUser,
+        category: "call-user",
+        data: queueData,
       });
-      console.log("✅ User call confirmation sent:", userResponse.status);
+      console.log("✅ User call confirmation queued:", userResponse.data);
     } catch (userErr) {
       console.error("❌ User notification error:", userErr.message);
       if (userErr.response?.data) {
@@ -5306,7 +5239,7 @@ const sendCallWhatsAppMessages = async (userPhone, ownerPhone) => {
       }
     }
 
-    console.log("✅ === CALL NOTIFICATION WHATSAPP COMPLETE ===");
+    console.log("✅ === CALL NOTIFICATION WHATSAPP QUEUED ===");
   } catch (error) {
     console.error("❌ WhatsApp error:", error);
   }
@@ -5389,18 +5322,60 @@ const handleAddressRequest = async () => {
 // };
 
 
-const handleOwnerContactClick = () => {
-  // ✅ ONLY show contact details - NO API calls, NO status changes
+const handleOwnerContactClick = async () => {
   setViewed(true);
   setTimeout(() => setViewed(false), 300);
-  
-  // Simply show the contact details section
-  setShowContactDetails(true);
-  
-  // Scroll to contact details
-  setTimeout(scrollToContact, 100);
-  
-  setMessage("Contact details revealed.");
+
+  // Already revealed on this page — no need to charge again.
+  if (showContactDetails) {
+    setTimeout(scrollToContact, 100);
+    return;
+  }
+
+  const storedPhoneNumber = localStorage.getItem("phoneNumber");
+  if (!storedPhoneNumber) {
+    navigate("/login");
+    return;
+  }
+
+  try {
+    const balanceRes = await axios.get(
+      `${process.env.REACT_APP_API_URL}/points-balance/${storedPhoneNumber}`
+    );
+    const currentBalance = balanceRes.data?.balance ?? 0;
+    setPointsBalance(currentBalance);
+
+    if (currentBalance < POINTS_PER_CONTACT_VIEW) {
+      setShowInsufficientPoints(true);
+      return;
+    }
+
+    const deductRes = await axios.post(
+      `${process.env.REACT_APP_API_URL}/points-deduct`,
+      {
+        phoneNumber: storedPhoneNumber,
+        points: POINTS_PER_CONTACT_VIEW,
+        rentId,
+        reason: "view-owner-contact",
+      }
+    );
+
+    if (!deductRes.data?.success) {
+      setMessage(deductRes.data?.message || "Could not deduct points. Please try again.");
+      return;
+    }
+
+    setPointsBalance(deductRes.data.balance ?? (currentBalance - POINTS_PER_CONTACT_VIEW));
+    setShowContactDetails(true);
+    setTimeout(scrollToContact, 100);
+    setMessage(`Contact details revealed. ${POINTS_PER_CONTACT_VIEW} points used.`);
+  } catch (err) {
+    // If points API is unreachable, fall back to old behaviour so the app keeps working.
+    console.error("Points check failed:", err);
+    setShowContactDetails(true);
+    setTimeout(scrollToContact, 100);
+    setMessage("Contact details revealed.");
+  }
 };
 
 // WhatsApp notification for contact request (to both owner and user)
@@ -5441,23 +5416,17 @@ const sendContactRequestWhatsAppMessages = async (userPhone, ownerPhone) => {
       return;
     }
 
-    // Message to owner: Someone viewed contact details
-    const messageToOwner = `Hello ${ownerName} 👋\n\nSomeone has viewed your contact details on Rent Pondy App!\n\n📋 Property Details:\n🆔 Rent ID: ${rentId}\n👤 User Name: ${userName}\n📞 User Phone: ${userPhone}\n\nGreeting: They are interested in connecting with you about your property.\n\nBest regards,\nRent Pondy Team`;
+    const queueData = { ownerName, userName, rentId, userPhone, ownerPhone };
 
-    // Message to user: Confirming contact details shared
-    const messageToUser = `Hello ${userName} 👋\n\nYou have successfully viewed the owner's contact details on Rent Pondy App!\n\n📋 Property Details:\n🆔 Rent ID: ${rentId}\n👨‍💼 Owner Name: ${ownerName}\n📞 Owner Phone: ${ownerPhone}\n\nGreeting: You can now reach out directly to the owner to discuss the property.\n\nBest regards,\nRent Pondy Team`;
-
-    console.log("💬 === MESSAGE TO OWNER ===\n", messageToOwner);
-    console.log("💬 === MESSAGE TO USER ===\n", messageToUser);
-
-    // Send to owner
-    console.log("💬 Sending contact notification to owner...");
+    // Send to owner (queued)
+    console.log("💬 Queuing contact notification to owner...");
     try {
-      const ownerResponse = await axios.post(`${process.env.REACT_APP_API_URL}/send-message`, {
+      const ownerResponse = await axios.post(`${process.env.REACT_APP_API_URL}/queue-message`, {
         to: ownerTo,
-        message: messageToOwner,
+        category: "contact-owner",
+        data: queueData,
       });
-      console.log("✅ Owner contact notification sent:", ownerResponse.status);
+      console.log("✅ Owner contact notification queued:", ownerResponse.data);
     } catch (ownerErr) {
       console.error("❌ Owner notification error:", ownerErr.message);
       if (ownerErr.response?.data) {
@@ -5465,14 +5434,15 @@ const sendContactRequestWhatsAppMessages = async (userPhone, ownerPhone) => {
       }
     }
 
-    // Send to user
-    console.log("💬 Sending contact confirmation to user...");
+    // Send to user (queued)
+    console.log("💬 Queuing contact confirmation to user...");
     try {
-      const userResponse = await axios.post(`${process.env.REACT_APP_API_URL}/send-message`, {
+      const userResponse = await axios.post(`${process.env.REACT_APP_API_URL}/queue-message`, {
         to: userTo,
-        message: messageToUser,
+        category: "contact-user",
+        data: queueData,
       });
-      console.log("✅ User contact confirmation sent:", userResponse.status);
+      console.log("✅ User contact confirmation queued:", userResponse.data);
     } catch (userErr) {
       console.error("❌ User notification error:", userErr.message);
       if (userErr.response?.data) {
@@ -5480,7 +5450,7 @@ const sendContactRequestWhatsAppMessages = async (userPhone, ownerPhone) => {
       }
     }
 
-    console.log("✅ === CONTACT REQUEST WHATSAPP COMPLETE ===");
+    console.log("✅ === CONTACT REQUEST WHATSAPP QUEUED ===");
   } catch (error) {
     console.error("❌ Contact request WhatsApp error:", error.message);
     // Non-blocking - don't fail contact sharing if WhatsApp fails
@@ -5638,23 +5608,17 @@ const sendInterestWhatsAppMessages = async (userPhone, ownerPhone, apiOwnerName)
       return;
     }
 
-    // Message to owner: User sent interest
-    const messageToOwner = `Hello ${ownerName} 👋\n\nA user has shown interest in your property on Rent Pondy App!\n\n📋 Property Details:\n🆔 Rent ID: ${rentId}\n👤 User Name: ${userName}\n📞 User Phone: ${userPhone}\n📍 Location: ${propertyLocation}\n\nGreeting: They are very interested in your property and want to connect.\n\nBest regards,\nRent Pondy Team`;
+    const queueData = { ownerName, userName, rentId, location: propertyLocation, userPhone, ownerPhone };
 
-    // Message to user: Interest sent confirmation
-    const messageToUser = `Hello ${userName} 👋\n\nYour interest has been sent to the owner on Rent Pondy App!\n\n📋 Property Details:\n🆔 Rent ID: ${rentId}\n👨‍💼 Owner Name: ${ownerName}\n📞 Owner Phone: ${ownerPhone}\n📍 Location: ${propertyLocation}\n\nGreeting: The owner will be notified about your interest soon.\n\nBest regards,\nRent Pondy Team`;
-
-    console.log("⭐ === MESSAGE TO OWNER ===\n", messageToOwner);
-    console.log("⭐ === MESSAGE TO USER ===\n", messageToUser);
-
-    // Send to owner
-    console.log("⭐ Sending interest notification to owner...");
+    // Send to owner (queued)
+    console.log("⭐ Queuing interest notification to owner...");
     try {
-      const ownerResponse = await axios.post(`${process.env.REACT_APP_API_URL}/send-message`, {
+      const ownerResponse = await axios.post(`${process.env.REACT_APP_API_URL}/queue-message`, {
         to: ownerTo,
-        message: messageToOwner,
+        category: "interest-owner",
+        data: queueData,
       });
-      console.log("✅ Owner interest notification sent:", ownerResponse.status);
+      console.log("✅ Owner interest notification queued:", ownerResponse.data);
     } catch (ownerErr) {
       console.error("❌ Owner notification error:", ownerErr.message);
       if (ownerErr.response?.data) {
@@ -5662,14 +5626,15 @@ const sendInterestWhatsAppMessages = async (userPhone, ownerPhone, apiOwnerName)
       }
     }
 
-    // Send to user
-    console.log("⭐ Sending interest confirmation to user...");
+    // Send to user (queued)
+    console.log("⭐ Queuing interest confirmation to user...");
     try {
-      const userResponse = await axios.post(`${process.env.REACT_APP_API_URL}/send-message`, {
+      const userResponse = await axios.post(`${process.env.REACT_APP_API_URL}/queue-message`, {
         to: userTo,
-        message: messageToUser,
+        category: "interest-user",
+        data: queueData,
       });
-      console.log("✅ User interest confirmation sent:", userResponse.status);
+      console.log("✅ User interest confirmation queued:", userResponse.data);
     } catch (userErr) {
       console.error("❌ User notification error:", userErr.message);
       if (userErr.response?.data) {
@@ -5677,7 +5642,7 @@ const sendInterestWhatsAppMessages = async (userPhone, ownerPhone, apiOwnerName)
       }
     }
 
-    console.log("✅ === SEND INTEREST WHATSAPP COMPLETE ===");
+    console.log("✅ === SEND INTEREST WHATSAPP QUEUED ===");
   } catch (error) {
     console.error("❌ WhatsApp error:", error);
   }
@@ -5717,44 +5682,17 @@ const sendReportWhatsAppMessages = async (userPhone, ownerPhone) => {
       return;
     }
 
-    // Message to user: Report submitted confirmation
-    const messageToUser = `Hi There 👋
+    const queueData = { ownerName, userName: ownerName, rentId, location: propertyLocation, userPhone };
 
-✅ Your currently report the property
-
-🆔 Rent ID: ${rentId || "N/A"}
-📍 Location: ${propertyLocation}
-👨‍💼 Owner: ${ownerName}
-
-❤️ We'll notify the owner about your action
-
-Thank you for using Rent Pondy 🙏`;
-
-    // Message to owner: Property reported
-    const messageToOwner = `Hi There 👋
-
-✅ Your property is report by user
-
-👨‍💼 Owner: ${ownerName}
-❤️ Phone no: ${userPhone}
-
-if you need help contact rent pondy
-ph.no: 8300622013
-email: info.rentpondy@gmail.com
-
-Thank you for using Rent Pondy 🙏`;
-
-    console.log("⚠️ === MESSAGE TO USER ===\n", messageToUser);
-    console.log("⚠️ === MESSAGE TO OWNER ===\n", messageToOwner);
-
-    // Send to user
-    console.log("⚠️ Sending report confirmation to user...");
+    // Send to user (queued - high priority)
+    console.log("⚠️ Queuing report confirmation to user...");
     try {
-      const userResponse = await axios.post(`${process.env.REACT_APP_API_URL}/send-message`, {
+      const userResponse = await axios.post(`${process.env.REACT_APP_API_URL}/queue-message`, {
         to: userTo,
-        message: messageToUser,
+        category: "report-user",
+        data: queueData,
       });
-      console.log("✅ User report confirmation sent:", userResponse.status);
+      console.log("✅ User report confirmation queued:", userResponse.data);
     } catch (userErr) {
       console.error("❌ User notification error:", userErr.message);
       if (userErr.response?.data) {
@@ -5762,14 +5700,15 @@ Thank you for using Rent Pondy 🙏`;
       }
     }
 
-    // Send to owner
-    console.log("⚠️ Sending report notification to owner...");
+    // Send to owner (queued - high priority)
+    console.log("⚠️ Queuing report notification to owner...");
     try {
-      const ownerResponse = await axios.post(`${process.env.REACT_APP_API_URL}/send-message`, {
+      const ownerResponse = await axios.post(`${process.env.REACT_APP_API_URL}/queue-message`, {
         to: ownerTo,
-        message: messageToOwner,
+        category: "report-owner",
+        data: queueData,
       });
-      console.log("✅ Owner report notification sent:", ownerResponse.status);
+      console.log("✅ Owner report notification queued:", ownerResponse.data);
     } catch (ownerErr) {
       console.error("❌ Owner notification error:", ownerErr.message);
       if (ownerErr.response?.data) {
@@ -5777,7 +5716,7 @@ Thank you for using Rent Pondy 🙏`;
       }
     }
 
-    console.log("✅ === REPORT PROPERTY WHATSAPP COMPLETE ===");
+    console.log("✅ === REPORT PROPERTY WHATSAPP QUEUED ===");
   } catch (error) {
     console.error("❌ WhatsApp error:", error);
   }
@@ -5815,46 +5754,17 @@ const sendShareWhatsAppMessages = async (userPhone, ownerPhone) => {
     const ownerName = propertyDetails?.firstName || "Property Owner";
     const rentId = propertyDetails?.rentId || "N/A";
 
-    // Message to user
-    const messageToUser = `🔗 PROPERTY SHARED
-👋 Hi There!
+    const queueData = { ownerName, rentId, location: propertyLocation, userPhone };
 
-✅ You've shared this property with your network
-🏠 Property: ${ownerName}'s Home
-📍 Location: ${propertyLocation}
-🆔 Rent ID: ${rentId}
-
-💡 Share this link with friends and family who might be interested!
-
-
-Thank you for using Rent Pondy! 🙏`;
-
-    // Message to owner
-    const messageToOwner = `🔗 PROPERTY SHARED
-👋 Hi ${ownerName}!
-
-✅ Your property has been shared by a user
-🏠 Property: Your Home
-📍 Location: ${propertyLocation}
-👤 Shared by: ${userPhone}
-🆔 Rent ID: ${rentId}
-
-💡 More visibility = More interested buyers/renters!
-
-
-Thank you for using Rent Pondy! 🙏`;
-
-    console.log("📤 === MESSAGE TO USER ===\n", messageToUser);
-    console.log("📤 === MESSAGE TO OWNER ===\n", messageToOwner);
-
-    // Send to user
-    console.log("📤 Sending share confirmation to user...");
+    // Send to user (queued - low priority)
+    console.log("📤 Queuing share confirmation to user...");
     try {
-      const userResponse = await axios.post(`${process.env.REACT_APP_API_URL}/send-message`, {
+      const userResponse = await axios.post(`${process.env.REACT_APP_API_URL}/queue-message`, {
         to: userTo,
-        message: messageToUser,
+        category: "share-user",
+        data: queueData,
       });
-      console.log("✅ User share confirmation sent:", userResponse.status);
+      console.log("✅ User share confirmation queued:", userResponse.data);
     } catch (userErr) {
       console.error("❌ User notification error:", userErr.message);
       if (userErr.response?.data) {
@@ -5862,14 +5772,15 @@ Thank you for using Rent Pondy! 🙏`;
       }
     }
 
-    // Send to owner
-    console.log("📤 Sending share notification to owner...");
+    // Send to owner (queued - low priority)
+    console.log("📤 Queuing share notification to owner...");
     try {
-      const ownerResponse = await axios.post(`${process.env.REACT_APP_API_URL}/send-message`, {
+      const ownerResponse = await axios.post(`${process.env.REACT_APP_API_URL}/queue-message`, {
         to: ownerTo,
-        message: messageToOwner,
+        category: "share-owner",
+        data: queueData,
       });
-      console.log("✅ Owner share notification sent:", ownerResponse.status);
+      console.log("✅ Owner share notification queued:", ownerResponse.data);
     } catch (ownerErr) {
       console.error("❌ Owner notification error:", ownerErr.message);
       if (ownerErr.response?.data) {
@@ -5877,7 +5788,7 @@ Thank you for using Rent Pondy! 🙏`;
       }
     }
 
-    console.log("✅ === SHARE WHATSAPP COMPLETE ===");
+    console.log("✅ === SHARE WHATSAPP QUEUED ===");
   } catch (error) {
     console.error("❌ WhatsApp error:", error);
   }
@@ -6285,28 +6196,26 @@ const handleSendWhatsAppMessage = async () => {
       return;
     }
 
-    // Message for owner (Updated to focus on photo request)
-    const messageToOwner = `Hi ${ownerName} 👋\n\n📸 A user has requested photos for your property on Rent Pondy.\n\nKindly upload updated property photos in the Rent Pondy app at your convenience.\n\n👤 Requested by: User\n📞 Contact Number: ${requesterPhone}\n\nOur team may also contact you for photo verification, if required.\n\nThank you for choosing Rent Pondy 🙏`;
+    const queueData = { ownerName, userName: "User", rentId, location: propertyLocation, userPhone: requesterPhone };
 
-    // Message for requester
-    const messageToRequester = `Hi There 👋\n\n✅ Your photo request has been submitted successfully!\n\n🆔 Rent ID: ${rentId}\n📍 Property: ${propertyLocation}\n👨‍💼 Owner: ${ownerName}\n\n📸 We'll notify the owner about your request.\n\nThank you for using Rent Pondy 🙏`;
-
-    // Send WhatsApp message to owner
-    await axios.post(`${process.env.REACT_APP_API_URL}/send-message`, {
+    // Send WhatsApp message to owner (queued)
+    await axios.post(`${process.env.REACT_APP_API_URL}/queue-message`, {
       to: ownerTo,
-      message: messageToOwner,
+      category: "photo-request-owner",
+      data: queueData,
     });
 
-    // Send WhatsApp message to requester
-    await axios.post(`${process.env.REACT_APP_API_URL}/send-message`, {
+    // Send WhatsApp message to requester (queued)
+    await axios.post(`${process.env.REACT_APP_API_URL}/queue-message`, {
       to: requesterTo,
-      message: messageToRequester,
+      category: "photo-request-user",
+      data: queueData,
     });
 
-    console.log("✅ WhatsApp messages sent successfully!");
+    console.log("✅ WhatsApp messages queued successfully!");
     console.log("   - Owner: ", ownerTo);
     console.log("   - Requester: ", requesterTo);
-    alert("✅ WhatsApp notifications sent to both owner and you!");
+    alert("✅ WhatsApp notifications queued for both owner and you!");
     setShowWhatsAppPopup(false);
   } catch (error) {
     console.log("⚠️ WhatsApp message failed (non-blocking):", error.message);
@@ -6373,25 +6282,23 @@ const handleSendFavWhatsAppMessage = async () => {
       return;
     }
 
-    // Message for owner
-    const messageToOwner = `Hi ${ownerName} 👋\n\n❤️ A user has favorited your property on Rent Pondy.\n\nKindly contact to the user in the Rent Pondy app at your convenience.\n\n👤 Requested by: User\n📞 Contact Number: ${requesterPhone}\n\nOur team may also contact the user if required.\n\nThank you for choosing Rent Pondy 🙏`;
+    const queueData = { ownerName, rentId, location: propertyLocation, userPhone: requesterPhone };
 
-    // Message for requester (user who favorited)
-    const messageToRequester = `Hi There 👋\n\n✅ Your favorite the property has been submitted successfully!\n\n🆔 Rent ID: ${rentId}\n📍 Property: ${propertyLocation}\n👨‍💼 Owner: ${ownerName}\n\n❤️ We'll notify the owner about your favorite.\n\nThank you for using Rent Pondy 🙏`;
-
-    // Send WhatsApp message to owner
-    await axios.post(`${process.env.REACT_APP_API_URL}/send-message`, {
+    // Send WhatsApp message to owner (queued - low priority)
+    await axios.post(`${process.env.REACT_APP_API_URL}/queue-message`, {
       to: ownerTo,
-      message: messageToOwner,
+      category: "favorite-owner",
+      data: queueData,
     });
 
-    // Send WhatsApp message to requester
-    await axios.post(`${process.env.REACT_APP_API_URL}/send-message`, {
+    // Send WhatsApp message to requester (queued - low priority)
+    await axios.post(`${process.env.REACT_APP_API_URL}/queue-message`, {
       to: requesterTo,
-      message: messageToRequester,
+      category: "favorite-user",
+      data: queueData,
     });
 
-    console.log("✅ WhatsApp favorite messages sent successfully!");
+    console.log("✅ WhatsApp favorite messages queued successfully!");
     console.log("   - Owner: ", ownerTo);
     console.log("   - User: ", requesterTo);
     alert("✅ WhatsApp notifications sent to both owner and you!");
@@ -7234,6 +7141,12 @@ const isMatched = isFieldMatched(detail.label, detail.value, matchedFields);
 
   View owner contact details
 </div>
+<InsufficientPointsModal
+  show={showInsufficientPoints}
+  onHide={() => setShowInsufficientPoints(false)}
+  balance={pointsBalance ?? 0}
+  required={POINTS_PER_CONTACT_VIEW}
+/>
     {showContactDetails && (
         <div ref={contactRef} className="mt-3">
       

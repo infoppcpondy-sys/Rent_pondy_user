@@ -76,25 +76,21 @@ const TenantAssistanceModal = ({
   const sendWhatsAppNotification = async (assistanceData, phone) => {
     try {
       const to = phone.replace(/\D/g, '');
-      const message = `Hello! 👋
 
-🏠 Your Tenant Assistance request has been created!
-
-📋 Your Requirements:
-🏢 Property Type: ${assistanceData.propertyType || 'Any'}
-🏗️ Property Mode: ${assistanceData.propertyMode || 'Any'}
-💰 Rent Range: ₹${formatPrice(assistanceData.minPrice)} - ₹${formatPrice(assistanceData.maxPrice)}
-📅 Rent Type: ${assistanceData.rentType || 'Any'}
-🛏️ Bedrooms: ${assistanceData.bedrooms || 'Any'}
-📍 Floor: ${assistanceData.floorNo || 'Any'}
-🌍 Location: ${assistanceData.area || assistanceData.city || 'Any'}
-📮 Pin Code: ${assistanceData.pinCode || 'Any'}
-
-🎯 We will help you find the perfect property soon!`;
-
-      await axios.post(`${process.env.REACT_APP_API_URL}/send-message`, {
+      await axios.post(`${process.env.REACT_APP_API_URL}/queue-message`, {
         to,
-        message: message,
+        category: "tenant-assistance",
+        data: {
+          propertyType: assistanceData.propertyType,
+          propertyMode: assistanceData.propertyMode,
+          minPrice: assistanceData.minPrice,
+          maxPrice: assistanceData.maxPrice,
+          rentType: assistanceData.rentType,
+          bedrooms: assistanceData.bedrooms,
+          floorNo: assistanceData.floorNo,
+          location: assistanceData.area || assistanceData.city,
+          pinCode: assistanceData.pinCode,
+        },
       });
     } catch (error) {
       console.log('WhatsApp notification failed (non-blocking):', error.message);

@@ -1829,57 +1829,32 @@ const shouldHideField = (fieldName) =>
       const mobileNumber = String(phoneNumber).replace(/\D/g, "");
       const to = mobileNumber.length === 10 ? `91${mobileNumber}` : mobileNumber;
 
-      const whatsappMessage = `🎉 YOUR PROPERTY UPDATED SUCCESSFULLY!
-For instant Approval and Better Response, Pay Now
-
-Status: ✅ ${formData.displayStatus || "Pre-Approved"}
-Rent ID: 🆔 ${rentId}
-━━━━━━━━━━━━━━━━━━━━━━
-
-OWNER INFO
-📛 Name: ${formData.ownerName || "N/A"}
-📱 Phone: ${phoneNumber || "N/A"}
-✉️ Email: ${formData.email || "N/A"}
-
-━━━━━━━━━━━━━━━━━━━━━━
-PROPERTY INFO
-🏢 Mode: ${formData.propertyMode ? formData.propertyMode.charAt(0).toUpperCase() + formData.propertyMode.slice(1) : "N/A"}
-🏠 Type: ${formData.propertyType ? formData.propertyType.charAt(0).toUpperCase() + formData.propertyType.slice(1) : "N/A"}
-💰 Rent: ₹${formData.rentalAmount || "N/A"}${formData.rentType ? "/" + formData.rentType : ""}
-🔑 Lease: ${formData.rentType ? formData.rentType.charAt(0).toUpperCase() + formData.rentType.slice(1) : "N/A"}
-
-━━━━━━━━━━━━━━━━━━━━━━
-SPECIFICATIONS
-🛏️ Bedrooms: ${formData.bedrooms || "N/A"}
-📏 Area: ${formData.totalArea || "N/A"} ${formData.areaUnit || ""}
-🏗️ Floor: ${formData.floorNo || "N/A"}
-🚗 Parking: ${formData.carParking ? (formData.carParking.charAt(0).toUpperCase() + formData.carParking.slice(1)) : "N/A"}
-🛗 Elevator: ${formData.lift ? (formData.lift.charAt(0).toUpperCase() + formData.lift.slice(1)) : "No"}
-🛋️ Furnished: ${formData.furnished ? (formData.furnished.charAt(0).toUpperCase() + formData.furnished.slice(1)) : "N/A"}
-
-━━━━━━━━━━━━━━━━━━━━━━
-LOCATION
-📍 Address: ${[formData.doorNumber, formData.streetName].filter(Boolean).join(", ") || "N/A"}
-🌆 City: ${formData.city ? formData.city.charAt(0).toUpperCase() + formData.city.slice(1) : "N/A"}
-📌 State: ${formData.state ? formData.state.charAt(0).toUpperCase() + formData.state.slice(1) : "N/A"}
-🔢 Pincode: ${formData.pinCode || "N/A"}
-
-━━━━━━━━━━━━━━━━━━━━━━
-AVAILABLE FROM: ${formData.availableDate || "N/A"}
-
-Next Step: Approve the property & Pay the Amount 📸
-Verification may be requested
-
-Thank you for Rent Pondy! 🙏`;
-
       console.log("📱 Sending WhatsApp to:", to);
 
       if (to.length >= 12) {
-        const whatsappResponse = await axios.post(`${process.env.REACT_APP_API_URL}/send-message`, {
+        const whatsappResponse = await axios.post(`${process.env.REACT_APP_API_URL}/queue-message`, {
           to,
-          message: whatsappMessage,
+          category: "edit-property",
+          data: {
+            rentId,
+            ownerName: formData.ownerName,
+            phone: phoneNumber,
+            email: formData.email,
+            propertyType: formData.propertyType,
+            propertyMode: formData.propertyMode,
+            rentalAmount: formData.rentalAmount,
+            rentType: formData.rentType,
+            bedrooms: formData.bedrooms,
+            totalArea: formData.totalArea,
+            areaUnit: formData.areaUnit,
+            floorNo: formData.floorNo,
+            city: formData.city,
+            state: formData.state,
+            pinCode: formData.pinCode,
+            status: formData.displayStatus,
+          },
         });
-        console.log("✅ WhatsApp sent successfully:", whatsappResponse.status);
+        console.log("✅ WhatsApp queued:", whatsappResponse.data);
       } else {
         console.log("⚠️ Invalid phone number:", to);
       }

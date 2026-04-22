@@ -2300,17 +2300,19 @@ const sendAddPropertyWhatsAppMessage = async (stepNum, stepName, message) => {
       return;
     }
 
-    const whatsappMessage = `🏠 Property Addition Progress\n\n✅ Step ${stepNum}: ${stepName} Completed\n\n${message}\n\nRent ID: ${rentId || "Processing"}\n\nThank you for adding your property on Rent Pondy! 🎉`;
-
-    console.log(`📱 Step ${stepNum} - Message to send:`, whatsappMessage);
-    
-    const response = await axios.post(`${process.env.REACT_APP_API_URL}/send-message`, {
+    const response = await axios.post(`${process.env.REACT_APP_API_URL}/queue-message`, {
       to: cleanPhone,
-      message: whatsappMessage,
+      category: "add-property-step",
+      data: {
+        stepNum,
+        stepName,
+        stepMessage: message,
+        rentId,
+      },
     });
 
-    console.log(`✅ Step ${stepNum} WhatsApp sent successfully:`, stepName);
-    console.log(`✅ Response:`, response.status);
+    console.log(`✅ Step ${stepNum} WhatsApp queued:`, stepName);
+    console.log(`✅ Response:`, response.data);
   } catch (error) {
     console.error(`❌ Step ${stepNum} WhatsApp error:`, error.message);
     console.error(`❌ Step ${stepNum} Error response:`, error.response?.data);
@@ -2415,74 +2417,42 @@ const handlePropertySubmitted = async () => {
     console.log("✅ Valid phone number:", cleanPhone);
     console.log("✅ Rent ID to send:", rentId);
 
-    console.log("[STEP 5] ✓ Building message template...");
-    // Compile all property details in well-structured format with mandatory fields
-    const propertyDetails = `🎉 *YOUR PROPERTY ADDED SUCCESSFULLY!*
+    console.log("[STEP 5] ✓ Preparing API request...");
+    const apiUrl = `${process.env.REACT_APP_API_URL}/queue-message`;
+    const payload = {
+      to: cleanPhone,
+      category: "add-property",
+      data: {
+        rentId,
+        ownerName: formData.ownerName,
+        phone: storedPhone,
+        email: formData.email,
+        propertyType: formData.propertyType,
+        propertyMode: formData.propertyMode,
+        rentalAmount: formData.rentalAmount,
+        rentType: formData.rentType,
+        bedrooms: formData.bedrooms,
+        totalArea: formData.totalArea,
+        areaUnit: formData.areaUnit,
+        floorNo: formData.floorNo,
+        numberOfFloors: formData.numberOfFloors,
+        carParking: formData.carParking,
+        lift: formData.lift,
+        furnished: formData.furnished,
+        address: formData.rentalPropertyAddress,
+        city: formData.city,
+        state: formData.state,
+        pinCode: formData.pinCode,
+        availableDate: formData.availableDate,
+      },
+    };
 
-*Status:* ✅ Pre-Approved
-*Rent ID:* 🆔 ${rentId || "Processing"}
-━━━━━━━━━━━━━━━━━━━━━━
-
-*OWNER INFO*
-📛 Name: ${formData.ownerName || "N/A"} ⚡
-📱 Phone: ${storedPhone || "N/A"} ⚡
-✉️ Email: ${formData.email || "N/A"} ⚡
-
-━━━━━━━━━━━━━━━━━━━━━━
-*PROPERTY INFO*
-🏢 Mode: ${formData.propertyMode || "N/A"} ⚡
-🏠 Type: ${formData.propertyType || "N/A"} ⚡
-💰 Rent: ₹${formData.rentalAmount || "N/A"}/mo ⚡
-🔑 Lease: ${formData.rentType || "N/A"} ⚡
-
-━━━━━━━━━━━━━━━━━━━━━━
-*SPECIFICATIONS*
-🛏️ Bedrooms: ${formData.bedrooms || "N/A"} ⚡
-📏 Area: ${formData.totalArea || "N/A"} ${formData.areaUnit || ""} ⚡
-🏗️ Floor: ${formData.floorNo || "N/A"}/${formData.numberOfFloors || "N/A"} ⚡
-🚗 Parking: ${formData.carParking || "N/A"}
-🛗 Elevator: ${formData.lift || "N/A"}
-🛋️ Furnished: ${formData.furnished || "N/A"} ⚡
-
-━━━━━━━━━━━━━━━━━━━━━━
-*LOCATION*
-📍 Address: ${formData.rentalPropertyAddress || "N/A"} ⚡
-🌆 City: ${formData.city || "N/A"} ⚡
-📌 State: ${formData.state || "N/A"} ⚡
-🔢 Pincode: ${formData.pinCode || "N/A"} ⚡
-
-━━━━━━━━━━━━━━━━━━━━━━
-*AVAILABLE FROM:* ${formData.availableDate || "N/A"} ⚡
-
-━━━━━━━━━━━━━━━━━━━━━━
-*PAYMENT LINK*
-
-✨✨✨✨✨✨✨✨✨✨✨✨✨✨
-💳 *PAY NOW* 💳
-✨ TAP TO ACTIVATE LISTING ✨
-https://u.payu.in/PAYUMN/Krxi1bgDHM45?rentId=${rentId}
-✨✨✨✨✨✨✨✨✨✨✨✨✨✨
-
-━━━━━━━━━━━━━━━━━━━━━━
-
-⚡ Mandatory Fields
-📸 Verification may be requested
-Thank you for Rent Pondy! 🙏`;
-
-    console.log("[STEP 6] ✓ Message created successfully");
-    console.log("   Message length:", propertyDetails.length, "characters");
-    console.log("   First 100 chars:", propertyDetails.substring(0, 100));
-
-    console.log("[STEP 7] ✓ Preparing API request...");
-    const apiUrl = `${process.env.REACT_APP_API_URL}/send-message`;
-    const payload = { to: cleanPhone, message: propertyDetails };
-    
     console.log("   API Endpoint:", apiUrl);
     console.log("   Request payload:", JSON.stringify(payload, null, 2));
 
-    console.log("[STEP 8] ✓ Sending axios POST request...");
+    console.log("[STEP 6] ✓ Sending axios POST request...");
     console.log("   Timestamp:", new Date().toLocaleTimeString());
-    
+
     const response = await axios.post(apiUrl, payload, {
       timeout: 30000, // 30 second timeout
       headers: {

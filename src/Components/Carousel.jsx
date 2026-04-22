@@ -52,11 +52,6 @@ const Carousel = () => {
     };
     
     fetchFeaturedProperties();
-    
-    // Auto-refresh every 30 seconds to get latest updates
-    const refreshInterval = setInterval(fetchFeaturedProperties, 30000);
-    
-    return () => clearInterval(refreshInterval);
   }, []);
 
   // Navigate function
@@ -172,24 +167,24 @@ const Carousel = () => {
 
   // Auto-play image slideshow automatically
   useEffect(() => {
-    const propertyIds = Properties.map(p => p._id);
-    
-    propertyIds.forEach(propertyId => {
-      const property = Properties.find(p => p._id === propertyId);
-      if (property && property.photos && property.photos.length > 1) {
+    const intervals = [];
+
+    Properties.forEach(property => {
+      if (property.photos && property.photos.length > 1) {
         const interval = setInterval(() => {
           setPropertyImageIndex(prev => {
-            const currentIdx = prev[propertyId] || 0;
+            const currentIdx = prev[property._id] || 0;
             return {
               ...prev,
-              [propertyId]: (currentIdx + 1) % property.photos.length
+              [property._id]: (currentIdx + 1) % property.photos.length
             };
           });
-        }, 2000); // Change image every 1 second
-
-        return () => clearInterval(interval);
+        }, 2000);
+        intervals.push(interval);
       }
     });
+
+    return () => intervals.forEach(interval => clearInterval(interval));
   }, [Properties]);
 
   // Handle Animation

@@ -5330,26 +5330,35 @@ const sendPropertyViewWhatsApp = async (property, viewerPhone) => {
     const cleanViewerPhone = String(viewerPhone).replace(/\D/g, "");
     const toViewer = cleanViewerPhone.length === 10 ? `91${cleanViewerPhone}` : cleanViewerPhone;
 
-    // Message to User
+    // Message to User (queued - low priority, property view is highest volume action)
     if (toViewer.length >= 12) {
-      const userMessage = `Hi There 👋\n\n✅ Your currently visit the property!\n\n🆔 Rent ID: ${property.rentId || "N/A"}\n📍 Location: ${property.area || property.city || "N/A"}\n👨‍💼 Owner: ${property.ownerName || "Owner"}\n📱 Phone: ${ownerPhone || "N/A"}\n\n❤️ We'll notify the owner about your action\n\nThank you for using Rent Pondy 🙏`;
-      
-      await axios.post(`${process.env.REACT_APP_API_URL}/send-message`, {
+      await axios.post(`${process.env.REACT_APP_API_URL}/queue-message`, {
         to: toViewer,
-        message: userMessage,
+        category: "property-view-user",
+        data: {
+          rentId: property.rentId,
+          location: property.area || property.city,
+          ownerName: property.ownerName || "Owner",
+          ownerPhone: ownerPhone,
+        },
       });
-      console.log("✅ WhatsApp message sent to viewer:", toViewer);
+      console.log("✅ WhatsApp message queued for viewer:", toViewer);
     }
 
-    // Message to Owner
+    // Message to Owner (queued - low priority)
     if (toOwner.length >= 12) {
-      const ownerMessage = `Hi There 👋\n\n✅ Your property has been viewed by ${viewerPhone || "N/A"}\n\n🏠 Property: ${property.propertyType || "Property"} (Rent ID: ${property.rentId})\n📍 Location: ${property.area || property.city || "N/A"}\n👨‍💼 Owner: ${property.ownerName || "Owner"}\n\nThank you for using Rent Pondy 🙏`;
-      
-      await axios.post(`${process.env.REACT_APP_API_URL}/send-message`, {
+      await axios.post(`${process.env.REACT_APP_API_URL}/queue-message`, {
         to: toOwner,
-        message: ownerMessage,
+        category: "property-view-owner",
+        data: {
+          rentId: property.rentId,
+          location: property.area || property.city,
+          ownerName: property.ownerName || "Owner",
+          viewerPhone: viewerPhone,
+          propertyType: property.propertyType,
+        },
       });
-      console.log("✅ WhatsApp message sent to owner:", toOwner);
+      console.log("✅ WhatsApp message queued for owner:", toOwner);
     }
   } catch (whatsErr) {
     console.log("⚠️ WhatsApp message failed (non-blocking):", whatsErr.message);

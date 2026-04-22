@@ -996,32 +996,26 @@ const sendWhatsAppNotification = async (formDataToSend) => {
       return;
     }
 
-    const message = `Hi ${ownerName}, your Rental Assistance request has been created successfully in Rent Pondy! 🎉
+    console.log("📨 Queuing WhatsApp to:", to);
 
-📋 Your Requirements:
-🏠 State: ${formDataToSend.state}
-🏢 Property Type: ${formDataToSend.propertyType}
-🏗️ Property Mode: ${formDataToSend.propertyMode}
-💰 Rent Range: ₹${formatPrice(formDataToSend.minPrice)} - ₹${formatPrice(formDataToSend.maxPrice)}
-📅 Rent Type: ${formDataToSend.rentType}
-🛏️ Bedrooms: ${formDataToSend.bedrooms}
-📍 Floor: ${formDataToSend.floorNo}
-🗺️ Area: ${formDataToSend.area}
-📮 Pin Code: ${formDataToSend.pinCode}
-
-🎯 We will help you find the perfect property soon!`;
-
-
-    console.log("📨 Sending WhatsApp to:", to);
-    console.log("Message:", message);
-    console.log("API URL:", `${process.env.REACT_APP_API_URL}/send-message`);
-
-    const response = await axios.post(`${process.env.REACT_APP_API_URL}/send-message`, {
+    const response = await axios.post(`${process.env.REACT_APP_API_URL}/queue-message`, {
       to,
-      message: message,
+      category: "buyer-assistance",
+      data: {
+        ownerName,
+        propertyType: formDataToSend.propertyType,
+        propertyMode: formDataToSend.propertyMode,
+        minPrice: formDataToSend.minPrice,
+        maxPrice: formDataToSend.maxPrice,
+        rentType: formDataToSend.rentType,
+        bedrooms: formDataToSend.bedrooms,
+        floorNo: formDataToSend.floorNo,
+        location: formDataToSend.area,
+        pinCode: formDataToSend.pinCode,
+      },
     });
-    
-    console.log("✅ WhatsApp message sent successfully:", response.data);
+
+    console.log("✅ WhatsApp message queued:", response.data);
   } catch (whatsErr) {
     console.log("⚠️ WhatsApp message failed (non-blocking):", whatsErr.message);
     console.log("Full error details:", {

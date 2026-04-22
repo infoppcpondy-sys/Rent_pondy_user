@@ -7,7 +7,7 @@
     display: flex;
     gap: 15px;
     align-items: flex-start;
-  }
+  } */
 
 /* Property Card Payment Status Styling */
 .property-card {
@@ -149,7 +149,7 @@
     padding-top: 10px; /* Adjust padding as needed */
     padding-bottom: 10px;
   }
-   */
+
    /* =============================================
    MyProperty Card - Exact Mobile Design Fix
    Add this to MyProperty.css

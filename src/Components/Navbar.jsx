@@ -322,6 +322,19 @@ We look forward to serving you again soon.
             <li className="nav-item">
               <a
                 className="nav-link"
+                style={getLinkStyle('points plans')}
+                onMouseEnter={() => handleMouseEnter('points plans')}
+                onMouseLeave={handleMouseLeave}
+                href="/points-plans"
+                onClick={() => handleLinkClick("/points-plans")}
+              >
+                <FaStar className="me-2" style={{ color: '#4F4B7E' }} /> Points Plans
+              </a>
+            </li>
+
+            <li className="nav-item">
+              <a
+                className="nav-link"
                 style={getLinkStyle('buyer plans')}
                 onMouseEnter={() => handleMouseEnter('buyer plans')}
                 onMouseLeave={handleMouseLeave}

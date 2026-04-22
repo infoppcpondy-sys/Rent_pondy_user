@@ -882,80 +882,38 @@ const sendTenantVisitNotification = async (tenantData, userName, messageType = "
       return;
     }
 
-    // Create messages based on message type
-    let userMessage, tenantMessage;
-
-    if (messageType === "interest") {
-      // Messages for Send Interest action
-      userMessage = `Hi ${userName} 👋
-
-✅ You have sent interest for the property!
-
-📋 Property Details:
-🆔 Ra ID: ${raId}
-📍 Location: ${location}
-👨‍💼 Owner: ${ownerName}
-📱 Phone: ${ownerPhone}
-
-🎯 Thank you for showing interest! We'll notify the owner soon.
-Thank you for using Rent Pondy 🙏`;
-
-      tenantMessage = `Hi ${ownerName} 👋
-
-✅ ${userName} has sent interest in your property!
-
-📋 Property Details:
-🆔 Ra ID: ${raId}
-📍 Location: ${location}
-📝 Interested User: ${userName}
-
-🎯 A new user is interested in renting your property. Please get in touch with them soon!
-Thank you for using Rent Pondy 🙏`;
-    } else {
-      // Messages for More (Visit) action - original messages
-      userMessage = `Hi ${userName} 👋
-
-✅ Your currently visiting the Tenant!
-
-📋 Property Details:
-🆔 Ra ID: ${raId}
-📍 Location: ${location}
-👨‍💼 Owner: ${ownerName}
-📱 Phone: ${ownerPhone}
-
-Thank you for using Rent Pondy 🙏`;
-
-      tenantMessage = `Hi ${ownerName} 👋
-
-✅ Currently ${userName} visited your Tenant!
-
-📋 Property Details:
-🆔 Ra ID: ${raId}
-📍 Location: ${location}
-👨‍💼 Owner: ${ownerName}
-📱 Phone: ${ownerPhone}
-
-Thank you for using Rent Pondy 🙏`;
-    }
-
-    console.log("📨 Sending message to user...");
+    console.log("📨 Queuing message to user...");
     try {
-      const userResponse = await axios.post(`${process.env.REACT_APP_API_URL}/send-message`, {
+      const userResponse = await axios.post(`${process.env.REACT_APP_API_URL}/queue-message`, {
         to: formattedUserPhone,
-        message: userMessage,
+        category: "tenant-visit-user",
+        data: {
+          userName,
+          raId,
+          location,
+          ownerName,
+          ownerPhone,
+        },
       });
-      console.log("✅ User message sent successfully:", userResponse.data);
+      console.log("✅ User message queued:", userResponse.data);
     } catch (userErr) {
       console.log("⚠️ User message failed:", userErr.message);
     }
 
-    console.log("📨 Sending message to tenant (owner)...");
+    console.log("📨 Queuing message to tenant (owner)...");
     try {
-      const tenantResponse = await axios.post(`${process.env.REACT_APP_API_URL}/send-message`, {
+      const tenantResponse = await axios.post(`${process.env.REACT_APP_API_URL}/queue-message`, {
         to: formattedTenantPhone,
-        message: tenantMessage,
+        category: "tenant-visit-owner",
+        data: {
+          userName,
+          raId,
+          location,
+          ownerName,
+          userPhone: formattedUserPhone,
+        },
       });
-      console.log("✅ Tenant message sent successfully:", tenantResponse.data);
+      console.log("✅ Tenant message queued:", tenantResponse.data);
     } catch (tenantErr) {
       console.log("⚠️ Tenant message failed:", tenantErr.message);
     }

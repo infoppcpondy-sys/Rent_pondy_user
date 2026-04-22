@@ -364,39 +364,28 @@ useEffect(() => {
             .map(val => val.charAt(0).toUpperCase() + val.slice(1).toLowerCase())
             .join(", ") || "N/A";
 
-          const removalMessage = `Hi ${deletedProperty.ownerName || "Owner"}, 🔔
-
-✅ Property Successfully Removed
-
-Your property has been removed from Rent Pondy.
-
-📋 Property Details:
-• Rent ID: ${deletedProperty.rentId || rentId}
-• Property Type: ${deletedProperty.propertyType || 'N/A'}
-• Location: ${location}
-• Status: ${deletedProperty.displayStatus || 'N/A'}
-
-🔄 Want to restore it?
-Go to the "Removed" tab in your dashboard and click "Undo" to restore your property.
-
-– Team Rent Pondy`;
-
           console.log("📱 Sending WhatsApp to:", to);
-          console.log("💬 Message:", removalMessage);
 
           if (to.length >= 12) {
-            const whatsappResponse = await axios.post(`${process.env.REACT_APP_API_URL}/send-message`, {
+            const whatsappResponse = await axios.post(`${process.env.REACT_APP_API_URL}/queue-message`, {
               to,
-              message: removalMessage,
+              category: "property-removal",
+              data: {
+                ownerName: deletedProperty.ownerName || "Owner",
+                rentId: deletedProperty.rentId || rentId,
+                propertyType: deletedProperty.propertyType,
+                location,
+                status: deletedProperty.displayStatus,
+              },
             });
-            console.log("✅ WhatsApp sent successfully:", whatsappResponse.status);
+            console.log("✅ WhatsApp queued:", whatsappResponse.data);
           } else {
             console.log("⚠️ Invalid phone number:", to);
           }
         } catch (whatsErr) {
           console.error("⚠️ WhatsApp error:", whatsErr);
         }
-        
+
         setPropertyUsers((prev) => prev.filter((user) => user.rentId !== rentId));
         if (response.data.user) {
           setRemovedUsers((prev) => [...prev, { ...response.data.user }]);
@@ -441,31 +430,21 @@ Go to the "Removed" tab in your dashboard and click "Undo" to restore your prope
             .map(val => val.charAt(0).toUpperCase() + val.slice(1).toLowerCase())
             .join(", ") || "N/A";
 
-          const undoMessage = `Hi ${restoredProperty.ownerName || "Owner"}, 🎉
-
-✅ Property Successfully Restored
-
-Your property has been restored to Rent Pondy!
-
-📋 Property Details:
-• Rent ID: ${restoredProperty.rentId || rentId}
-• Property Type: ${restoredProperty.propertyType || 'N/A'}
-• Location: ${location}
-• Status: ${restoredProperty.displayStatus || 'N/A'}
-
-Your property is now live and visible to potential tenants.
-
-– Team Rent Pondy`;
-
           console.log("📱 Sending WhatsApp to:", to);
-          console.log("💬 Message:", undoMessage);
 
           if (to.length >= 12) {
-            const whatsappResponse = await axios.post(`${process.env.REACT_APP_API_URL}/send-message`, {
+            const whatsappResponse = await axios.post(`${process.env.REACT_APP_API_URL}/queue-message`, {
               to,
-              message: undoMessage,
+              category: "property-undo-removal",
+              data: {
+                ownerName: restoredProperty.ownerName || "Owner",
+                rentId: restoredProperty.rentId || rentId,
+                propertyType: restoredProperty.propertyType,
+                location,
+                status: restoredProperty.displayStatus,
+              },
             });
-            console.log("✅ WhatsApp sent successfully:", whatsappResponse.status);
+            console.log("✅ WhatsApp queued:", whatsappResponse.data);
           } else {
             console.log("⚠️ Invalid phone number:", to);
           }

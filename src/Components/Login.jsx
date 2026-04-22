@@ -1665,44 +1665,15 @@ const Login = ({ onLogin }) => {
             autoClose: 20000,
           });
 
-          // ✅ Send WhatsApp OTP Notification for India
-          try {
-            console.log("📱 Sending WhatsApp OTP for India...");
-            console.log("Country Code Digits:", countryCodeDigits);
-            console.log("Mobile Number:", mobileNumber);
-            console.log("To number:", to);
-            console.log("To length:", to.length);
-
-            const otpMessage = `Hi there, 👋
-
-Your OTP for Rent Pondy login is: ${generatedOtp}
-
-⏱️ This OTP expires in 5 minutes.
-🔒 Never share this OTP with anyone.
-
-If you didn't request this OTP, please ignore this message.
-
-– Team Rent Pondy`;
-
-            if (to.length >= 8 && phoneDigits >= 10) {
-              console.log("✅ India number is valid, attempting to send message...");
-              console.log("✅ Length:", to.length, ">= 8 ?", to.length >= 8);
-              const response = await axios.post(`${process.env.REACT_APP_API_URL}/send-message`, {
-                to,
-                message: otpMessage,
-              });
-              console.log("✅ WhatsApp OTP message sent successfully to:", to, "Response:", response.data);
-            } else {
-              console.log("❌ India number validation failed:", to, "Length:", to.length, "Digits:", phoneDigits);
-            }
-          } catch (whatsErr) {
-            console.error(
-              "⚠️ WhatsApp OTP message failed (non-blocking):",
-              whatsErr.message,
-              "Error details:",
-              whatsErr.response?.data || whatsErr
-            );
-          }
+          // ✅ WhatsApp OTP Notification for India — DISABLED (OTP delivered via SMS/backend only)
+          // try {
+          //   const otpMessage = `Hi there, 👋\n\nYour OTP for Rent Pondy login is: ${generatedOtp}\n\n⏱️ This OTP expires in 5 minutes.\n🔒 Never share this OTP with anyone.\n\nIf you didn't request this OTP, please ignore this message.\n\n– Team Rent Pondy`;
+          //   if (to.length >= 8 && phoneDigits >= 10) {
+          //     await axios.post(`${process.env.REACT_APP_API_URL}/send-message`, { to, message: otpMessage });
+          //   }
+          // } catch (whatsErr) {
+          //   console.error("⚠️ WhatsApp OTP message failed (non-blocking):", whatsErr.message);
+          // }
 
           setMockOtp(generatedOtp);
           setIsOtpSent(true);
@@ -1751,55 +1722,30 @@ If you didn't request this OTP, please ignore this message.
           autoClose: 20000,
         });
 
-        // ✅ Send WhatsApp OTP Message for International Countries
+        // ✅ WhatsApp OTP Message for International Countries — DISABLED (OTP stored in backend, no WhatsApp send)
+        // try {
+        //   const otpMessage = `Hi there, 👋\n\nYour OTP for Rent Pondy login is: ${localGeneratedOtp}\n\n⏱️ This OTP expires in 5 minutes.\n🔒 Never share this OTP with anyone.\n\nIf you didn't request this OTP, please ignore this message.\n\n– Team Rent Pondy`;
+        //   if (to.length >= 8 && phoneDigits >= (countryPhoneDigits[selectedCountry] || 6)) {
+        //     await axios.post(`${process.env.REACT_APP_API_URL}/send-message`, { to, message: otpMessage });
+        //     toast.success('OTP sent to WhatsApp!', { position: 'top-center', autoClose: 3000 });
+        //   }
+        // } catch (whatsErr) {
+        //   console.error("⚠️ WhatsApp OTP message failed (non-blocking):", whatsErr.message);
+        // }
+
+        // Validate phone number length (moved outside WhatsApp block so it still works)
+        if (to.length < 8 || phoneDigits < (countryPhoneDigits[selectedCountry] || 6)) {
+          toast.error(`Invalid phone number. Expected ${countryPhoneDigits[selectedCountry]} digits.`, {
+            position: 'top-center',
+            autoClose: 5000,
+          });
+          setIsLoading(false);
+          return;
+        }
+
         try {
-          console.log("📱 Sending WhatsApp OTP for International Country...");
-          console.log("Country Code Digits:", countryCodeDigits);
-          console.log("Mobile Number:", mobileNumber);
-          console.log("To number:", to);
-          console.log("To length:", to.length);
-          console.log("Generated OTP:", localGeneratedOtp);
-
-          const otpMessage = `Hi there, 👋
-
-Your OTP for Rent Pondy login is: ${localGeneratedOtp}
-
-⏱️ This OTP expires in 5 minutes.
-🔒 Never share this OTP with anyone.
-
-If you didn't request this OTP, please ignore this message.
-
-– Team Rent Pondy`;
-
-          // Minimum valid WhatsApp number length is 8 digits (e.g., Singapore: +65 + 8 digits = 10)
-          if (to.length >= 8 && phoneDigits >= (countryPhoneDigits[selectedCountry] || 6)) {
-            console.log("✅ Phone number is valid, attempting to send message...");
-            console.log("✅ Length:", to.length, ">=  8 ?", to.length >= 8);
-            console.log("✅ Digits:", phoneDigits, "===", countryPhoneDigits[selectedCountry]);
-            console.log("📤 Sending request to send-message API...");
-            console.log("API Endpoint:", `${process.env.REACT_APP_API_URL}/send-message`);
-            console.log("Request Payload:", { to, message: otpMessage });
-            
-            const response = await axios.post(`${process.env.REACT_APP_API_URL}/send-message`, {
-              to,
-              message: otpMessage,
-            });
-            console.log("✅ WhatsApp OTP message sent to international number:", to);
-            console.log("📨 API Response:", response.data);
-            toast.success('OTP sent to WhatsApp!', {
-              position: 'top-center',
-              autoClose: 3000,
-            });
-          } else {
-            console.log("❌ Phone number validation failed:", to, "Length:", to.length);
-            console.log("❌ Required - Length >= 8?", to.length >= 8, "|", "Digits correct?", phoneDigits, "==", countryPhoneDigits[selectedCountry]);
-            toast.error(`Invalid phone number. Expected ${countryPhoneDigits[selectedCountry]} digits.`, {
-              position: 'top-center',
-              autoClose: 5000,
-            });
-            setIsLoading(false);
-            return;
-          }
+          // placeholder to keep catch block syntax valid
+          console.log("📱 WhatsApp OTP disabled — OTP stored in backend for verification");
         } catch (whatsErr) {
           console.error(
             "⚠️ WhatsApp OTP message failed (non-blocking):",
@@ -1905,69 +1851,21 @@ If you didn't request this OTP, please ignore this message.
         // Continue with login even if logging fails
       }
 
-      // ✅ Send WhatsApp Welcome Message
-      try {
-        console.log("📱 Sending WhatsApp Welcome Message...");
-        const ownerName = "Owner"; // Default name for login
-        const rawPhone = fullPhoneNumber || "";
-
-        // ✅ Format phone number (remove symbols, spaces, etc.)
-        const mobileNumber = String(rawPhone).replace(/\D/g, "");
-
-        // ✅ Use the selected country code for all countries
-        const countryCodeDigits = countryCode.replace(/\D/g, "");
-        const to = `${countryCodeDigits}${mobileNumber}`;
-
-        console.log("Phone details - Country Code:", countryCodeDigits, "Mobile:", mobileNumber, "To:", to);
-
-        // ✅ WhatsApp Welcome + Login Success Message
-        const message = `Hi ${ownerName}, 👋
-Welcome to Rent Pondy! 🏡
-
-✅ Login Successful
-
-You can now add, manage, and promote your properties easily.
-We're happy to have you with us!
-
-– Team Rent Pondy`;
-
-        // ✅ Send WhatsApp message only if number is valid
-        if (to.length >= 8) {
-          console.log("✅ Welcome message number is valid, attempting to send...");
-          console.log("✅ Length:", to.length, ">= 8 ?", to.length >= 8);
-          
-          // ✅ Send direct message to user
-          try {
-            const response = await axios.post(`${process.env.REACT_APP_API_URL}/send-message`, {
-              to,
-              message,
-            });
-            console.log("✅ WhatsApp welcome message sent to:", to, "Response:", response.data);
-          } catch (directErr) {
-            console.error("⚠️ Direct WhatsApp message failed:", directErr.message);
-          }
-
-          // ✅ Send group message
-          try {
-            const groupResponse = await axios.post(`${process.env.REACT_APP_API_URL}/group-list`, {
-              groupid: "CQwfsKBxOrb1mdsDkhzNtL",
-              message,
-            });
-            console.log("✅ WhatsApp group message sent successfully. Response:", groupResponse.data);
-          } catch (groupErr) {
-            console.error("⚠️ Group WhatsApp message failed:", groupErr.message);
-          }
-        } else {
-          console.log("❌ Invalid phone number:", rawPhone, "Length:", to.length);
-        }
-      } catch (whatsErr) {
-        console.error(
-          "⚠️ WhatsApp message failed (non-blocking):",
-          whatsErr.message,
-          "Error details:",
-          whatsErr.response?.data || whatsErr
-        );
-      }
+      // ✅ WhatsApp Welcome Message — DISABLED (reduces WhatsApp ban risk)
+      // try {
+      //   const ownerName = "Owner";
+      //   const rawPhone = fullPhoneNumber || "";
+      //   const mobileNumber = String(rawPhone).replace(/\D/g, "");
+      //   const countryCodeDigits = countryCode.replace(/\D/g, "");
+      //   const to = `${countryCodeDigits}${mobileNumber}`;
+      //   const message = `Hi ${ownerName}, 👋\nWelcome to Rent Pondy! 🏡\n\n✅ Login Successful\n\nYou can now add, manage, and promote your properties easily.\nWe're happy to have you with us!\n\n– Team Rent Pondy`;
+      //   if (to.length >= 8) {
+      //     await axios.post(`${process.env.REACT_APP_API_URL}/send-message`, { to, message });
+      //     await axios.post(`${process.env.REACT_APP_API_URL}/group-list`, { groupid: "CQwfsKBxOrb1mdsDkhzNtL", message });
+      //   }
+      // } catch (whatsErr) {
+      //   console.error("⚠️ WhatsApp message failed (non-blocking):", whatsErr.message);
+      // }
 
       navigate('/mobileviews');
       setIsLoading(false);
@@ -1984,58 +1882,20 @@ We're happy to have you with us!
       setShowLoginFailPopup(true);
       setIsLoading(false);
 
-      // ✅ Send WhatsApp Failure Message when OTP is incorrect
-      try {
-        console.log("📱 Sending WhatsApp Failure Message...");
-        const ownerName = "Owner"; // Default name for login
-        const rawPhone = phoneNumber || "";
-
-        // ✅ Format phone number (remove symbols, spaces, etc.)
-        const mobileNumber = String(rawPhone).replace(/\D/g, "");
-
-        // ✅ Use the selected country code for all countries
-        const countryCodeDigits = countryCode.replace(/\D/g, "");
-        const to = `${countryCodeDigits}${mobileNumber}`;
-
-        console.log("Failure message - To number:", to, "Length:", to.length);
-
-        // ✅ WhatsApp Login Failed Message
-        const failureMessage = `Hi ${ownerName}, 🔔
-
-⚠️ Login Attempt Failed
-
-We noticed an incorrect OTP was entered during login.
-
-If this wasn't you, please secure your account immediately.
-
-For assistance, contact our support team:
-📞 +91-8300622013
-📧 info.rentpondy@gmail.com
-
-Stay secure!
-– Team Rent Pondy`;
-
-        // ✅ Send WhatsApp message only if number is valid
-        if (to.length >= 8) {
-          console.log("✅ Failure message number is valid, attempting to send...");
-          console.log("✅ Length:", to.length, ">= 8 ?", to.length >= 8);
-          const response = await axios.post(`${process.env.REACT_APP_API_URL}/send-message`, {
-            to,
-            message: failureMessage,
-          });
-
-          console.log("✅ WhatsApp failure message sent to:", to, "Response:", response.data);
-        } else {
-          console.log("❌ Invalid phone number for failure message:", rawPhone, "Length:", to.length);
-        }
-      } catch (whatsErr) {
-        console.error(
-          "⚠️ WhatsApp failure message failed (non-blocking):",
-          whatsErr.message,
-          "Error details:",
-          whatsErr.response?.data || whatsErr
-        );
-      }
+      // ✅ WhatsApp Failure Message — DISABLED (reduces WhatsApp ban risk, also alerts attackers)
+      // try {
+      //   const ownerName = "Owner";
+      //   const rawPhone = phoneNumber || "";
+      //   const mobileNumber = String(rawPhone).replace(/\D/g, "");
+      //   const countryCodeDigits = countryCode.replace(/\D/g, "");
+      //   const to = `${countryCodeDigits}${mobileNumber}`;
+      //   const failureMessage = `Hi ${ownerName}, 🔔\n\n⚠️ Login Attempt Failed\n\nWe noticed an incorrect OTP was entered during login.\n\nIf this wasn't you, please secure your account immediately.\n\nFor assistance, contact our support team:\n📞 +91-8300622013\n📧 info.rentpondy@gmail.com\n\nStay secure!\n– Team Rent Pondy`;
+      //   if (to.length >= 8) {
+      //     await axios.post(`${process.env.REACT_APP_API_URL}/send-message`, { to, message: failureMessage });
+      //   }
+      // } catch (whatsErr) {
+      //   console.error("⚠️ WhatsApp failure message failed (non-blocking):", whatsErr.message);
+      // }
     }
   };
 
@@ -2084,40 +1944,15 @@ Stay secure!
           autoClose: 20000,
         });
 
-        // ✅ Send WhatsApp OTP Resend Notification
-        try {
-          console.log("📱 Resending WhatsApp OTP...");
-          console.log("To number:", to);
-          console.log("OTP:", newOtp);
-
-          const resendMessage = `Hi there, 👋
-
-Your resent OTP for Rent Pondy login is: ${newOtp}
-
-⏱️ This OTP expires in 5 minutes.
-🔒 Never share this OTP with anyone.
-
-– Team Rent Pondy`;
-
-          if (to.length >= 8) {
-            console.log("✅ Resend number is valid, attempting to send message...");
-            console.log("✅ Length:", to.length, ">= 8 ?", to.length >= 8);
-            const response = await axios.post(`${process.env.REACT_APP_API_URL}/send-message`, {
-              to,
-              message: resendMessage,
-            });
-            console.log("✅ WhatsApp resend OTP message sent to:", to, "Response:", response.data);
-          } else {
-            console.log("❌ Phone number validation failed for resend:", to, "Length:", to.length);
-          }
-        } catch (whatsErr) {
-          console.error(
-            "⚠️ WhatsApp resend OTP message failed (non-blocking):",
-            whatsErr.message,
-            "Error details:",
-            whatsErr.response?.data || whatsErr
-          );
-        }
+        // ✅ WhatsApp OTP Resend Notification — DISABLED (OTP delivered via SMS/backend only)
+        // try {
+        //   const resendMessage = `Hi there, 👋\n\nYour resent OTP for Rent Pondy login is: ${newOtp}\n\n⏱️ This OTP expires in 5 minutes.\n🔒 Never share this OTP with anyone.\n\n– Team Rent Pondy`;
+        //   if (to.length >= 8) {
+        //     await axios.post(`${process.env.REACT_APP_API_URL}/send-message`, { to, message: resendMessage });
+        //   }
+        // } catch (whatsErr) {
+        //   console.error("⚠️ WhatsApp resend OTP message failed (non-blocking):", whatsErr.message);
+        // }
 
         setMockOtp(newOtp);
         setOtpTimer(30);

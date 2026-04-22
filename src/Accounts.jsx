@@ -15,7 +15,7 @@ const TUCForm = () => {
     <Container className="mt-5">
       <Row className="justify-content-center">
         <Col xs={12} md={6} lg={4}>
-          <h1 className="text-center">Enter Customer Phone Number
+          <h1 className="text-center">Enter Customer PhoneNumber
           </h1>
           <Form onSubmit={handleSubmit}>
             <Form.Group controlId="tucId">

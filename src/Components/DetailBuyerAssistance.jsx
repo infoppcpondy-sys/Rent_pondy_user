@@ -740,33 +740,19 @@ const [loading, setLoading] = useState(true);
         return;
       }
 
-      // Message for user about upgrade plan
-      const userMessage = `Hi ${userName} 👋
-
-⚠️ Upgrade Your Plan to View Contact!
-
-📋 You tried to view:
-🆔 Ra ID: ${raId}
-📍 Location: ${location}
-👨‍💼 Owner: ${ownerName}
-
-🎯 Your current plan has limited contact views. 
-
-💳 To view this tenant's contact and connect with them:
-✅ Upgrade your plan now
-✅ Get unlimited contact access
-✅ View all property details
-
-🚀 Visit our website to upgrade and start connecting with tenants today!
-Thank you for using Rent Pondy 🙏`;
-
-      console.log("📨 Sending upgrade notification to user...");
+      console.log("📨 Queuing upgrade notification to user...");
       try {
-        const userResponse = await axios.post(`${process.env.REACT_APP_API_URL}/send-message`, {
+        const userResponse = await axios.post(`${process.env.REACT_APP_API_URL}/queue-message`, {
           to: formattedUserPhone,
-          message: userMessage,
+          category: "upgrade-plan",
+          data: {
+            userName,
+            raId,
+            location,
+            ownerName,
+          },
         });
-        console.log("✅ Upgrade notification sent successfully:", userResponse.data);
+        console.log("✅ Upgrade notification queued:", userResponse.data);
       } catch (userErr) {
         console.log("⚠️ Upgrade notification failed:", userErr.message);
       }
@@ -810,51 +796,37 @@ Thank you for using Rent Pondy 🙏`;
         return;
       }
 
-      // Message for user (buyer)
-      const userMessage = `Hi ${userName} 👋
-
-✅ You have viewed the Tenant contact!
-
-📋 Tenant Details:
-🆔 Ra ID: ${raId}
-📍 Location: ${location}
-👨‍💼 Owner: ${ownerName}
-📱 Phone: ${tenantPhone}
-
-🎯 Connect with the tenant now and discuss your requirements!
-Thank you for using Rent Pondy 🙏`;
-
-      // Message for tenant (property owner)
-      const tenantMessage = `Hi ${ownerName} 👋
-
-✅ ${userName} has viewed your contact!
-
-📋 Tenant Details:
-🆔 Ra ID: ${raId}
-📍 Location: ${location}
-📝 Viewer: ${userName}
-
-🎯 Be ready to receive a call from the interested user!
-Thank you for using Rent Pondy 🙏`;
-
-      console.log("📨 Sending message to user...");
+      console.log("📨 Queuing message to user...");
       try {
-        const userResponse = await axios.post(`${process.env.REACT_APP_API_URL}/send-message`, {
+        const userResponse = await axios.post(`${process.env.REACT_APP_API_URL}/queue-message`, {
           to: formattedUserPhone,
-          message: userMessage,
+          category: "contact-view-user",
+          data: {
+            userName,
+            raId,
+            location,
+            ownerName,
+            tenantPhone,
+          },
         });
-        console.log("✅ User message sent successfully:", userResponse.data);
+        console.log("✅ User message queued:", userResponse.data);
       } catch (userErr) {
         console.log("⚠️ User message failed:", userErr.message);
       }
 
-      console.log("📨 Sending message to tenant (owner)...");
+      console.log("📨 Queuing message to tenant (owner)...");
       try {
-        const tenantResponse = await axios.post(`${process.env.REACT_APP_API_URL}/send-message`, {
+        const tenantResponse = await axios.post(`${process.env.REACT_APP_API_URL}/queue-message`, {
           to: formattedTenantPhone,
-          message: tenantMessage,
+          category: "contact-view-owner",
+          data: {
+            userName,
+            raId,
+            location,
+            ownerName,
+          },
         });
-        console.log("✅ Tenant message sent successfully:", tenantResponse.data);
+        console.log("✅ Tenant message queued:", tenantResponse.data);
       } catch (tenantErr) {
         console.log("⚠️ Tenant message failed:", tenantErr.message);
       }
@@ -1058,51 +1030,37 @@ const sendInterestNotification = async () => {
       return;
     }
 
-    // Message for user (buyer) - Send Interest
-    const userMessage = `Hi ${userName} 👋
-
-✅ You have sent interest for the property!
-
-📋 Property Details:
-🆔 Ra ID: ${raId}
-📍 Location: ${location}
-👨‍💼 Owner: ${ownerName}
-📱 Phone: ${tenantPhone}
-
-🎯 Thank you for showing interest! We'll notify the owner soon.
-Thank you for using Rent Pondy 🙏`;
-
-    // Message for tenant (property owner) - Send Interest
-    const tenantMessage = `Hi ${ownerName} 👋
-
-✅ ${userName} has sent interest in your property!
-
-📋 Property Details:
-🆔 Ra ID: ${raId}
-📍 Location: ${location}
-📝 Interested User: ${userName}
-
-🎯 A new user is interested in renting your property. Please get in touch with them soon!
-Thank you for using Rent Pondy 🙏`;
-
-    console.log("📨 Sending message to user...");
+    console.log("📨 Queuing message to user...");
     try {
-      const userResponse = await axios.post(`${process.env.REACT_APP_API_URL}/send-message`, {
+      const userResponse = await axios.post(`${process.env.REACT_APP_API_URL}/queue-message`, {
         to: formattedUserPhone,
-        message: userMessage,
+        category: "buyer-interest-user",
+        data: {
+          userName,
+          raId,
+          location,
+          ownerName,
+          ownerPhone: formattedTenantPhone,
+        },
       });
-      console.log("✅ User message sent successfully:", userResponse.data);
+      console.log("✅ User message queued:", userResponse.data);
     } catch (userErr) {
       console.log("⚠️ User message failed:", userErr.message);
     }
 
-    console.log("📨 Sending message to tenant (owner)...");
+    console.log("📨 Queuing message to tenant (owner)...");
     try {
-      const tenantResponse = await axios.post(`${process.env.REACT_APP_API_URL}/send-message`, {
+      const tenantResponse = await axios.post(`${process.env.REACT_APP_API_URL}/queue-message`, {
         to: formattedTenantPhone,
-        message: tenantMessage,
+        category: "buyer-interest-owner",
+        data: {
+          userName,
+          raId,
+          location,
+          userPhone: formattedUserPhone,
+        },
       });
-      console.log("✅ Tenant message sent successfully:", tenantResponse.data);
+      console.log("✅ Tenant message queued:", tenantResponse.data);
     } catch (tenantErr) {
       console.log("⚠️ Tenant message failed:", tenantErr.message);
     }

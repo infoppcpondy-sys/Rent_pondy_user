@@ -151,6 +151,7 @@ import OwnerSideMenu from './OwnerSideMenu';
 import SaleProperty from './SaleProperty';
 import ExclusiveDetails from '../pages/ExclusiveDetails';
 import Support from './Support';
+import PointsPlans from './PointsPlans';
 
 export default function RouterPage() {
 
@@ -205,6 +206,7 @@ export default function RouterPage() {
         <Route path='/my-plan' element={ <MyPlan /> } />
         <Route path='/expired-plans' element={<ExpiredPlans  />} />
         <Route path='/pricing-plans' element={<AddPlan  />} />
+        <Route path='/points-plans' element={<PointsPlans />} />
         <Route path='/shiping-delivery' element={<ShippingAndDelivery  />} />
         <Route path='/contact-web' element={<ContactUs   />} />
         {/* <Route path='/py-property' element={<PyProperty  { <MobileViews phone={phoneNumber} /> } /> */}
