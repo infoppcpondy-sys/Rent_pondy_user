@@ -3,7 +3,9 @@
 
 
 
-import React, { useState, useEffect ,useRef} from 'react';
+import React, { useState, useEffect, useRef } from 'react';
+import { getDefaultCity } from '../utils/areaPincode';
+import { getActiveBase } from '../utils/cityBase';
 import { useLocation, useNavigate } from 'react-router-dom';
 import axios from 'axios';
 // import { useSelector } from 'react-redux';
@@ -100,10 +102,12 @@ import { GoCheckCircleFill } from "react-icons/go";
 import { motion } from 'framer-motion';
 
 const EditBuyerAssistance = () => {
+  // Cross-city guard: PY user opening a CH record (or vice versa).
+  const [crossCityBlock, setCrossCityBlock] = useState(null);
   const [formData, setFormData] = useState({
     phoneNumber: "",
     altPhoneNumber: "",
-    city: "",
+    city: getDefaultCity(),
     area: "",
     minPrice: "",
     maxPrice: "",
@@ -779,7 +783,16 @@ const fetchAreaSuggestions = (input) => {
     try {
       const res = await axios.get(`${process.env.REACT_APP_API_URL}/fetch-buyerAssistance-rent/${Ra_Id}`);
       if (res.data && res.data.data) {
-        setFormData(prev => ({ ...prev, ...res.data.data }));
+        const data = res.data.data;
+        // Block the edit if a PY/CH user opened a tenant request from
+        // the other city — show a guard, don't populate the form.
+        const activeScope = getActiveBase();
+        const recordBase = data.base || 'PY';
+        if (recordBase !== activeScope) {
+          setCrossCityBlock({ recordBase, activeScope });
+          return;
+        }
+        setFormData(prev => ({ ...prev, ...data }));
       } else {
       }
     } catch (error) {
@@ -823,7 +836,7 @@ await axios.put(`${process.env.REACT_APP_API_URL}/update-buyer-Assistance/${Ra_I
       setFormData({
         phoneNumber: "",
         altPhoneNumber: "",
-        city: "",
+        city: getDefaultCity(),
     area: "",
     minPrice: "",
     maxPrice: "",
@@ -874,7 +887,29 @@ const formatPrice = (price) => {
 };
   // if (loading) return <p>Loading...</p>;
 
-
+  // City-scope guard. Shown before the form when the loaded request
+  // doesn't belong to the active city scope.
+  if (crossCityBlock) {
+    const recordCity = crossCityBlock.recordBase === 'CH' ? 'Chennai' : 'Pondicherry';
+    const myCity = crossCityBlock.activeScope === 'CH' ? 'Chennai' : 'Pondicherry';
+    return (
+      <div className="container py-5">
+        <div className="alert alert-warning text-center shadow-sm" style={{ maxWidth: 520, margin: '40px auto', borderRadius: 12 }}>
+          <h4 className="mb-3">Wrong city for this request</h4>
+          <p className="mb-2">
+            This tenant request belongs to <strong>{recordCity}</strong>, but
+            you are browsing <strong>{myCity}</strong>.
+          </p>
+          <p className="mb-3 text-muted" style={{ fontSize: 14 }}>
+            Switch to {recordCity} from the city tabs at the top, then re-open it.
+          </p>
+          <button className="btn btn-primary" onClick={() => window.history.back()}>
+            Go back
+          </button>
+        </div>
+      </div>
+    );
+  }
 
   return (
   <div className="d-flex flex-column mx-auto custom-scrollbar"

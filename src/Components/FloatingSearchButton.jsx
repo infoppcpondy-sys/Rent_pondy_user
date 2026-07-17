@@ -1,15 +1,17 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { 
-  FaHome, 
-  FaUsers, 
-  FaSortAmountDownAlt, 
-  FaHeadset 
+import {
+  FaHome,
+  FaUsers,
+  FaSortAmountDownAlt,
+  FaHeadset
 } from 'react-icons/fa';
 import AnimatedSearchLogo from './AnimatedSearchLogo';
+import TenantSearchModal from './TenantSearchModal';
 
 const FloatingSearchButton = () => {
   const [isSearchMenuOpen, setIsSearchMenuOpen] = useState(false);
+  const [isTenantSearchOpen, setIsTenantSearchOpen] = useState(false);
   const navigate = useNavigate();
 
   const handleSearchProperty = () => {
@@ -22,7 +24,7 @@ const FloatingSearchButton = () => {
 
   const handleTenantSearch = () => {
     setIsSearchMenuOpen(false);
-    navigate('/tenant-search');
+    setIsTenantSearchOpen(true);
   };
 
   const handleQuickSort = () => {
@@ -253,6 +255,11 @@ const FloatingSearchButton = () => {
           </div>
         </div>
       )}
+
+      <TenantSearchModal
+        isOpen={isTenantSearchOpen}
+        onClose={() => setIsTenantSearchOpen(false)}
+      />
     </>
   );
 };

@@ -1,10 +1,11 @@
-
+﻿
 
 
 
 
 import React, { useEffect, useState , useRef} from "react";
 import { useLocation, useNavigate, useParams } from "react-router-dom";
+import { getActiveBase, baseToPath } from "./utils/cityBase";
 import axios from "axios";
 import { Swiper, SwiperSlide } from "swiper/react";
 import { Navigation, Pagination } from "swiper/modules";
@@ -250,7 +251,7 @@ const [canViewToday, setCanViewToday] = useState(true);
 
 
 
-// 🚀 Submit Report
+// ðŸš€ Submit Report
 const ReporthandleSubmit = async () => {
   const userPhoneNumber = localStorage.getItem("phoneNumber"); // Or from global state
   const rentId = property?.rentId; // Make sure this comes from selected property
@@ -673,13 +674,18 @@ const handleSubmit = async ({ rentalAmount, rentId }) => {
     window.scrollTo(0, 0); // Scroll to top
   };
   useEffect(() => {
-    // Ensure propertyDetails is not null or undefined before accessing `video`
-    if (propertyDetails?.video) {
-      setVideoUrl(`https://rentpondy.com/PPC/${propertyDetails.video}`);
+    const rawVideo = propertyDetails?.video;
+    const video = Array.isArray(rawVideo)
+      ? rawVideo.find((v) => typeof v === "string" && v.trim() !== "") || ""
+      : rawVideo;
+
+    if (typeof video === "string" && video.trim() !== "") {
+      const normalizedVideoPath = video.replace(/\\/g, "/").replace(/^\/+/, "").trim();
+      setVideoUrl(`https://rentpondy.com/PPC/${normalizedVideoPath}`);
     } else {
-      setVideoUrl("https://rentpondy.com/PPC/default-video-url.mp4"); // Fallback to a default video
+      setVideoUrl("https://rentpondy.com/PPC/default-video-url.mp4");
     }
-  }, [propertyDetails?.video]); // Runs when `propertyDetails.video` changes
+  }, [propertyDetails?.video]);
   const handleVideoPlay = () => {
     setShowPopup(true);
   };
@@ -1424,7 +1430,7 @@ const currentUrl = `${window.location.origin}${location.pathname}`; // <- Works 
     color: "white",   // optional, arrow color
     border: "none",   // optional, remove border
     borderRadius: "4px" // optional, rounded corners
-  }}>❮</button>
+  }}>â®</button>
       <button className="swiper-button-next-custom" style={{
     background: "#4F4B7E",
     height: "30px",
@@ -1436,7 +1442,7 @@ const currentUrl = `${window.location.origin}${location.pathname}`; // <- Works 
     color: "white",   // optional, arrow color
     border: "none",   // optional, remove border
     borderRadius: "4px" // optional, rounded corners
-  }}>❯</button>
+  }}>â¯</button>
     </div>
   {/* </div> */}
 <div className="position-absolute bottom-0 start-50 translate-middle-x text-center mt-2" style={{ zIndex: 1050 , color:"white"}}>
@@ -1711,7 +1717,7 @@ return (
         {detail.icon} 
       </span>
       <div>
-      {!isDescription && <span className="mb-1" style={{fontSize:"12px", color:"grey"}}>{detail.label || "N/A"}</span>}  {/* ✅ Hide label for description */}
+      {!isDescription && <span className="mb-1" style={{fontSize:"12px", color:"grey"}}>{detail.label || "N/A"}</span>}  {/* âœ… Hide label for description */}
 
      
 
@@ -2039,7 +2045,7 @@ return (
         <div>
           <strong>{place.name}</strong>
           <div style={{ fontSize: "14px" }}>
-            ⭐ {place.rating || "N/A"} ({place.user_ratings_total || 0})
+            â­ {place.rating || "N/A"} ({place.user_ratings_total || 0})
           </div>
           <div className="text-muted" style={{ fontSize: "13px" }}>
             {place.types?.[0].replace(/_/g, " ")}
@@ -2363,7 +2369,7 @@ return (
         style={{background:"#CDC9F9" , color:"#fff" , borderRadius:"25px" , width:"25%", border:"none"}}
         ><IoChevronBackSharp size={18}/>
  Back</button>
-        <button className="d-flex align-items-center justify-content-around ps-3  p-2" onClick={() => navigate('/mobileviews')} 
+        <button className="d-flex align-items-center justify-content-around ps-3  p-2" onClick={() => navigate(baseToPath(getActiveBase()))}
                style={{background:"#CDC9F9" , color:"#fff" , borderRadius:"25px" , width:"25%", border:"none"}}
         ><TiHome />
 Home</button>

@@ -25,6 +25,8 @@
 
 import React, { useState, useEffect, useRef } from "react";
 import axios from "axios";
+import { getChennaiAreaPincodeMap, getDefaultCity } from "../utils/areaPincode";
+import { getActiveBase } from "../utils/cityBase";
 // import { FaChevronDown, FaPhone } from "react-icons/fa";
 import imge from "../Assets/tenant_assist.png";
 import { RiCloseCircleFill, RiLayoutLine } from 'react-icons/ri';
@@ -170,7 +172,7 @@ const suggestionItemHoverStyle = {
   const [formData, setFormData] = useState({
     phoneNumber: phoneNumber || "",
     altPhoneNumber: "",
-    city: "",
+    city: getDefaultCity(),
     area: "",
     minPrice: "",
     maxPrice: "",
@@ -324,7 +326,16 @@ const handleFilterChange = (e) => {
   };
 
  const renderDropdown = (field) => {
-   const options = dataList[field] || [];
+   let options = dataList[field] || [];
+   if (field === 'state') {
+     const puducherryMatches = options.filter(
+       (opt) => String(opt).trim().toLowerCase() === 'puducherry'
+     );
+     const others = options.filter(
+       (opt) => String(opt).trim().toLowerCase() !== 'puducherry'
+     );
+     options = [...puducherryMatches, ...others];
+   }
    const filteredOptions = options.filter((option) =>
      option.toLowerCase().includes(dropdownState.filterText.toLowerCase())
    );
@@ -653,8 +664,9 @@ const dropdownFieldOrder = [
   }, 300);
 };
 
-// Area to Pincode mapping
-const areaPincodeMap = {
+// Pondicherry area -> pincode list used by the autosuggest.
+// CH users get the Chennai list via getAreaMap() below.
+const PONDY_AREA_PINCODE_MAP = {
   "Abishegapakkam": "605007",
   "Ariyankuppam": "605007",
   "Arumbarthapuram": "605110",
@@ -728,6 +740,12 @@ const areaPincodeMap = {
   "Yanam": "533464",
 };
 
+// City-aware accessor: CH users get the Chennai map, everyone else
+// stays on the Pondicherry map. Called on every use because the active
+// scope can change while the module stays loaded.
+const getAreaMap = () =>
+  getActiveBase() === 'CH' ? getChennaiAreaPincodeMap() : PONDY_AREA_PINCODE_MAP;
+
 // Utility function to capitalize first letter
 const capitalizeFirstLetter = (str) => {
   if (!str) return '';
@@ -740,7 +758,7 @@ const handleAreaInputChange = (e) => {
   setFormData(prev => ({ ...prev, area: value }));
 
   if (value.length > 0) {
-    const filtered = Object.keys(areaPincodeMap).filter(area =>
+    const filtered = Object.keys(getAreaMap()).filter(area =>
       area.toLowerCase().includes(value.toLowerCase())
     );
     setAreaSuggestions(filtered);
@@ -2749,7 +2767,7 @@ const handlePaymentNo = () => {
         onMouseEnter={() => setHoveredAreaIndex(index)}
         onMouseLeave={() => setHoveredAreaIndex(null)}
         onClick={() => {
-          const pincode = areaPincodeMap[area] || "";
+          const pincode = getAreaMap()[area] || "";
           setFormData({ ...formData, area: capitalizeFirstLetter(area), pinCode: pincode });
           setAreaSuggestions([]);
         }}

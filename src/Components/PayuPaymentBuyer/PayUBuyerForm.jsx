@@ -1,4 +1,4 @@
-// import React, { useState, useEffect } from 'react';
+﻿// import React, { useState, useEffect } from 'react';
 // import axios from 'axios';
 // import { useLocation, useNavigate } from 'react-router-dom';
 
@@ -167,7 +167,7 @@
 //       }));
 
 //       setTimeout(() => {
-//         navigate('/mobileviews');
+//         navigate('/pondicherry');
 //       }, 3000);
 //     } catch (error) {
 //       const errMsg = error?.response?.data?.message || 'Failed to process pay later request.';
@@ -337,6 +337,7 @@
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
 import { useLocation, useNavigate } from 'react-router-dom';
+import { getActiveBase, baseToPath } from '../../utils/cityBase';
 
 const PayUBuyerForm = () => {
   const location = useLocation();
@@ -508,7 +509,7 @@ const PayUBuyerForm = () => {
       });
 
       setTimeout(() => {
-        navigate('/mobileviews');
+        navigate(baseToPath(getActiveBase()));
       }, 3000);
     } catch (error) {
       const errMsg = error?.response?.data?.message || 'Failed to process pay later request.';

@@ -1,8 +1,9 @@
-
+﻿
 
 
 import React, { useState, useEffect, useRef } from "react";
 import { useNavigate, useParams } from "react-router-dom";
+import { getActiveBase, baseToPath } from "../../utils/cityBase";
 import axios from "axios";
 import { MdCalendarMonth, MdOutlineBed, MdOutlineMapsHomeWork, MdOutlineTimer, MdFamilyRestroom, MdOutlineCall, MdCall } from 'react-icons/md';
 import { GoHome } from 'react-icons/go';
@@ -92,7 +93,7 @@ const FavoriteRemovedBuyer = () => {
         `${process.env.REACT_APP_API_URL}/favoriteRemoved/delete/${rentId}/${favoriteUserPhone}`
       );
   
-      // ✅ Update State Efficiently: Remove Buyer from Property
+      // âœ… Update State Efficiently: Remove Buyer from Property
       setRemovedFavorites((prevFavorites) =>
         prevFavorites
           .map((property) =>
@@ -119,7 +120,7 @@ const FavoriteRemovedBuyer = () => {
     try {
       await axios.put(`${process.env.REACT_APP_API_URL}/favoriteRemoved/undo/${rentId}/${favoriteUserPhone}`);
   
-      // ✅ Update State Efficiently: Remove from Removed List
+      // âœ… Update State Efficiently: Remove from Removed List
       setRemovedFavorites((prevFavorites) =>
         prevFavorites
           .map((property) =>
@@ -144,7 +145,7 @@ const FavoriteRemovedBuyer = () => {
     const navigate = useNavigate();
 
     const handlePageNavigation = () => {
-      navigate('/mobileviews'); // Redirect to the desired path
+      navigate(baseToPath(getActiveBase())); // Redirect to the active city
     };
   return (
     <div className="container d-flex align-items-center justify-content-center p-0">

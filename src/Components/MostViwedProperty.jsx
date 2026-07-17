@@ -1,4 +1,4 @@
-
+﻿
 
 
 
@@ -8,6 +8,7 @@
 import React, { useEffect, useState } from "react";
 import axios from "axios";
 import { useLocation, useNavigate } from "react-router-dom";
+import { getActiveBase, baseToPath } from "../utils/cityBase";
 import { FaArrowLeft, FaChevronLeft } from "react-icons/fa";
 import pic from '../Assets/Mask Group 3@2x.png';
 import myImage from '../Assets/Rectangle 146.png'; // Correct path
@@ -199,7 +200,7 @@ const fetchLastViewed = async () => {
 
     let allProperties = response?.data?.properties || [];
 
-    // 🔁 Enrich each property with propertyMessage
+    // ðŸ” Enrich each property with propertyMessage
     const enrichedProperties = await Promise.all(
       allProperties.map(async (property) => {
         let propertyMessage = null;
@@ -219,12 +220,12 @@ const fetchLastViewed = async () => {
       })
     );
 
-    // 🔽 Sort by updatedAt or createdAt (new to old)
+    // ðŸ”½ Sort by updatedAt or createdAt (new to old)
     enrichedProperties.sort(
       (a, b) => new Date(b.updatedAt || b.createdAt) - new Date(a.updatedAt || a.createdAt)
     );
 
-    // ✅ Ensure uniqueness by rentId or _id
+    // âœ… Ensure uniqueness by rentId or _id
     const uniqueProperties = [];
     const seenIds = new Set();
 
@@ -272,7 +273,7 @@ const formatPrice = (rentalAmount) => {
   }
 };
 
-  const handlePageNavigation = () => navigate("/mobileviews");
+  const handlePageNavigation = () => navigate(baseToPath(getActiveBase()));
 
   const allViews = properties.filter(prop => !removedrentIds.includes(prop.rentId));
   const removedViews = properties.filter(prop => removedrentIds.includes(prop.rentId));
@@ -457,7 +458,7 @@ const formatPrice = (rentalAmount) => {
       .filter((v) => v !== null && v !== undefined && v !== "");
 
     if (locs.length === 0) {
-      // All null/empty — show two N/A
+      // All null/empty â€” show two N/A
       return <>N/A, N/A</>;
     }
 

@@ -1,9 +1,10 @@
-
+﻿
 
 
 import React, { useState, useEffect, useCallback } from "react";
 import axios from "axios";
 import { useNavigate, useParams } from "react-router-dom";
+import { getActiveBase, baseToPath } from "../../utils/cityBase";
 import {FaCamera, FaEye , FaRulerCombined, FaBed, FaUserAlt, FaCalendarAlt, FaRupeeSign } from "react-icons/fa";
 import { MdCall } from "react-icons/md";
 import myImage from '../../Assets/Rectangle 146.png'; // Correct path
@@ -180,7 +181,7 @@ const formatPrice = (price) => {
       .filter((v) => v !== null && v !== undefined && v !== "");
 
     if (locs.length === 0) {
-      // All null/empty — show two N/A
+      // All null/empty â€” show two N/A
       return <>N/A, N/A</>;
     }
 
@@ -332,7 +333,7 @@ const App = () => {
     };
   }, []);
   const handlePageNavigation = () => {
-    navigate('/mobileviews'); // Redirect to the desired path
+    navigate(baseToPath(getActiveBase())); // Redirect to the active city
   };
   // Auto-clear message after 3 seconds
   useEffect(() => {

@@ -1,11 +1,14 @@
 
 import React, { useState, useEffect } from 'react';
+import { useDispatch } from 'react-redux';
+import { setPhoneNumber as setPhoneNumberAction } from '../red/userSlice';
 import App from '../App'
 import '../App.css';
 import Nopage from './Nopage'
 import Building from './Building'
 import MobileViews from './MoblieViews'
 import { BrowserRouter, Route, Routes } from 'react-router-dom'
+import AssistantWidget from '../assistant/AssistantWidget'
 import Login from './Login'
 import AddProps from './AddProps'
 import MyProperty from './MyProperty'
@@ -150,41 +153,72 @@ import BuyerSideMenu from './BuyerSideMenu';
 import OwnerSideMenu from './OwnerSideMenu';
 import SaleProperty from './SaleProperty';
 import ExclusiveDetails from '../pages/ExclusiveDetails';
+import StayDetail from '../pages/StayDetail';
+import AddStay from '../pages/AddStay';
 import Support from './Support';
 import PointsPlans from './PointsPlans';
+import StayOwnersPlan from './StayPlan/StayOwnersPlan';
+import StayPaymentResult from './StayPlan/StayPaymentResult';
+import PointsHistory from './PointsHistory';
+import PayUPointsForm from './PayUPointsPayment/PayUPointsForm';
+import PaymentSuccessPoints from './PayUPointsPayment/PaymentSuccessPoints';
+import PaymentFailurePoints from './PayUPointsPayment/PaymentFailurePoints';
 
 export default function RouterPage() {
 
+  const dispatch = useDispatch();
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [phoneNumber, setPhoneNumber] = useState('');
 
-  // Check if the user is authenticated on initial load
+  // Rehydrate auth from localStorage on initial load. This also covers the
+  // case where the user just returned from a full-page nav (PayU hosted
+  // checkout): Redux is freshly re-initialized to null, so any selector
+  // reading state.user.phoneNumber would treat the user as logged out
+  // unless we re-sync from localStorage here.
   useEffect(() => {
     const storedPhone = localStorage.getItem('phoneNumber');
     if (storedPhone) {
       setPhoneNumber(storedPhone);
       setIsAuthenticated(true);
+      dispatch(setPhoneNumberAction(storedPhone));
     }
-  }, []);
+  }, [dispatch]);
 
   const handleLogin = (phone) => {
     if (phone) {
       localStorage.setItem('phoneNumber', phone); // Store phone in localStorage
       setPhoneNumber(phone);
       setIsAuthenticated(true);
+      dispatch(setPhoneNumberAction(phone));
     } else {
       setIsAuthenticated(false);
       localStorage.removeItem('phoneNumber'); // Remove if no phone number is entered
+      dispatch(setPhoneNumberAction(null));
     }
   };
   return (
     <BrowserRouter>
     <Routes>
     <Route path="/" element={<App />} />
+    <Route path="/pondicherry" element={<MobileViews />} />
+    <Route path="/chennai" element={<MobileViews />} />
+    {/* Admin "Direct Login / User - My Account" shortcut lands here:
+        /mobileviews?phone=<10 digits>. MobileViews reads the phone from the
+        query string and logs the user in directly (no OTP). Without this route
+        the URL fell through to the catch-all "*" and showed the Nopage screen. */}
     <Route path="/mobileviews" element={<MobileViews />} />
     <Route path="/login" element={<Login onLogin={handleLogin} />} />
+    {/* City-specific login entry points: /login/pondicherry and /login/chennai.
+        Same Login component & logic — the city is pre-selected from the URL. */}
+    <Route path="/login/:city" element={<Login onLogin={handleLogin} />} />
     <Route path="/Construction" element={ <Building  /> } />
     <Route path="/exclusiveDetail" element={<ExclusiveDetails />} />
+    {/* Tourist Place — single stay detail page and public Add Stay form */}
+    <Route path="/stay/:id" element={<StayDetail />} />
+    <Route path="/add-stay" element={<AddStay />} />
+    {/* Alias used by the "Exclusive place to stay" running-text banner on the
+        All Property page. Same page as /exclusiveDetail. */}
+    <Route path="/exclusive-location" element={<ExclusiveDetails />} />
     <Route path="*" element={<Nopage />} />
     <Route path='/my' element={ <MyProperty  /> } />
         <Route path='/new-property' element={ <NewProperty  /> } />
@@ -207,6 +241,8 @@ export default function RouterPage() {
         <Route path='/expired-plans' element={<ExpiredPlans  />} />
         <Route path='/pricing-plans' element={<AddPlan  />} />
         <Route path='/points-plans' element={<PointsPlans />} />
+        <Route path='/stay-owners-plan' element={<StayOwnersPlan />} />
+        <Route path='/stay-payment-result' element={<StayPaymentResult />} />
         <Route path='/shiping-delivery' element={<ShippingAndDelivery  />} />
         <Route path='/contact-web' element={<ContactUs   />} />
         {/* <Route path='/py-property' element={<PyProperty  { <MobileViews phone={phoneNumber} /> } /> */}
@@ -326,6 +362,10 @@ export default function RouterPage() {
  <Route path="/payu-form" element={<PayUForm />} />
           <Route path="/payment-success" element={<PaymentSuccess />} />
           <Route path="/payment-failure" element={<PaymentFailure />} />
+          <Route path="/payu-points-form" element={<PayUPointsForm />} />
+          <Route path="/points-payment-success" element={<PaymentSuccessPoints />} />
+          <Route path="/points-payment-failure" element={<PaymentFailurePoints />} />
+          <Route path="/points-history" element={<PointsHistory />} />
                 
                    <Route path="/myplan-datas" element={<MyPlanGetDatas />} />
          
@@ -365,7 +405,12 @@ export default function RouterPage() {
 
 
     </Routes>
-    </BrowserRouter> 
+    {/* Mounted OUTSIDE <Routes> so the assistant (and an active voice session)
+        persists across navigation — e.g. tapping a result card to open /detail
+        and coming back — until the user manually closes it. Shown only when
+        logged in so it doesn't appear on the landing/login page. */}
+    {(isAuthenticated || !!localStorage.getItem('phoneNumber')) && <AssistantWidget />}
+    </BrowserRouter>
   )
 }
 
@@ -588,9 +633,9 @@ export default function RouterPage() {
 //     <BrowserRouter>
 //     <Routes>
 //     <Route path="/" element={<App />} />
-//     <Route path="/mobileviews" element={<MobileViews />} />
-//     {/* <Route path="/mobileviews" element={isAuthenticated ? <MobileViews phone={phoneNumber} /> : <App to="/" />} /> */}
-//     {/* <Route path="/mobileviews" element={isAuthenticated ? <MobileViews phone={phoneNumber} /> : <Navigate to="/" />} /> */}
+//     <Route path="/pondicherry" element={<MobileViews />} />
+//     {/* <Route path="/pondicherry" element={isAuthenticated ? <MobileViews phone={phoneNumber} /> : <App to="/" />} /> */}
+//     {/* <Route path="/pondicherry" element={isAuthenticated ? <MobileViews phone={phoneNumber} /> : <Navigate to="/" />} /> */}
 
 //     <Route path="/login" element={<Login onLogin={handleLogin} />} />
 //     <Route path="/Construction" element={<Building  />} />

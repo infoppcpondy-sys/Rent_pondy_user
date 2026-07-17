@@ -1,6 +1,7 @@
-import { useState, useEffect } from "react";
+﻿import { useState, useEffect } from "react";
 import axios from "axios";
 import { useLocation, useNavigate } from "react-router-dom";
+import { getActiveBase, baseToPath } from "../utils/cityBase";
 import { FaArrowLeft, FaChevronLeft } from "react-icons/fa";
 import { GoCheckCircleFill } from "react-icons/go";
 
@@ -17,7 +18,7 @@ export default function MyPlanGetDatas() {
   const [usedCars, setUsedCars] = useState(0);
   const [remainingCars, setRemainingCars] = useState(0);
   const [planLimitMessage, setPlanLimitMessage] = useState("");
-  const [planData, setPlanData] = useState(null); // ✅ state to hold full data
+  const [planData, setPlanData] = useState(null); // âœ… state to hold full data
 
   const [isScrolling, setIsScrolling] = useState(false);
 
@@ -45,7 +46,7 @@ export default function MyPlanGetDatas() {
   };
 
   const handleBackNavigation = () => {
-    navigate("/mobileviews");
+    navigate(baseToPath(getActiveBase()));
   };
    useEffect(() => {
       const recordDashboardView = async () => {
@@ -74,7 +75,7 @@ export default function MyPlanGetDatas() {
           setUsedCars(data.usedCars);
           setRemainingCars(data.remainingCars);
           setPlanLimitMessage(data.planLimitMessage || "");
-          setPlanData(data); // ✅ assigning full response to planData
+          setPlanData(data); // âœ… assigning full response to planData
           setError("");
         } else {
           setPlans([]);

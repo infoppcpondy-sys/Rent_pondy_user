@@ -1,4 +1,4 @@
-
+﻿
 import React, { useState, useEffect, useRef } from 'react';
 import 'bootstrap/dist/css/bootstrap.min.css';
 import { Container, Row, Col, Form, Button, InputGroup } from 'react-bootstrap';
@@ -11,6 +11,7 @@ import logo from '../Assets/ppc logo.jpg';
 import 'react-toastify/dist/ReactToastify.css';
 import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
+import { getActiveBase, baseToPath } from '../utils/cityBase';
 import './Login.css';
 import { RiEdit2Fill } from "react-icons/ri";
 import PrivacyPolicyWeb from './PrivacyPolicyWeb';
@@ -19,8 +20,12 @@ import AboutMobile from './AboutMobile';
 import { FaArrowLeft, FaChevronLeft } from 'react-icons/fa';
 import { MdEmail, MdLock } from 'react-icons/md';
 import { AiOutlineEye, AiOutlineEyeInvisible } from 'react-icons/ai';
+import { setupRecaptcha } from '../Firebase';
 
 const WebLogin = ({ onLogin }) => {
+  // OTP provider chosen by admin ('smsidea' | 'firebase'); defaults to the
+  // current server-side SMS Idea flow until the setting loads / is changed.
+  const [otpProvider, setOtpProvider] = useState('smsidea');
   const [phoneNumber, setPhoneNumberState] = useState('');
   const [otp, setOtp] = useState('');
   const [isOtpSent, setIsOtpSent] = useState(false);
@@ -41,6 +46,24 @@ const WebLogin = ({ onLogin }) => {
   const [failureMessage, setFailureMessage] = useState('');
 
   const [isScrolling, setIsScrolling] = useState(false);
+
+  // Load the admin-controlled OTP provider for the user app.
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      try {
+        const res = await axios.get(`${process.env.REACT_APP_API_URL}/otp-setting`);
+        if (!cancelled && res.data && res.data.userProvider) {
+          setOtpProvider(res.data.userProvider);
+        }
+      } catch (err) {
+        // keep default 'smsidea' on failure
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   useEffect(() => {
     let scrollTimeout;
@@ -79,7 +102,7 @@ const WebLogin = ({ onLogin }) => {
       
       if (storedPhone) {
         dispatch(setPhoneNumber(storedPhone));
-        navigate('/mobileviews', { state: { phoneNumber: phoneNumber } });
+        navigate(baseToPath(getActiveBase()), { state: { phoneNumber: phoneNumber } });
       }
     };
 
@@ -200,11 +223,32 @@ const WebLogin = ({ onLogin }) => {
       localStorage.setItem('phoneNumber', fullPhoneNumber);
       dispatch(setPhoneNumber(fullPhoneNumber));
       setIsLoading(false);
-      navigate('/mobileviews');
+      navigate(baseToPath(getActiveBase()));
       return; // Skip OTP
     }
 
-    // 2. If not directly verified, send OTP
+    // 2. If not directly verified, send OTP via the active provider
+    if (otpProvider === 'firebase') {
+      // Firebase Phone Auth: send the SMS from the browser. The verify step
+      // confirms the code and posts the resulting ID token to the backend.
+      const e164 = `${countryCode}${plainPhoneDigits}`;
+      window.confirmationResult = await setupRecaptcha(e164);
+
+      toast.success('OTP Sent Successfully!', {
+        position: 'top-center',
+        autoClose: 20000,
+      });
+
+      setMockOtp('');
+      setIsOtpSent(true);
+      setOtpTimer(30);
+      setCanResendOtp(false);
+      setOtp('');
+      setIsLoading(false);
+      return;
+    }
+
+    // SMS Idea (default): backend generates, sends and stores the OTP.
     const response = await axios.post(`${process.env.REACT_APP_API_URL}/send-otp-rent`, {
       phoneNumber: fullPhoneNumber,
       loginMode: loginMode,
@@ -227,7 +271,7 @@ const WebLogin = ({ onLogin }) => {
       setIsLoading(false);
     }
   } catch (error) {
-    const errorMessage = error.response?.data?.error || 'Something went wrong!';
+    const errorMessage = error.response?.data?.error || error?.message || 'Something went wrong!';
     setFailureMessage(errorMessage);
     setShowLoginFailPopup(true);
     setIsLoading(false);
@@ -247,23 +291,53 @@ const WebLogin = ({ onLogin }) => {
   setIsLoading(true);
 
   try {
+    const fullPhoneNumber = `${phoneNumber}`;
+
+    if (otpProvider === 'firebase') {
+      // Confirm the code with Firebase, then exchange the ID token at the backend.
+      if (!window.confirmationResult) {
+        throw new Error('Please request the OTP again.');
+      }
+      const cred = await window.confirmationResult.confirm(otp);
+      const idToken = await cred.user.getIdToken();
+
+      await axios.post(`${process.env.REACT_APP_API_URL}/user/firebase-login-rent`, {
+        idToken,
+        phoneNumber: fullPhoneNumber,
+        loginMode,
+        countryCode,
+      });
+
+      toast.success('OTP verified successfully!');
+      localStorage.setItem('phoneNumber', fullPhoneNumber);
+      dispatch(setPhoneNumber(fullPhoneNumber));
+      navigate(baseToPath(getActiveBase()));
+      setIsLoading(false);
+      return;
+    }
+
+    // SMS Idea (default): verify against the backend DB record.
     const response = await axios.post(`${process.env.REACT_APP_API_URL}/verify-otp-rent`, {
-      phoneNumber: `${phoneNumber}`,
+      phoneNumber: fullPhoneNumber,
       otp: otp,
     });
 
     if (response.status === 200) {
       toast.success('OTP verified successfully!');
-      const fullPhoneNumber = `${phoneNumber}`;
       localStorage.setItem('phoneNumber', fullPhoneNumber);
       dispatch(setPhoneNumber(fullPhoneNumber));
-navigate('/mobileviews');
+navigate(baseToPath(getActiveBase()));
       setIsLoading(false);
 
-      // navigate('/mobileviews');
+      // navigate('/pondicherry');
     }
   } catch (error) {
-    const errorMessage = error.response?.data?.message || 'OTP verification failed!';
+    const errorMessage =
+      error.response?.data?.message ||
+      error.response?.data?.error ||
+      (error?.code === 'auth/invalid-verification-code' ? 'Invalid OTP' : null) ||
+      error?.message ||
+      'OTP verification failed!';
     setFailureMessage(errorMessage);
     setShowLoginFailPopup(true);
     setIsLoading(false);
@@ -276,6 +350,23 @@ navigate('/mobileviews');
     if (!canResendOtp) return;
 
     try {
+      if (otpProvider === 'firebase') {
+        const plainPhoneDigits = phoneNumber.replace(/\D/g, '').slice(-10);
+        const e164 = `${countryCode}${plainPhoneDigits}`;
+        window.confirmationResult = await setupRecaptcha(e164);
+
+        toast.success(`OTP resent!`, {
+          position: 'top-center',
+          autoClose: 20000,
+        });
+
+        setMockOtp('');
+        setOtpTimer(30);
+        setCanResendOtp(false);
+        setOtp('');
+        return;
+      }
+
       const response = await axios.post(`${process.env.REACT_APP_API_URL}/send-otp-rent`, {
         phoneNumber: `${phoneNumber}`,
         loginMode: loginMode,
@@ -296,7 +387,7 @@ navigate('/mobileviews');
         setOtp('');
       }
     } catch (error) {
-      const errorMessage = error.response?.data?.error || 'Failed to resend OTP.';
+      const errorMessage = error.response?.data?.error || error?.message || 'Failed to resend OTP.';
       setFailureMessage(errorMessage);
       setShowLoginFailPopup(true);
     }
@@ -315,6 +406,8 @@ navigate('/mobileviews');
 
   return (
     <>
+      {/* Invisible reCAPTCHA host for Firebase Phone Auth (used when otpProvider === 'firebase') */}
+      <div id="recaptcha-container" />
       <Helmet>
         <title>Pondy Property | Login</title>
       </Helmet>
@@ -1417,7 +1510,7 @@ No Brokers. No Stress. Just Easy Rentals.
             }}
             onClick={(e) => e.stopPropagation()}
           >
-            <div style={{ fontSize: '48px', marginBottom: '20px' }}>❌</div>
+            <div style={{ fontSize: '48px', marginBottom: '20px' }}>âŒ</div>
             <h3 style={{ color: '#059669', marginBottom: '15px', fontWeight: 700 }}>Login Failed</h3>
             <p style={{ color: '#666', marginBottom: '25px', fontSize: '16px' }}>{failureMessage}</p>
             <button

@@ -203,12 +203,29 @@ import { useNavigate, useLocation } from 'react-router-dom';
 import Main from './Main';
 import "bootstrap/dist/css/bootstrap.min.css";
 import axios from 'axios';
+import { setActiveBase, baseToPath, baseToCity, syncBaseFromPath, BASES } from '../utils/cityBase';
 
 const MobileView = () => {
   const [phoneNumber, setPhoneNumber] = useState('');
   const navigate = useNavigate();
   const location = useLocation();
   const [showConfirm, setShowConfirm] = useState(false);
+
+  // The active city base is decided by the URL: /chennai => CH, else PY.
+  const activeBase = location.pathname.toLowerCase().startsWith('/chennai') ? 'CH' : 'PY';
+
+  // Keep localStorage (read by the axios interceptor) in sync with the URL.
+  useEffect(() => {
+    syncBaseFromPath(location.pathname);
+  }, [location.pathname]);
+
+  // Switch city. A full navigation re-runs app startup so the property feed
+  // re-fetches cleanly with the new base (no stale data from the old city).
+  const switchCity = (base) => {
+    if (base === activeBase) return;
+    setActiveBase(base);
+    window.location.href = baseToPath(base);
+  };
 
   // Store this so the handler can access it
   const [pendingBack, setPendingBack] = useState(false);
@@ -355,15 +372,52 @@ const MobileView = () => {
   return (
   <div className="d-flex justify-content-center align-items-center vh-100" 
          style={{ Height: "100vh", background: '#E5E5E5' }}>
-      <div style={{ 
-        maxWidth: '470px', 
-        width: "100%", 
-        background: 'white', 
-        display: "flex", 
-        flexDirection: "column", 
+      <div style={{
+        maxWidth: '470px',
+        width: "100%",
+        background: 'white',
+        display: "flex",
+        flexDirection: "column",
         overflow: "hidden",
         height: "100vh"
       }}>
+        {/* City switcher — lets the user move between Pondicherry and Chennai */}
+        <div
+          style={{
+            flexShrink: 0,
+            display: 'flex',
+            justifyContent: 'center',
+            alignItems: 'center',
+            gap: '8px',
+            padding: '6px 8px',
+            background: '#4F4B7E',
+          }}
+        >
+          {BASES.map((base) => {
+            const isActive = base === activeBase;
+            return (
+              <button
+                key={base}
+                type="button"
+                onClick={() => switchCity(base)}
+                aria-pressed={isActive}
+                style={{
+                  padding: '4px 14px',
+                  borderRadius: 999,
+                  fontSize: 12,
+                  fontWeight: 700,
+                  cursor: isActive ? 'default' : 'pointer',
+                  border: '1px solid #ffffff',
+                  background: isActive ? '#ffffff' : 'transparent',
+                  color: isActive ? '#4F4B7E' : '#ffffff',
+                  transition: 'all 0.2s ease',
+                }}
+              >
+                📍 {baseToCity(base)}
+              </button>
+            );
+          })}
+        </div>
         <Main phoneNumber={phoneNumber} viewportHeight={viewportHeight}/>
       </div>
          {showConfirm && (

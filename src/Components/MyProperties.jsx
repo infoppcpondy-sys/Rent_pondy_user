@@ -9,7 +9,8 @@ import { useLocation, useNavigate } from "react-router-dom";
 import { Helmet } from "react-helmet";
 import axios from "axios";
 import './MyProperty.css';
-import EditForm from "./EditForm"; 
+import EditForm from "./EditForm";
+import { getActiveBase, baseToPath } from "../utils/cityBase";
 import AddProps from "./AddProps"; 
 import ConfirmationModal from "./ConfirmationModal";
 import calendar from '../Assets/Calender-01.png'
@@ -596,7 +597,7 @@ const itemStyle = {
       >
          <button
                className="d-flex align-items-center justify-content-center ps-3 pe-2"
-      onClick={() => navigate('/')}
+      onClick={() => navigate(baseToPath(getActiveBase()))}
       style={{
           background: "transparent",
       border: "none",

@@ -9,6 +9,7 @@ import React, { useState, useEffect, useRef } from "react";
 import axios from "axios";
 import { Button } from "react-bootstrap";
 import {  useLocation, useNavigate, useParams } from "react-router-dom";
+import { getActiveBase, baseToPath } from "../utils/cityBase";
 import { RiCloseCircleFill, RiLayoutLine } from 'react-icons/ri';
 import { TbArrowLeftRight, TbFileDescription, TbMapPinCode, TbToolsKitchen, TbWheelchair, TbWorldLongitude } from 'react-icons/tb';
 import {FaArrowRight ,FaBuilding, FaMoneyBillWave,  FaBath, FaChartArea, FaPhone ,FaEdit,FaRoad,FaDoorClosed,FaMapPin, FaHome, FaUserAlt, FaEnvelope,  FaRupeeSign , FaFileVideo , FaToilet,FaCar,FaBed,  FaCity , FaTimes, FaChevronLeft} from 'react-icons/fa';
@@ -1618,7 +1619,7 @@ const confirmStepSubmit = () => {
 
 const cancelStepSubmit = () => {
   setShowConfirmation(false);
-  navigate("/mobileviews"); // ❌ User chose not to proceed
+  navigate(baseToPath(getActiveBase())); // back to the city the user is browsing
 };
 
 // const handleSubmit = async (e) => {

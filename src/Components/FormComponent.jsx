@@ -90,8 +90,15 @@ const areaPincodeMap = {
   "Yanam": "533464",
 };
 
-const FormComponent = () => {
+const FormComponent = ({ isModal = false, onClose } = {}) => {
   const [hovered, setHovered] = useState(false);
+  const closeOrBack = () => {
+    if (isModal && typeof onClose === 'function') {
+      onClose();
+    } else {
+      navigate(-1);
+    }
+  };
 
   const [isScrolling, setIsScrolling] = useState(false);
 
@@ -499,10 +506,10 @@ const renderDropdown = (field) => {
         pointerEvents: isScrolling ? "none" : "auto",
         transition: "opacity 0.3s ease-in-out",
       }}>
-              <button    
+              <button
                className="d-flex align-items-center justify-content-center ps-3 pe-2"
 
-      onClick={() => navigate(-1)}
+      onClick={closeOrBack}
       style={{
           background: "transparent",
       border: "none",
@@ -1144,8 +1151,11 @@ const renderDropdown = (field) => {
                 gridTemplateColumns: '1fr',
                 gap: '10px'
               }}>
-                <button 
-                  onClick={() => navigate(`/detail-buyer-assistance/${result.Ra_Id}`)}
+                <button
+                  onClick={() => {
+                    if (isModal && typeof onClose === 'function') onClose();
+                    navigate(`/detail-buyer-assistance/${result.Ra_Id}`);
+                  }}
                   style={{
                   padding: '10px 12px',
                   borderRadius: '6px',

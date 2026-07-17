@@ -114,6 +114,7 @@ function CreateFollowUp() {
           <option value="Ring">Ring</option>
           <option value="Ready To Pay">Ready To Pay</option>
           <option value="Not Decided">Not Decided</option>
+          <option value="No Response">No Response</option>
           <option value="Not Interested-Closed">Not Interested-Closed</option>
           <option value="Paid Closed">Paid Closed</option>
         </select>
@@ -126,6 +127,7 @@ function CreateFollowUp() {
           <option value="Payment Followup">Payment Followup</option>
           <option value="Data Followup">Data Followup</option>
           <option value="Enquiry Followup">Enquiry Followup</option>
+          <option value="No Response">No Response</option>
         </select>
       </div>
 

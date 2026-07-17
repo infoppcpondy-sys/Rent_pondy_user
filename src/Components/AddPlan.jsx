@@ -2109,6 +2109,7 @@ import { Button, Modal } from 'react-bootstrap';
 import axios from 'axios';
 import { useLocation, useNavigate } from 'react-router-dom';
 import VideoPlayer from './VideoPlayer';
+import { getActiveBase, baseToPath } from '../utils/cityBase';
 import { FaArrowLeft, FaChevronLeft } from 'react-icons/fa';
 
 const cardAnimationStyle = `
@@ -2317,7 +2318,7 @@ const handleConfirmPlan = async () => {
 };
 
   const handleBackNavigation = () => {
-    navigate("/mobileviews");
+    navigate(baseToPath(getActiveBase()));
   };
 
   return (

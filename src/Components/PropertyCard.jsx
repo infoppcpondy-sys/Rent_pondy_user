@@ -34,12 +34,14 @@ import totalarea from '../Assets/total_area.png'
 import postedby from '../Assets/Posted By-01.png'
 import indianprice from '../Assets/Indian Rupee-01.png'
 import {
-  
+
   FaUsers,
   FaSortAmountDownAlt,
   FaHeadset,
 } from 'react-icons/fa';
+import TenantSearchModal from './TenantSearchModal';
 const PropertyCards = ({phoneNumber}) => {
+  const [isTenantSearchOpen, setIsTenantSearchOpen] = useState(false);
   const [properties, setProperties] = useState([]);
   // const [filters, setFilters] = useState({ id: '', price: '', propertyMode: '', city: '' });
   const [filters, setFilters] = useState({ 
@@ -488,7 +490,7 @@ outline:"none"
           {/* Tenant Search */}
           <button style={{background:"#DFDFDF" , color:"#5E5E5E" , fontWeight:600 , fontSize:"15px"}}
           className="btn btn-light border rounded-2 py-2 d-flex align-items-center justify-content-start ps-3 mb-3"
-                onClick={() => navigate(`/tenant-search`)}
+                onClick={() => setIsTenantSearchOpen(true)}
 >
             <FaUsers className="me-2" /> Tenant Search
           </button>
@@ -2605,6 +2607,10 @@ outline:"none"
 
       {/* Advanced Filters Popup */}
 
+      <TenantSearchModal
+        isOpen={isTenantSearchOpen}
+        onClose={() => setIsTenantSearchOpen(false)}
+      />
 
     </Container>
   );

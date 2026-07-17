@@ -3403,7 +3403,7 @@
 //         style={{background:"#CDC9F9" , color:"#fff" , borderRadius:"25px" , width:"25%", border:"none"}}
 //         ><IoChevronBackSharp size={18}/>
 //  Back</button>
-//         <button className="d-flex align-items-center justify-content-around ps-3  p-2" onClick={() => navigate('/mobileviews')} 
+//         <button className="d-flex align-items-center justify-content-around ps-3  p-2" onClick={() => navigate(baseToPath(getActiveBase()))} 
 //                style={{background:"#CDC9F9" , color:"#fff" , borderRadius:"25px" , width:"25%", border:"none"}}
 //         ><TiHome />
 // Home</button>
@@ -3459,6 +3459,7 @@
 import React, { useEffect, useState , useRef} from "react";
 import { useLocation, useNavigate, useParams } from "react-router-dom";
 import axios from "axios";
+import { getActiveBase, baseToPath } from "../utils/cityBase";
 import { Swiper, SwiperSlide } from "swiper/react";
 import { Navigation, Pagination } from "swiper/modules";
 import "swiper/css";
@@ -3473,7 +3474,7 @@ import "swiper/css/pagination";
 import "@fontsource/inter/400.css";
 import "@fontsource/inter/500.css";
 import { RiLayoutLine } from "react-icons/ri";
-import { FaFacebook, FaRegHeart , FaLinkedin, FaPhone, FaRupeeSign, FaShareAlt, FaTwitter, FaUserAlt, FaWhatsapp, FaHeart, FaArrowLeft, FaClock, FaUser, FaEnvelope, FaPhoneAlt, FaRegListAlt, FaChevronLeft } from "react-icons/fa";
+import { FaFacebook, FaRegHeart , FaLinkedin, FaPhone, FaRupeeSign, FaShareAlt, FaTwitter, FaUserAlt, FaWhatsapp, FaHeart, FaArrowLeft, FaClock, FaUser, FaEnvelope, FaPhoneAlt, FaRegListAlt, FaChevronLeft, FaCoins, FaExclamationCircle } from "react-icons/fa";
 import icon1 from '../Assets/ico_interest_xd.png';
 import icon2 from '../Assets/ico_report_soldout_xd.png';
 import icon4 from '../Assets/Shortlist Bike-01.png';
@@ -4043,6 +4044,10 @@ const [messageType, setMessageType] = React.useState("info"); // can be "error",
   const [showContactDetails, setShowContactDetails] = useState(false);
   const [pointsBalance, setPointsBalance] = useState(null);
   const [showInsufficientPoints, setShowInsufficientPoints] = useState(false);
+  // "Already viewed — deduct again?" prompt. Holds the live balance
+  // when the prompt was opened so the modal can show "current → after".
+  const [showRedeductConfirm, setShowRedeductConfirm] = useState(false);
+  const [redeductBalance, setRedeductBalance] = useState(0);
   const [favoritedUserPhoneNumbers, setFavoritedUserPhoneNumbers] = useState([]);
   const [property, setProperty] = useState(null);
   const [viewedProperties, setViewedProperties] = useState([]);
@@ -4514,12 +4519,21 @@ const storeUserViewedProperty = async (phoneNumber, rentId) => {
     }
   }, []);
 
-  // When rentId or userPhoneNumber changes, store viewed property
-  useEffect(() => {
-    if (userPhoneNumber && rentId) {
-      storeUserViewedProperty(userPhoneNumber, rentId);
-    }
-  }, [userPhoneNumber, rentId]);
+  // ----------------------------------------------------------
+  // DAILY CONTACT / VIEW LIMIT — DISABLED
+  //
+  // The paywall is now the Points Pricing flow (handleOwnerContactClick →
+  // /points-deduct). The old per-day view limit enforced by
+  // `/user-view-property-rent` (viewLimitPerDay, canViewToday,
+  // remainingViews, 429-on-exceed) is commented out so a user with
+  // sufficient points can keep revealing contacts without hitting the
+  // legacy cap.
+  // ----------------------------------------------------------
+  // useEffect(() => {
+  //   if (userPhoneNumber && rentId) {
+  //     storeUserViewedProperty(userPhoneNumber, rentId);
+  //   }
+  // }, [userPhoneNumber, rentId]);
 
   // Fetch viewed properties whenever userPhoneNumber changes
   useEffect(() => {
@@ -4695,6 +4709,17 @@ const handleSubmit = async ({ offeredPrice, rentId }) => {
     };
 
     if (rentId) fetchPropertyData();
+
+    // CRITICAL: reset the contact-reveal state whenever the user navigates
+    // between properties. Without this, `showContactDetails` (and the
+    // cached phone number states) leak from the previous property — the
+    // user sees the next property's contact panel immediately without
+    // the Points Pricing paywall ever running. Keeps the paywall strict.
+    setShowContactDetails(false);
+    setFinalContactNumber("");
+    setAssignedPhoneNumber("");
+    setPostedUserPhoneNumber("");
+    setShowInsufficientPoints(false);
   }, [rentId]);
 
   // Handle both single video and multiple videos
@@ -4805,7 +4830,7 @@ const handleSubmit = async ({ offeredPrice, rentId }) => {
       window.scrollTo(0, 0);
     } else {
       console.log('⬅️ First property or end of list, navigating to mobile views');
-      navigate('/mobileviews');
+      navigate(baseToPath(getActiveBase()));
       window.scrollTo(0, 0);
     }
   };
@@ -4820,7 +4845,10 @@ const handleSubmit = async ({ offeredPrice, rentId }) => {
   // }, [propertyDetails?.video]);
 
 useEffect(() => {
-  const video = propertyDetails?.video;
+  const rawVideo = propertyDetails?.video;
+  const video = Array.isArray(rawVideo)
+    ? rawVideo.find((v) => typeof v === "string" && v.trim() !== "") || ""
+    : rawVideo;
 
   if (typeof video === "string" && video.trim() !== "") {
     const normalizedVideoPath = video.replace(/\\/g, "/").replace(/^\/+/, "").trim();
@@ -5061,6 +5089,19 @@ const filteredDetailsList = propertyDetailsList.filter((item) => {
 
   return true;
 });
+
+  // Split the "Rental property address" section out of the main list so it
+  // only appears inside the "View owner contact details" reveal. Everything
+  // from that heading onward is the address section (it's the last block).
+  const addressHeadingIndex = filteredDetailsList.findIndex(
+    (item) => item.heading && item.label === "Rental property address"
+  );
+  const mainDetailsList =
+    addressHeadingIndex >= 0
+      ? filteredDetailsList.slice(0, addressHeadingIndex)
+      : filteredDetailsList;
+  const addressDetailsList =
+    addressHeadingIndex >= 0 ? filteredDetailsList.slice(addressHeadingIndex) : [];
 
   const labelToKeyMap  = {
     "Phone number": "phoneNumber",
@@ -5322,6 +5363,63 @@ const handleAddressRequest = async () => {
 // };
 
 
+// Pull the owner phone off the property payload. The server returns it
+// as `phoneNumber` on the property object; fall back to a few other
+// field names we've seen on older responses so the UI is robust.
+// Hoisted to component scope so both `handleOwnerContactClick` and
+// `handleConfirmRededuct` (the re-deduction confirm flow) can call it.
+const revealOwnerContact = () => {
+  // Prefer the masked/assigned number when the admin has set one for this
+  // rentId (Mask Property Owner Number panel), so changing it there is
+  // reflected here. Fall back to the owner's real number when none is set.
+  const primary =
+    propertyDetails?.assignedPhoneNumber ||
+    property?.assignedPhoneNumber ||
+    propertyDetails?.phoneNumber ||
+    propertyDetails?.postedUserPhoneNumber ||
+    property?.phoneNumber ||
+    "";
+  const alt =
+    propertyDetails?.alternatePhone ||
+    propertyDetails?.alternatePhoneNumber ||
+    propertyDetails?.secondaryPhone ||
+    "";
+  setFinalContactNumber(primary || "");
+  setAssignedPhoneNumber(propertyDetails?.assignedPhoneNumber || "");
+  setPostedUserPhoneNumber(propertyDetails?.postedUserPhoneNumber || primary || "");
+  // Keep `propertyDetails.alternatePhone` in sync so the UI branch that
+  // reads it directly also works when the backend uses a different key.
+  if (alt && propertyDetails && !propertyDetails.alternatePhone) {
+    setPropertyDetails({ ...propertyDetails, alternatePhone: alt });
+  }
+  setShowContactDetails(true);
+  setTimeout(scrollToContact, 100);
+
+  // Notify the owner via SMS (self-hosted SIM gateway) that a tenant just
+  // viewed their contact. Fire-and-forget: never block/affect the reveal.
+  try {
+    const viewerPhone = localStorage.getItem("phoneNumber");
+    const ownerRealPhone =
+      propertyDetails?.phoneNumber ||
+      propertyDetails?.postedUserPhoneNumber ||
+      property?.phoneNumber ||
+      "";
+    if (viewerPhone) {
+      axios
+        .post(`${process.env.REACT_APP_API_URL}/notify-owner-contact-view`, {
+          rentId,
+          viewerPhone,
+          ownerPhone: ownerRealPhone, // fallback; backend resolves real number by rentId
+        })
+        .catch((err) =>
+          console.warn("Owner view SMS notify failed (non-blocking):", err?.message)
+        );
+    }
+  } catch (_) {
+    /* non-blocking */
+  }
+};
+
 const handleOwnerContactClick = async () => {
   setViewed(true);
   setTimeout(() => setViewed(false), 300);
@@ -5338,18 +5436,30 @@ const handleOwnerContactClick = async () => {
     return;
   }
 
+  let currentBalance = 0;
+  let balanceKnown = false;
   try {
     const balanceRes = await axios.get(
       `${process.env.REACT_APP_API_URL}/points-balance/${storedPhoneNumber}`
     );
-    const currentBalance = balanceRes.data?.balance ?? 0;
-    setPointsBalance(currentBalance);
+    currentBalance = Number(balanceRes.data?.balance ?? 0);
+    balanceKnown = true;
+  } catch (err) {
+    // If the balance API is unreachable we cannot prove the user has
+    // points. Refuse to reveal — showing contacts "just in case" is what
+    // was letting the paywall leak.
+    console.warn("Points balance API unavailable, blocking reveal.", err);
+    setMessage("Could not verify your points balance. Please try again.");
+    return;
+  }
+  setPointsBalance(currentBalance);
 
-    if (currentBalance < POINTS_PER_CONTACT_VIEW) {
-      setShowInsufficientPoints(true);
-      return;
-    }
+  if (!balanceKnown || currentBalance < POINTS_PER_CONTACT_VIEW) {
+    setShowInsufficientPoints(true);
+    return;
+  }
 
+  try {
     const deductRes = await axios.post(
       `${process.env.REACT_APP_API_URL}/points-deduct`,
       {
@@ -5360,21 +5470,93 @@ const handleOwnerContactClick = async () => {
       }
     );
 
-    if (!deductRes.data?.success) {
-      setMessage(deductRes.data?.message || "Could not deduct points. Please try again.");
+    // The deduct endpoint MUST return success=true before we reveal.
+    // Any other shape — even an HTTP 200 with success=false — keeps
+    // the contact hidden.
+    if (!deductRes?.data || deductRes.data.success !== true) {
+      setMessage(deductRes?.data?.message || "Could not deduct points. Please try again.");
+      return;
+    }
+
+    // The backend returns alreadyDeducted: true when a prior deduct
+    // exists for the same (phone, rentId). Instead of silently
+    // re-revealing for free, ASK the user whether they want to spend
+    // another POINTS_PER_CONTACT_VIEW points. Only on Yes do we issue
+    // a forced deduct (force=true) that bypasses the dedupe.
+    if (deductRes.data?.alreadyDeducted) {
+      setRedeductBalance(deductRes.data?.balance ?? currentBalance);
+      setShowRedeductConfirm(true);
       return;
     }
 
     setPointsBalance(deductRes.data.balance ?? (currentBalance - POINTS_PER_CONTACT_VIEW));
-    setShowContactDetails(true);
-    setTimeout(scrollToContact, 100);
+    revealOwnerContact();
     setMessage(`Contact details revealed. ${POINTS_PER_CONTACT_VIEW} points used.`);
   } catch (err) {
-    // If points API is unreachable, fall back to old behaviour so the app keeps working.
-    console.error("Points check failed:", err);
-    setShowContactDetails(true);
-    setTimeout(scrollToContact, 100);
-    setMessage("Contact details revealed.");
+    // A 402 from the backend means the balance dropped below the
+    // required points between the balance check and the deduct (a race,
+    // or a stale cache). Surface the "Buy Points" modal instead of a
+    // generic error so the user has a recovery path.
+    const status = err?.response?.status;
+    const serverBalance = err?.response?.data?.balance;
+    if (status === 402) {
+      if (typeof serverBalance === "number") setPointsBalance(serverBalance);
+      setShowInsufficientPoints(true);
+      return;
+    }
+    console.error("Points deduct failed:", err);
+    setMessage(err?.response?.data?.message || "Could not deduct points. Please try again.");
+  }
+};
+
+// User confirmed they want to spend another POINTS_PER_CONTACT_VIEW
+// to view a contact they've already paid for once. Calls /points-deduct
+// with force=true so the backend bypasses its (phone, rentId) dedupe
+// and writes a fresh deduct transaction.
+const handleConfirmRededuct = async () => {
+  const storedPhoneNumber = localStorage.getItem("phoneNumber");
+  if (!storedPhoneNumber) {
+    setShowRedeductConfirm(false);
+    navigate("/login");
+    return;
+  }
+
+  if (redeductBalance < POINTS_PER_CONTACT_VIEW) {
+    setShowRedeductConfirm(false);
+    setShowInsufficientPoints(true);
+    return;
+  }
+
+  try {
+    const res = await axios.post(
+      `${process.env.REACT_APP_API_URL}/points-deduct`,
+      {
+        phoneNumber: storedPhoneNumber,
+        points: POINTS_PER_CONTACT_VIEW,
+        rentId,
+        reason: "view-owner-contact",
+        force: true,
+      }
+    );
+    if (!res?.data || res.data.success !== true) {
+      setMessage(res?.data?.message || "Could not deduct points. Please try again.");
+      return;
+    }
+    setShowRedeductConfirm(false);
+    setPointsBalance(res.data.balance ?? (redeductBalance - POINTS_PER_CONTACT_VIEW));
+    revealOwnerContact();
+    setMessage(`Contact details revealed again. ${POINTS_PER_CONTACT_VIEW} points used.`);
+  } catch (err) {
+    const status = err?.response?.status;
+    const serverBalance = err?.response?.data?.balance;
+    if (status === 402) {
+      if (typeof serverBalance === "number") setPointsBalance(serverBalance);
+      setShowRedeductConfirm(false);
+      setShowInsufficientPoints(true);
+      return;
+    }
+    console.error("Force-deduct failed:", err);
+    setMessage(err?.response?.data?.message || "Could not deduct points. Please try again.");
   }
 };
 
@@ -7039,7 +7221,7 @@ return (
 );
 })} */}
 
-{filteredDetailsList.map((detail, index) => {
+{mainDetailsList.map((detail, index) => {
   if (detail.heading) {
     return (
       <div key={index} className="col-12">
@@ -7147,10 +7329,186 @@ const isMatched = isFieldMatched(detail.label, detail.value, matchedFields);
   balance={pointsBalance ?? 0}
   required={POINTS_PER_CONTACT_VIEW}
 />
+
+{/* Already-viewed re-deduction confirmation. Pops when the user
+    clicks View Contact on a property they've already paid for, so
+    they explicitly opt in (or out) of spending another N points. */}
+{showRedeductConfirm && (
+  <div
+    role="dialog"
+    aria-modal="true"
+    aria-labelledby="rd-title"
+    onClick={() => setShowRedeductConfirm(false)}
+    style={{
+      position: 'fixed', inset: 0,
+      background: 'rgba(15,12,35,0.55)',
+      backdropFilter: 'blur(4px)',
+      WebkitBackdropFilter: 'blur(4px)',
+      zIndex: 9999,
+      display: 'flex', alignItems: 'center', justifyContent: 'center',
+      padding: 16,
+      animation: 'rdFadeIn 0.18s ease-out',
+    }}
+  >
+    <div
+      onClick={(e) => e.stopPropagation()}
+      style={{
+        position: 'relative',
+        width: '100%', maxWidth: 360,
+        borderRadius: 22,
+        background: '#fff',
+        overflow: 'hidden',
+        boxShadow: '0 30px 80px rgba(15,12,35,0.45), inset 0 0 0 1px rgba(255,255,255,0.6)',
+        animation: 'rdPopIn 0.28s cubic-bezier(0.34,1.56,0.64,1)',
+      }}
+    >
+      <button
+        type="button"
+        aria-label="Close"
+        onClick={() => setShowRedeductConfirm(false)}
+        style={{
+          position: 'absolute', top: 8, right: 10,
+          width: 30, height: 30, borderRadius: '50%',
+          border: 'none', background: 'rgba(255,255,255,0.85)',
+          color: '#4F4B7E', fontSize: 22, lineHeight: 1,
+          cursor: 'pointer', zIndex: 2,
+          display: 'flex', alignItems: 'center', justifyContent: 'center',
+        }}
+      >×</button>
+
+      <div style={{
+        background: 'linear-gradient(135deg, #4F4B7E 0%, #764ba2 55%, #FFC857 130%)',
+        color: '#fff', textAlign: 'center', padding: '22px 18px 24px',
+      }}>
+        <div style={{
+          width: 60, height: 60, borderRadius: '50%',
+          background: 'linear-gradient(135deg, #FFE680 0%, #FFD700 45%, #E09F00 100%)',
+          margin: '0 auto 10px',
+          display: 'flex', alignItems: 'center', justifyContent: 'center',
+          boxShadow: '0 8px 18px rgba(0,0,0,0.25), inset 0 -3px 6px rgba(0,0,0,0.18), 0 0 0 4px rgba(255,255,255,0.18)',
+        }}>
+          <FaExclamationCircle size={28} color="#fff" />
+        </div>
+        <div id="rd-title" style={{ fontSize: 17, fontWeight: 800, margin: 0 }}>
+          Already Viewed
+        </div>
+        <div style={{ fontSize: 12.5, opacity: 0.9, marginTop: 4, fontWeight: 500 }}>
+          You've already unlocked this owner's contact
+        </div>
+      </div>
+
+      <div style={{ padding: '18px 18px 20px' }}>
+        <div style={{
+          background: 'linear-gradient(135deg, rgba(102,126,234,0.08), rgba(245,87,108,0.08))',
+          border: '1px solid rgba(79,75,126,0.15)',
+          borderRadius: 14,
+          padding: '12px 14px 10px',
+          textAlign: 'center',
+          marginBottom: 14,
+        }}>
+          <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: 0.6, textTransform: 'uppercase', color: '#888' }}>
+            Current balance
+          </div>
+          <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'center', gap: 6, marginTop: 2 }}>
+            <span style={{ fontSize: 28, fontWeight: 900, color: '#4F4B7E', lineHeight: 1.1 }}>
+              {redeductBalance}
+            </span>
+            <span style={{ fontSize: 12, fontWeight: 800, color: '#888', letterSpacing: 0.5, textTransform: 'uppercase' }}>
+              pts
+            </span>
+          </div>
+          <div style={{ marginTop: 6, fontSize: 12.5, color: '#666' }}>
+            Viewing again will deduct{' '}
+            <b style={{ color: '#f5576c' }}>{POINTS_PER_CONTACT_VIEW} pts</b>
+            {' '}→ new balance{' '}
+            <b>{Math.max(0, redeductBalance - POINTS_PER_CONTACT_VIEW)} pts</b>
+          </div>
+        </div>
+
+        <button
+          type="button"
+          onClick={handleConfirmRededuct}
+          style={{
+            width: '100%', padding: '12px 16px',
+            border: 'none', borderRadius: 12,
+            background: 'linear-gradient(135deg, #4F4B7E 0%, #764ba2 50%, #f5576c 100%)',
+            color: '#fff', fontWeight: 800, fontSize: 14,
+            cursor: 'pointer',
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+            boxShadow: '0 8px 18px rgba(79,75,126,0.35)',
+          }}
+        >
+          <FaCoins size={16} style={{ marginRight: 8 }} />
+          Yes, deduct {POINTS_PER_CONTACT_VIEW} pts
+        </button>
+
+        <button
+          type="button"
+          onClick={() => setShowRedeductConfirm(false)}
+          style={{
+            width: '100%', padding: '8px 16px', marginTop: 8,
+            border: 'none', background: 'transparent',
+            color: '#888', fontWeight: 600, fontSize: 13,
+            cursor: 'pointer',
+          }}
+        >
+          No, cancel
+        </button>
+      </div>
+    </div>
+
+    <style>{`
+      @keyframes rdFadeIn { from { opacity: 0; } to { opacity: 1; } }
+      @keyframes rdPopIn  {
+        0%   { opacity: 0; transform: translateY(20px) scale(0.92); }
+        100% { opacity: 1; transform: translateY(0)     scale(1);    }
+      }
+    `}</style>
+  </div>
+)}
     {showContactDetails && (
         <div ref={contactRef} className="mt-3">
-      
+
    <div className="row g-3">
+
+{/* Rental property address - revealed together with owner contact details */}
+{addressDetailsList.map((detail, index) => {
+  if (detail.heading) {
+    return (
+      <div key={`addr-${index}`} className="col-12">
+        <h5 className="fw-bold m-0">{detail.label}</h5>
+      </div>
+    );
+  }
+  return (
+    <div key={`addr-${index}`} className="col-6 d-flex align-items-center">
+      {detail.icon && (
+        <span className="me-3 fs-3" style={{ color: "#4F4B7E" }}>
+          {detail.icon}
+        </span>
+      )}
+      <div>
+        <div style={{ fontSize: "13px", color: "grey" }}>
+          {detail.label || "N/A"}
+        </div>
+        <div
+          style={{
+            fontSize: "15px",
+            fontWeight: 600,
+            color: "grey",
+            wordBreak: "break-word",
+          }}
+        >
+          {detail.value
+            ? typeof detail.value === "string"
+              ? detail.value
+              : JSON.stringify(detail.value)
+            : "N/A"}
+        </div>
+      </div>
+    </div>
+  );
+})}
 
 {/* Name */}
 <div className="col-6 d-flex align-items-center">
@@ -8157,7 +8515,7 @@ const isMatched = isFieldMatched(detail.label, detail.value, matchedFields);
         style={{background:"#CDC9F9" , color:"#fff" , borderRadius:"25px" , width:"25%", border:"none"}}
         ><IoChevronBackSharp size={18}/>
  Back</button>
-        <button className="d-flex align-items-center justify-content-around ps-3  p-2" onClick={() => navigate('/mobileviews')} 
+        <button className="d-flex align-items-center justify-content-around ps-3  p-2" onClick={() => navigate(baseToPath(getActiveBase()))} 
                style={{background:"#CDC9F9" , color:"#fff" , borderRadius:"25px" , width:"25%", border:"none"}}
         ><TiHome />
 Home</button>

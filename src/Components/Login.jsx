@@ -270,7 +270,7 @@
       
 //       if (storedPhone) {
 //         dispatch(setPhoneNumber(storedPhone));
-//         navigate('/mobileviews', { state: { phoneNumber: phoneNumber } });
+//         navigate('/pondicherry', { state: { phoneNumber: phoneNumber } });
 //       }
 //     };
 
@@ -381,7 +381,7 @@
 //       localStorage.setItem('phoneNumber', fullPhoneNumber);
 //       dispatch(setPhoneNumber(fullPhoneNumber));
 //       setIsLoading(false);
-//       navigate('/mobileviews');
+//       navigate('/pondicherry');
 //       return; // Skip OTP
 //     }
 
@@ -673,7 +673,7 @@
 //       );
 //     }
 
-//     navigate('/mobileviews');
+//     navigate('/pondicherry');
 //     setIsLoading(false);
 //   } catch (error) {
 //     let errorMessage = 'OTP verification failed!';
@@ -1365,16 +1365,18 @@ import { Helmet } from 'react-helmet';
 import Flag from 'react-world-flags';
 import logo from '../Assets/rentpondylogo.png';
 import 'react-toastify/dist/ReactToastify.css';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useParams } from 'react-router-dom';
 import axios from 'axios';
 import './Login.css';
 import { RiEdit2Fill } from "react-icons/ri";
 import PrivacyPolicyWeb from './PrivacyPolicyWeb';
 import WhatsAppPolicyWeb from './WhatsAppPolicyWeb';
 import AboutMobile from './AboutMobile';
-import { FaArrowLeft, FaChevronLeft } from 'react-icons/fa';
+import { FaArrowLeft, FaChevronLeft, FaHome, FaKey, FaExternalLinkAlt } from 'react-icons/fa';
 import bgg from '../Assets/loo.PNG';
 import otpimg from '../Assets/otp_img.jpeg';
+import { setActiveBase, baseToPath, baseToCity } from '../utils/cityBase';
+import LocalTouristPopup from './LocalTouristPopup';
 
 const Login = ({ onLogin }) => {
   const [phoneNumber, setPhoneNumberState] = useState('');
@@ -1395,6 +1397,19 @@ const Login = ({ onLogin }) => {
   const [isLoading, setIsLoading] = useState(false);
   const [showLoginFailPopup, setShowLoginFailPopup] = useState(false);
   const [failureMessage, setFailureMessage] = useState('');
+  // City base chosen on the login screen: 'PY' = Pondicherry, 'CH' = Chennai.
+  // No default — user must explicitly pick one before we'll send the OTP.
+  const [selectedBase, setSelectedBase] = useState(null);
+  const [cityError, setCityError] = useState(false);
+  // After a successful login we show the "other products" popup; the city base
+  // chosen for this login is remembered so the popup shows the right product set
+  // and the Continue button navigates into the correct app.
+  const [showProductsPopup, setShowProductsPopup] = useState(false);
+  const [pendingBase, setPendingBase] = useState(null);
+  // Admin-controlled (Mobile view Leads - Ads → Login Popup Control): whether to
+  // show the post-login "other products" popup. Defaults to true so behaviour is
+  // unchanged if the setting can't be fetched.
+  const popupEnabledRef = useRef(true);
 
   const [isScrolling, setIsScrolling] = useState(false);
 
@@ -1420,6 +1435,64 @@ const Login = ({ onLogin }) => {
   const storedPhoneNumber = useSelector(state => state.phoneNumber);
   const navigate = useNavigate();
   const dispatch = useDispatch();
+
+  // City from the URL on the city-specific login routes (/login/pondicherry,
+  // /login/chennai). null on the plain /login route.
+  const { city } = useParams();
+  const cityParamToBase = (c) => {
+    const v = String(c || '').toLowerCase();
+    if (v === 'chennai') return 'CH';
+    if (v === 'pondicherry') return 'PY';
+    return null;
+  };
+
+  // "What do you need?" cards. Rentals (this site) stays on Rent Pondy; Buy & Sell
+  // jumps to the sister site (Pondy/Chennai Properties on ppcpondy.com).
+  // Labels/link follow the chosen city, falling back to the URL city, then PY.
+  const effectiveBase = selectedBase || cityParamToBase(city) || 'PY';
+  const isCityCH = effectiveBase === 'CH';
+  const rentLabel = isCityCH ? 'Rent Chennai' : 'Rent Pondy';        // this site
+  const buyLabel = isCityCH ? 'Chennai Property' : 'Pondy Property';  // other site
+  const otherSiteUrl = `https://ppcpondy.com/login/${isCityCH ? 'chennai' : 'pondicherry'}`;
+
+  // Pre-select the city chip when the route carries a city (e.g. /login/chennai),
+  // so the user lands with their city already chosen. They can still change it.
+  useEffect(() => {
+    const base = cityParamToBase(city);
+    if (base) {
+      setSelectedBase(base);
+      setCityError(false);
+    }
+  }, [city]);
+
+  // Fetch the admin-controlled on/off setting for the post-login popup.
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      try {
+        const res = await axios.get(`${process.env.REACT_APP_API_URL}/login-popup-setting`);
+        if (!cancelled && res.data && typeof res.data.enabled === 'boolean') {
+          popupEnabledRef.current = res.data.enabled;
+        }
+      } catch (err) {
+        // Non-blocking: keep the default (show popup) if the setting can't load.
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  // After a successful login, show the "other products" popup only when the
+  // admin has it enabled; otherwise go straight into the app.
+  const proceedAfterLogin = (base) => {
+    if (popupEnabledRef.current) {
+      setPendingBase(base);
+      setShowProductsPopup(true);
+    } else {
+      navigate(baseToPath(base));
+    }
+  };
 
   // Country-specific phone number digit length mapping
   const countryPhoneDigits = {
@@ -1530,12 +1603,17 @@ const Login = ({ onLogin }) => {
       
       if (storedPhone) {
         dispatch(setPhoneNumber(storedPhone));
-        navigate('/mobileviews', { state: { phoneNumber: phoneNumber } });
+        // Prefer the city from the URL (/login/chennai etc.) when present;
+        // otherwise return the user to whichever city they last used.
+        const urlBase = cityParamToBase(city);
+        const targetBase = urlBase || (localStorage.getItem('activeBase') === 'CH' ? 'CH' : 'PY');
+        if (urlBase) setActiveBase(urlBase);
+        navigate(baseToPath(targetBase), { state: { phoneNumber: phoneNumber } });
       }
     };
 
     checkLoggedIn();
-  }, [dispatch, navigate]);
+  }, [dispatch, navigate, city]);
 
   const handleCheckboxChange = (e) => {
     const checked = e.target.checked;
@@ -1583,6 +1661,26 @@ const Login = ({ onLogin }) => {
     return Math.floor(100000 + Math.random() * 900000).toString();
   };
 
+  // Persist the user's chosen city base ('PY' / 'CH') to the backend. Non-blocking.
+  const recordCitySelection = async (base, phoneForRecord) => {
+    try {
+      await axios.post(`${process.env.REACT_APP_API_URL}/user/select-city`, {
+        phoneNumber: phoneForRecord || phoneNumber || null,
+        base,
+        countryCode,
+      });
+    } catch (err) {
+      console.warn('⚠️ Failed to record city selection (non-blocking):', err.message);
+    }
+  };
+
+  // Tapping a city chip just selects it locally — the choice is persisted on
+  // successful login (so anonymous taps are not recorded as logins).
+  const handleCityChipClick = (base) => {
+    setSelectedBase(base);
+    setCityError(false);
+  };
+
   const handleSendOtp = async (e) => {
     e.preventDefault();
 
@@ -1590,6 +1688,15 @@ const Login = ({ onLogin }) => {
     console.log("Selected Country:", selectedCountry);
     console.log("Country Code:", countryCode);
     console.log("Phone Number:", phoneNumber);
+
+    if (!selectedBase) {
+      setCityError(true);
+      toast.error('Please choose your city before continuing.', {
+        position: 'top-center',
+        autoClose: 5000,
+      });
+      return;
+    }
 
     if (!phoneNumber) {
       toast.error('Please enter a valid phone number.', {
@@ -1635,8 +1742,11 @@ const Login = ({ onLogin }) => {
 
         localStorage.setItem('phoneNumber', fullPhoneNumber);
         dispatch(setPhoneNumber(fullPhoneNumber));
+        setActiveBase(selectedBase);
+        await recordCitySelection(selectedBase, fullPhoneNumber);
         setIsLoading(false);
-        navigate('/mobileviews');
+        // Show the "other products" popup (if admin-enabled), else navigate in.
+        proceedAfterLogin(selectedBase);
         return; // Skip OTP
       }
 
@@ -1831,6 +1941,8 @@ const Login = ({ onLogin }) => {
       const fullPhoneNumber = `${phoneNumber}`;
       localStorage.setItem('phoneNumber', fullPhoneNumber);
       dispatch(setPhoneNumber(fullPhoneNumber));
+      setActiveBase(selectedBase);
+      await recordCitySelection(selectedBase, fullPhoneNumber);
 
       // ✅ Log app open after successful OTP verification
       try {
@@ -1867,8 +1979,9 @@ const Login = ({ onLogin }) => {
       //   console.error("⚠️ WhatsApp message failed (non-blocking):", whatsErr.message);
       // }
 
-      navigate('/mobileviews');
+      // Show the "other products" popup (if admin-enabled), else navigate in.
       setIsLoading(false);
+      proceedAfterLogin(selectedBase);
     } catch (error) {
       let errorMessage = 'OTP verification failed!';
       
@@ -1973,6 +2086,24 @@ const Login = ({ onLogin }) => {
     }, 100);
   };
 
+  // After a successful login, show the Local / Tourist choice popup. This must
+  // come before the storedPhoneNumber guard below, because login already
+  // dispatched the phone number (so storedPhoneNumber is now truthy).
+  //   - Local   → All Property listing for the city used to log in
+  //   - Tourist → Tourist Place page (/exclusiveDetail)
+  //   - Close   → defaults to the All Property listing (Local)
+  if (showProductsPopup) {
+    const navBase = pendingBase || effectiveBase;
+    return (
+      <LocalTouristPopup
+        city={baseToCity(navBase)}
+        onLocal={() => navigate(baseToPath(navBase))}
+        onTourist={() => navigate('/exclusiveDetail')}
+        onClose={() => navigate(baseToPath(navBase))}
+      />
+    );
+  }
+
   if (storedPhoneNumber) {
     return null;
   }
@@ -2033,7 +2164,7 @@ const Login = ({ onLogin }) => {
               letterSpacing: 1.5,
               textShadow: '0 2px 8px rgba(79,75,126,0.08)'
             }}>
-              Rent Pondy
+              {rentLabel}
             </div>
             <div style={{
               fontFamily: 'Poppins, Inter, Arial, sans-serif',
@@ -2047,6 +2178,157 @@ const Login = ({ onLogin }) => {
             </div>
 
            <Form onSubmit={handleSendOtp}>
+                    {/* On the city-specific routes (/login/pondicherry,
+                        /login/chennai) the city is already known from the URL and
+                        pre-selected, so hide the "Choose your city" picker entirely
+                        and just show the number. Only the plain /login route shows it. */}
+                    {!cityParamToBase(city) && (
+                      <>
+                    <p style={{ color: cityError ? '#ff4d4f' : '#fff', fontSize: 13, marginBottom: 6, fontWeight: 600 }}>
+                      Choose your city {cityError && <span style={{ marginLeft: 4 }}>*</span>}
+                    </p>
+                    <div
+                      style={{
+                        display: 'flex',
+                        justifyContent: 'center',
+                        gap: '10px',
+                        marginBottom: cityError ? '6px' : '12px',
+                        flexWrap: 'wrap',
+                      }}
+                    >
+                      {[
+                        { base: 'PY', label: '📍 Pondicherry' },
+                        { base: 'CH', label: '📍 Chennai' },
+                      ]
+                        // On the city-specific routes (/login/chennai,
+                        // /login/pondicherry) show only that city's chip; on the
+                        // plain /login route show both.
+                        .filter(({ base }) => !cityParamToBase(city) || cityParamToBase(city) === base)
+                        .map(({ base, label }) => {
+                        const active = selectedBase === base;
+                        return (
+                          <button
+                            key={base}
+                            type="button"
+                            onClick={() => handleCityChipClick(base)}
+                            aria-pressed={active}
+                            style={{
+                              padding: '6px 18px',
+                              borderRadius: 999,
+                              fontWeight: 700,
+                              fontSize: 13,
+                              cursor: 'pointer',
+                              border: active
+                                ? '2px solid #4F4B7E'
+                                : cityError
+                                  ? '2px solid #ff4d4f'
+                                  : '1px solid #c9c5e3',
+                              backgroundColor: active ? '#4F4B7E' : '#ffffff',
+                              color: active ? '#ffffff' : '#4F4B7E',
+                              boxShadow: active
+                                ? '0 2px 8px rgba(79,75,126,0.25)'
+                                : cityError
+                                  ? '0 0 0 2px rgba(255,77,79,0.18)'
+                                  : 'none',
+                              transition: 'all 0.2s ease',
+                            }}
+                          >
+                            {label}
+                          </button>
+                        );
+                      })}
+                    </div>
+                    {cityError && (
+                      <p
+                        role="alert"
+                        style={{
+                          color: '#ff4d4f',
+                          fontSize: 12,
+                          fontWeight: 600,
+                          textAlign: 'center',
+                          marginBottom: 10,
+                        }}
+                      >
+                        Please select a city to continue
+                      </p>
+                    )}
+                      </>
+                    )}
+
+                    {/* What do you need? — Rentals stays on Rent Pondy;
+                        Buy & Sell opens the sister site (ppcpondy.com) in a new tab. */}
+                    {/* "What do you need?" section hidden per request.
+                        Wrapped in `false && (...)` so it renders nothing but stays
+                        intact — flip to `true &&` (or remove the wrapper) to restore. */}
+                    {false && (
+                      <>
+                    <p style={{ color: '#fff', fontSize: 13, marginBottom: 6, fontWeight: 600 }}>
+                      What do you need?
+                    </p>
+                    <div
+                      style={{
+                        display: 'flex',
+                        justifyContent: 'center',
+                        gap: '10px',
+                        marginBottom: 6,
+                        flexWrap: 'wrap',
+                      }}
+                    >
+                      {/* This site — Rentals (current) */}
+                      <div
+                        role="button"
+                        tabIndex={0}
+                        onClick={() => phoneInputRef.current?.focus()}
+                        style={{
+                          position: 'relative',
+                          width: 130,
+                          padding: '12px 10px',
+                          borderRadius: 12,
+                          textAlign: 'center',
+                          cursor: 'pointer',
+                          color: '#fff',
+                          backgroundColor: 'rgba(79,75,126,0.9)',
+                          border: '2px solid #4F4B7E',
+                          boxShadow: '0 2px 8px rgba(79,75,126,0.35)',
+                        }}
+                      >
+                        <FaKey size={20} />
+                        <div style={{ fontWeight: 700, fontSize: 14, marginTop: 6 }}>{rentLabel}</div>
+                        <div style={{ fontSize: 11, opacity: 0.85 }}>Rentals</div>
+                      </div>
+
+                      {/* Other site — Buy & Sell on ppcpondy.com (opens in a new tab) */}
+                      <a
+                        href={otherSiteUrl}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        style={{
+                          position: 'relative',
+                          width: 130,
+                          padding: '12px 10px',
+                          borderRadius: 12,
+                          textAlign: 'center',
+                          textDecoration: 'none',
+                          color: '#fff',
+                          backgroundColor: 'rgba(255,255,255,0.12)',
+                          border: '1px solid rgba(255,255,255,0.45)',
+                        }}
+                      >
+                        <FaExternalLinkAlt
+                          size={11}
+                          style={{ position: 'absolute', top: 8, right: 8, opacity: 0.9 }}
+                        />
+                        <FaHome size={20} />
+                        <div style={{ fontWeight: 700, fontSize: 14, marginTop: 6 }}>{buyLabel}</div>
+                        <div style={{ fontSize: 11, opacity: 0.85 }}>Buy &amp; Sell</div>
+                      </a>
+                    </div>
+                    <p style={{ color: '#cfd8dc', fontSize: 11, textAlign: 'center', marginBottom: 12 }}>
+                      Pick one to continue
+                    </p>
+                      </>
+                    )}
+
                     <Form.Group className="mb-3" controlId="phoneInput">
                       {/* Single row flex container for country code + phone number */}
                       <div style={{
@@ -2157,7 +2439,7 @@ const Login = ({ onLogin }) => {
            <div className='d-flex flex-column align-items-center pb-2'>
                 <p className="m-0" style={{color:"#fff"}}>
                   Edit or Add Your Property <span style={{ color: "rgb(22, 198, 22)" }} className="highlight fw-bold ms-2">
-                    Rent Pondy
+                    {rentLabel}
                   </span>
                 </p>
                 <span style={{ borderBottom: "2px solid orangered", width: "40%", marginTop: "15px" }}></span>

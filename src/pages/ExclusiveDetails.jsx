@@ -148,9 +148,10 @@
 
 import React, { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { FaArrowLeft, FaChevronLeft, FaChevronRight, FaTimes, FaSearch, FaPhone } from "react-icons/fa";
+import { FaArrowLeft, FaChevronLeft, FaChevronRight, FaTimes, FaSearch, FaPhone, FaHeart, FaRegHeart, FaMapMarkerAlt, FaGlobe, FaBars } from "react-icons/fa";
 import DefaultImg from "../Assets/Defaultimg.png";
 import "./ExclusiveDetails.css";
+import "./StayCard.css";
 
 const areaPincodeMap = {
   "Abishegapakkam": "605007",
@@ -227,6 +228,54 @@ const areaPincodeMap = {
   "Yanam": "533464",
 };
 
+// One viewer list (Detail Page Viewers / Contact Viewers).
+// When `maskable`, viewer numbers show the last 5 digits hidden until the user
+// pays points to reveal them (handled by the parent via onReveal).
+const LeadGroup = ({ title, count, accent, bg, rows, maskable, revealed, revealing, onReveal, revealCost }) => (
+  <div style={{ marginBottom: "16px" }}>
+    <div style={{ display: "flex", alignItems: "center", gap: "8px", margin: "4px 0 10px" }}>
+      <span style={{ fontSize: "14px", fontWeight: 800, color: "#1f2937" }}>{title}</span>
+      <span style={{ background: bg, color: accent, borderRadius: "12px", padding: "2px 10px", fontSize: "12px", fontWeight: 800 }}>{count}</span>
+    </div>
+    {rows.length === 0 ? (
+      <div style={{ fontSize: "13px", color: "#94a3b8", padding: "4px 2px 8px" }}>No one yet.</div>
+    ) : (
+      rows.map((r, i) => {
+        const num = r.viewerPhoneNumber || "";
+        const hidden = maskable && num && !(revealed && revealed.has(num));
+        const display = !num ? "Guest" : hidden ? `${num.slice(0, Math.max(0, num.length - 5))}*****` : num;
+        const isRevealing = revealing && revealing.has(num);
+        return (
+          <div
+            key={i}
+            style={{ background: "#fff", borderRadius: "10px", padding: "10px 12px", marginBottom: "8px", boxShadow: "0 1px 4px rgba(0,0,0,0.05)", display: "flex", alignItems: "center", justifyContent: "space-between", gap: "10px" }}
+          >
+            <div style={{ minWidth: 0 }}>
+              <div style={{ fontSize: "14px", fontWeight: 700, color: accent, letterSpacing: hidden ? "1px" : "normal" }}>{display}</div>
+              <div style={{ fontSize: "12px", color: "#6b7280" }}>
+                {[r.propertyType, r.area].filter(Boolean).join(" · ") || (r.rentId ? `Rent #${r.rentId}` : "")}
+              </div>
+            </div>
+            {hidden ? (
+              <button
+                onClick={() => onReveal(num)}
+                disabled={isRevealing}
+                style={{ flexShrink: 0, background: accent, color: "#fff", border: "none", borderRadius: "8px", padding: "7px 12px", fontSize: "12px", fontWeight: 700, cursor: isRevealing ? "default" : "pointer", opacity: isRevealing ? 0.7 : 1 }}
+              >
+                {isRevealing ? "…" : revealCost ? `Reveal · ${revealCost} pts` : "Reveal"}
+              </button>
+            ) : r.viewedAt ? (
+              <div style={{ fontSize: "11px", color: "#9ca3af", whiteSpace: "nowrap" }}>
+                {new Date(r.viewedAt).toLocaleDateString("en-IN", { day: "numeric", month: "short" })}
+              </div>
+            ) : null}
+          </div>
+        );
+      })
+    )}
+  </div>
+);
+
 const ExclusiveDetails = () => {
   const navigate = useNavigate();
 
@@ -240,11 +289,216 @@ const ExclusiveDetails = () => {
   const [selectedLocation, setSelectedLocation] = useState("");
   const [showSuggestions, setShowSuggestions] = useState(false);
   const [failedImages, setFailedImages] = useState(new Set());
+  // Local-only "save" toggle for the heart on each stay card (UI feedback only,
+  // no backend persistence).
+  const [favorites, setFavorites] = useState(new Set());
+
+  // Recently viewed tourist stays (per-device, persisted in localStorage)
+  const [recentStays, setRecentStays] = useState([]);
+  const loadRecent = () => {
+    try {
+      const list = JSON.parse(localStorage.getItem("rp_recent_stays") || "[]");
+      setRecentStays(Array.isArray(list) ? list : []);
+    } catch {
+      setRecentStays([]);
+    }
+  };
+  useEffect(() => { loadRecent(); }, []);
+
+  // Hamburger "Leads" panel — tourist-only, two views of the same data:
+  //   "property" → Tourist Property Lead (per-stay breakdown)
+  //   "tourist"  → Tourist Lead (all detail + contact viewers combined)
+  const [showLeads, setShowLeads] = useState(false);
+  const [leadTab, setLeadTab] = useState("recent");
+  const [touristStats, setTouristStats] = useState([]);
+  const [touristLoading, setTouristLoading] = useState(false);
+  const [touristError, setTouristError] = useState("");
+
+  // Tourist Lead tab — ALL detail/contact viewers across every tourist property
+  const [allDetail, setAllDetail] = useState([]);
+  const [allContact, setAllContact] = useState([]);
+  const [allLoading, setAllLoading] = useState(false);
+  const [allError, setAllError] = useState("");
+
+  // Tourist Lead contact reveal (points-gated; last 5 digits masked until revealed)
+  const [touristRevealCost, setTouristRevealCost] = useState(10);
+  const [revealedNums, setRevealedNums] = useState(() => {
+    // Numbers already revealed/paid on this device persist across reloads
+    try {
+      const arr = JSON.parse(localStorage.getItem("rp_revealed_tourist") || "[]");
+      return new Set(Array.isArray(arr) ? arr : []);
+    } catch {
+      return new Set();
+    }
+  });
+  const [revealing, setRevealing] = useState(() => new Set());
+  useEffect(() => {
+    fetch("https://rentpondy.com/PPC/PPC/points-config-public", { cache: "no-store" })
+      .then((r) => r.json())
+      .then((d) => { if (d && d.pointsPerTouristContactReveal) setTouristRevealCost(d.pointsPerTouristContactReveal); })
+      .catch(() => {});
+  }, []);
+
+  // Persist a revealed number (state + localStorage)
+  const markRevealed = (num) => {
+    setRevealedNums((prev) => {
+      const next = new Set(prev).add(num);
+      try { localStorage.setItem("rp_revealed_tourist", JSON.stringify([...next])); } catch {}
+      return next;
+    });
+  };
+
+  // Pre-reveal numbers this user has already paid for (from points history)
+  const loadRevealedNums = async (phone) => {
+    if (!phone) return;
+    try {
+      const res = await fetch(`https://rentpondy.com/PPC/PPC/points-transactions/${phone}?limit=200`, { cache: "no-store" });
+      const data = await res.json();
+      if (data && data.success && Array.isArray(data.transactions)) {
+        const nums = [];
+        data.transactions.forEach((t) => {
+          if (t.reason === "view-tourist-contact" && t.rentId && String(t.rentId).startsWith("tourist-")) {
+            nums.push(String(t.rentId).slice(8));
+          }
+        });
+        if (nums.length) {
+          setRevealedNums((prev) => {
+            const next = new Set([...prev, ...nums]);
+            try { localStorage.setItem("rp_revealed_tourist", JSON.stringify([...next])); } catch {}
+            return next;
+          });
+        }
+      }
+    } catch {
+      /* best-effort */
+    }
+  };
+
+  const LEADS_API = "https://rentpondy.com/PPC/PPC";
+
+  const getViewerPhone = () => {
+    try {
+      const digits = (localStorage.getItem("phoneNumber") || "").replace(/\D/g, "");
+      return digits.length >= 10 ? digits.slice(-10) : "";
+    } catch {
+      return "";
+    }
+  };
+
+  // Detail + contact viewers of the tourist stays the user posted
+  const loadTouristLeads = async (phone) => {
+    if (!phone) {
+      setTouristStats([]);
+      setTouristError("Please log in to see leads for the stays you posted.");
+      return;
+    }
+    try {
+      setTouristError("");
+      setTouristLoading(true);
+      const res = await fetch(`${LEADS_API}/my-stay-stats?phone=${phone}`, { cache: "no-store" });
+      const result = await res.json();
+      const data = result.success ? (result.data || []) : [];
+      setTouristStats(data);
+      setTouristError(data.length ? "" : "No tourist stays found for your number yet.");
+    } catch {
+      setTouristError("Could not load leads. Please try again.");
+    } finally {
+      setTouristLoading(false);
+    }
+  };
+
+  // Tourist Lead — every detail-page / contact viewer across all tourist stays
+  const loadAllLeads = async () => {
+    loadRevealedNums(getViewerPhone()); // pre-reveal numbers already paid for
+    try {
+      setAllError("");
+      setAllLoading(true);
+      const res = await fetch(`${LEADS_API}/stay-view-log`, { cache: "no-store" });
+      const result = await res.json();
+      const d = result.success ? (result.detail || []) : [];
+      const c = result.success ? (result.contact || []) : [];
+      setAllDetail(d);
+      setAllContact(c);
+      setAllError(d.length || c.length ? "" : "No tourist viewers yet.");
+    } catch {
+      setAllError("Could not load viewers. Please try again.");
+    } finally {
+      setAllLoading(false);
+    }
+  };
+
+  // Pay points to reveal a masked Tourist Lead contact number
+  const revealTouristContact = async (num) => {
+    if (!num || revealedNums.has(num) || revealing.has(num)) return;
+    const phone = getViewerPhone();
+    if (!phone) {
+      alert("Please log in to reveal contact numbers.");
+      return;
+    }
+    const cost = touristRevealCost;
+    if (!window.confirm(`Reveal this contact number for ${cost} point${cost === 1 ? "" : "s"}?`)) return;
+    setRevealing((prev) => new Set(prev).add(num));
+    try {
+      const res = await fetch(`${LEADS_API}/points-deduct`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ phoneNumber: phone, points: cost, rentId: `tourist-${num}`, reason: "view-tourist-contact" }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (res.ok && data.success) {
+        markRevealed(num);
+      } else if (res.status === 402) {
+        alert(`Insufficient points. You need ${cost} points to reveal this contact.`);
+      } else {
+        alert(data.message || "Could not reveal contact. Please try again.");
+      }
+    } catch {
+      alert("Could not reveal contact. Please try again.");
+    } finally {
+      setRevealing((prev) => {
+        const n = new Set(prev);
+        n.delete(num);
+        return n;
+      });
+    }
+  };
+
+  const openLeads = () => {
+    setShowLeads(true);
+    setLeadTab("recent");
+    loadRecent();
+  };
+
+  const selectLeadTab = (tab) => {
+    setLeadTab(tab);
+    if (tab === "tourist") loadAllLeads();
+    else if (tab === "recent") loadRecent();
+    else loadTouristLeads(getViewerPhone());
+  };
+
+  const toggleFavorite = (e, id) => {
+    e.stopPropagation();
+    setFavorites((prev) => {
+      const next = new Set(prev);
+      next.has(id) ? next.delete(id) : next.add(id);
+      return next;
+    });
+  };
 
   const defaultImage = DefaultImg;
   
   // Fallback SVG if asset image fails to load
   const fallbackImage = "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 400 300'%3E%3Crect width='400' height='300' fill='%23E5E5E5'/%3E%3Ctext x='50%25' y='50%25' font-size='20' text-anchor='middle' fill='%23999' dy='.3em'%3ENo Image Available%3C/text%3E%3C/svg%3E";
+
+  // Show the per-night price as a range (falls back to legacy pricePerNight)
+  const formatNightlyPrice = (p) => {
+    const { priceMin, priceMax, pricePerNight } = p;
+    if (priceMin && priceMax) return `₹${priceMin} - ₹${priceMax}`;
+    if (priceMin) return `₹${priceMin}`;
+    if (priceMax) return `₹${priceMax}`;
+    if (pricePerNight) return `₹${pricePerNight}`;
+    return "—";
+  };
 
   useEffect(() => {
     fetchProperties();
@@ -346,7 +600,7 @@ const ExclusiveDetails = () => {
     }
   };
 
-  const formattedCity = "Exclusive Premium Properties";
+  const formattedCity = "Tourist - Place To Stay";
 
   // Get location suggestions (by location name or pincode)
   const getLocationSuggestions = (query) => {
@@ -664,11 +918,204 @@ const ExclusiveDetails = () => {
             {formattedCity}
           </h2>
 
-          <div style={{ width: "34px" }}></div>
+          <button
+            onClick={openLeads}
+            aria-label="My leads"
+            title="Property & Tourist leads"
+            style={{
+              background: "none",
+              border: "none",
+              color: "#fff",
+              cursor: "pointer",
+              fontSize: "22px",
+              display: "flex",
+              alignItems: "center",
+              paddingLeft: "10px",
+            }}
+          >
+            <FaBars />
+          </button>
         </div>
 
+        {/* Leads panel (opened from the hamburger) — Property Lead + Tourist Lead */}
+        {showLeads && (
+          <div
+            onClick={() => setShowLeads(false)}
+            style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.45)", zIndex: 60, display: "flex", justifyContent: "center" }}
+          >
+            <div
+              onClick={(e) => e.stopPropagation()}
+              style={{ maxWidth: "470px", width: "100%", height: "100vh", background: "#f4f5f8", display: "flex", flexDirection: "column", boxShadow: "0 0 30px rgba(0,0,0,0.3)" }}
+            >
+              {/* Panel header */}
+              <div style={{ display: "flex", alignItems: "center", gap: "10px", padding: "16px", background: "linear-gradient(135deg, #4F4B7E 0%, #764ba2 100%)", color: "#fff" }}>
+                <button onClick={() => setShowLeads(false)} aria-label="Back" style={{ background: "none", border: "none", color: "#fff", fontSize: "22px", cursor: "pointer", display: "flex", alignItems: "center", padding: 0 }}>
+                  <FaArrowLeft />
+                </button>
+                <h3 style={{ margin: 0, flex: 1, fontSize: "17px", fontWeight: 700, textAlign: "center" }}>My Leads</h3>
+                <button onClick={() => setShowLeads(false)} aria-label="Close" style={{ background: "none", border: "none", color: "#fff", fontSize: "20px", cursor: "pointer" }}>
+                  <FaTimes />
+                </button>
+              </div>
+
+              {/* Tab buttons */}
+              <div style={{ display: "flex", gap: "10px", padding: "12px 14px", background: "#fff", borderBottom: "1px solid #eee" }}>
+                {[
+                  { key: "recent", label: "Last Viewed" },
+                  { key: "property", label: "Tourist Property Lead" },
+                  { key: "tourist", label: "Tourist Lead" },
+                ].map((t) => (
+                  <button
+                    key={t.key}
+                    onClick={() => selectLeadTab(t.key)}
+                    style={{
+                      flex: 1,
+                      padding: "10px 6px",
+                      borderRadius: "10px",
+                      border: "none",
+                      cursor: "pointer",
+                      fontSize: "12.5px",
+                      fontWeight: 700,
+                      lineHeight: 1.2,
+                      color: leadTab === t.key ? "#fff" : "#4F4B7E",
+                      background: leadTab === t.key ? "linear-gradient(135deg, #4F4B7E 0%, #764ba2 100%)" : "#eef0f6",
+                    }}
+                  >
+                    {t.label}
+                  </button>
+                ))}
+              </div>
+
+              {/* Panel body */}
+              <div style={{ flex: 1, overflowY: "auto", padding: "14px" }}>
+                {leadTab === "property" ? (
+                  /* Tourist Property Lead — per-stay breakdown (the user's own stays) */
+                  touristLoading ? (
+                    <p style={{ textAlign: "center", color: "#888", marginTop: "40px" }}>Loading…</p>
+                  ) : touristError ? (
+                    <p style={{ textAlign: "center", color: "#888", marginTop: "40px", padding: "0 20px" }}>{touristError}</p>
+                  ) : (
+                  touristStats.map((s) => {
+                    const detailNums = (s.detailViewerList || []).map((v) => v.viewerPhoneNumber).filter(Boolean);
+                    const contactNums = (s.contactViewerList || []).map((v) => v.viewerPhoneNumber).filter(Boolean);
+                    return (
+                      <div key={s.propertyId} style={{ background: "#fff", borderRadius: "14px", padding: "14px", marginBottom: "12px", boxShadow: "0 1px 6px rgba(0,0,0,0.06)" }}>
+                        <div style={{ fontSize: "12px", fontWeight: 800, color: "#764ba2", letterSpacing: "0.5px" }}>PROP #{s.propertyId}</div>
+                        <div style={{ fontSize: "15px", fontWeight: 800, color: "#1f2937", margin: "2px 0 10px" }}>{s.stayName || "Tourist Stay"}</div>
+
+                        <div style={{ display: "flex", gap: "10px" }}>
+                          <div style={{ flex: 1, background: "#eef2ff", borderRadius: "10px", padding: "10px", textAlign: "center" }}>
+                            <div style={{ fontSize: "22px", fontWeight: 900, color: "#4338ca" }}>{s.detailViewers}</div>
+                            <div style={{ fontSize: "11px", fontWeight: 700, color: "#6b7280" }}>Detail Page Viewers</div>
+                          </div>
+                          <div style={{ flex: 1, background: "#eafaf0", borderRadius: "10px", padding: "10px", textAlign: "center" }}>
+                            <div style={{ fontSize: "22px", fontWeight: 900, color: "#15803d" }}>{s.contactViewers}</div>
+                            <div style={{ fontSize: "11px", fontWeight: 700, color: "#6b7280" }}>Contact Viewers</div>
+                          </div>
+                        </div>
+
+                        {detailNums.length > 0 && (
+                          <div style={{ marginTop: "10px", fontSize: "12px", color: "#475569" }}>
+                            <b>Detail viewers:</b> {detailNums.join(", ")}
+                          </div>
+                        )}
+                        {contactNums.length > 0 && (
+                          <div style={{ marginTop: "6px", fontSize: "12px", color: "#475569" }}>
+                            <b>Contact viewers:</b> {contactNums.join(", ")}
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })
+                  )
+                ) : leadTab === "tourist" ? (
+                  /* Tourist Lead — ALL detail + contact viewers across every tourist property (admin data) */
+                  allLoading ? (
+                    <p style={{ textAlign: "center", color: "#888", marginTop: "40px" }}>Loading…</p>
+                  ) : allError ? (
+                    <p style={{ textAlign: "center", color: "#888", marginTop: "40px", padding: "0 20px" }}>{allError}</p>
+                  ) : (
+                    <>
+                      <LeadGroup
+                        title="Detail Page Viewers"
+                        count={allDetail.length}
+                        accent="#4338ca"
+                        bg="#eef2ff"
+                        rows={allDetail.map((r) => ({ viewerPhoneNumber: r.viewerPhoneNumber, propertyType: r.stayName, area: `#${r.propertyId}`, viewedAt: r.viewedAt }))}
+                        maskable
+                        revealed={revealedNums}
+                        revealing={revealing}
+                        onReveal={revealTouristContact}
+                        revealCost={touristRevealCost}
+                      />
+                      <LeadGroup
+                        title="Contact Viewers"
+                        count={allContact.length}
+                        accent="#15803d"
+                        bg="#eafaf0"
+                        rows={allContact.map((r) => ({ viewerPhoneNumber: r.viewerPhoneNumber, propertyType: r.stayName, area: `#${r.propertyId}`, viewedAt: r.viewedAt }))}
+                        maskable
+                        revealed={revealedNums}
+                        revealing={revealing}
+                        onReveal={revealTouristContact}
+                        revealCost={touristRevealCost}
+                      />
+                    </>
+                  )
+                ) : (
+                  /* Last Viewed — tourist stays this device recently opened */
+                  recentStays.length === 0 ? (
+                    <p style={{ textAlign: "center", color: "#888", marginTop: "40px", padding: "0 20px" }}>You haven't viewed any tourist stays yet.</p>
+                  ) : (
+                    <>
+                      <div style={{ display: "flex", alignItems: "center", marginBottom: "10px" }}>
+                        <span style={{ fontSize: "14px", fontWeight: 800, color: "#1f2937" }}>🕘 Last Viewed Stays</span>
+                      </div>
+                      {recentStays.map((s) => (
+                        <div
+                          key={s._id}
+                          onClick={() => { setShowLeads(false); navigate(`/stay/${s._id}`); }}
+                          style={{ display: "flex", gap: "12px", alignItems: "center", background: "#fff", borderRadius: "12px", padding: "10px", marginBottom: "10px", boxShadow: "0 1px 6px rgba(0,0,0,0.06)", cursor: "pointer" }}
+                        >
+                          <img src={s.image || defaultImage} alt={s.stayName} onError={(e) => { e.target.src = defaultImage; }} style={{ width: "70px", height: "70px", borderRadius: "10px", objectFit: "cover", flexShrink: 0 }} />
+                          <div style={{ minWidth: 0, flex: 1 }}>
+                            <div style={{ fontSize: "12px", fontWeight: 800, color: "#764ba2" }}>PROP #{s.propertyId}</div>
+                            <div style={{ fontSize: "14px", fontWeight: 700, color: "#1f2937", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{s.stayName}</div>
+                            <div style={{ fontSize: "12px", color: "#6b7280", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{s.location || s.city}</div>
+                            <div style={{ fontSize: "13px", fontWeight: 800, color: "#764ba2", marginTop: "2px" }}>{s.price}</div>
+                          </div>
+                        </div>
+                      ))}
+                    </>
+                  )
+                )}
+              </div>
+            </div>
+          </div>
+        )}
+
         {/* Property List */}
-        <div style={{ flex: 1, overflowY: "auto", padding: "16px" }}>
+        <div className="rp-stay-scroll" style={{ flex: 1, overflowY: "auto", padding: "16px" }}>
+          {/* Add Your Stay button */}
+          <button
+            onClick={() => navigate("/add-stay")}
+            style={{
+              width: "100%",
+              marginBottom: "16px",
+              padding: "13px",
+              background: "linear-gradient(135deg, #4F4B7E 0%, #764ba2 100%)",
+              color: "#fff",
+              border: "none",
+              borderRadius: "12px",
+              fontSize: "15px",
+              fontWeight: 700,
+              cursor: "pointer",
+              boxShadow: "0 4px 12px rgba(118,75,162,0.25)"
+            }}
+          >
+            ➕ Add Your Property
+          </button>
+
           {/* Professional Search Bar */}
           <div style={{ marginBottom: "20px", position: "relative" }}>
             {/* Search Container */}
@@ -823,7 +1270,7 @@ const ExclusiveDetails = () => {
               gap: "8px",
               border: "1px solid rgba(118, 75, 162, 0.2)"
             }}>
-              ✓ {filteredProperties.length} propert{filteredProperties.length !== 1 ? "ies" : "y"} found
+              ✓ {filteredProperties.length} stay{filteredProperties.length !== 1 ? "s" : ""} found
             </div>
           )}
           {loading ? (
@@ -837,269 +1284,157 @@ const ExclusiveDetails = () => {
                 return (
                   <div
                     key={property._id || property.id || index}
-                    style={{
-                      background: "#fff",
-                      border: "1px solid #e0e0e0",
-                      borderRadius: "8px",
-                      overflow: "hidden",
-                      boxShadow: "0 2px 8px rgba(0, 0, 0, 0.1)"
-                    }}
+                    className="rp-stay-card"
+                    onClick={() => navigate(`/stay/${property._id}`, { state: { property } })}
+                    style={{ cursor: "pointer" }}
                   >
-                    {/* Image Slider Section */}
+                    {/* Hero / image slider */}
                     <div
-                      style={{
-                        position: "relative",
-                        width: "100%",
-                        height: "240px",
-                        background: "#f5f5f5",
-                        overflow: "hidden"
-                      }}
-                      onClick={() => {
-                        setExpandedImage({
-                          url: images[currentIndex],
-                          currentIndex: currentIndex,
-                          totalImages: images.length
-                        });
-                        setExpandedPropertyId(property._id);
-                      }}
+                      className="rp-stay-media"
+                      onClick={() => navigate(`/stay/${property._id}`, { state: { property } })}
                     >
                       <img
                         src={images[currentIndex]}
                         alt={property.location || "Property"}
-                        style={{
-                          width: "100%",
-                          height: "100%",
-                          objectFit: "cover",
-                          cursor: "pointer",
-                          transition: "transform 0.3s ease"
-                        }}
-                        onMouseEnter={(e) => e.target.style.transform = "scale(1.05)"}
-                        onMouseLeave={(e) => e.target.style.transform = "scale(1)"}
+                        className="rp-stay-img"
                         onError={(e) => {
                           // Cascade fallback: API image -> defaultImage -> fallbackImage
                           if (e.target.src === defaultImage) {
-                            // If default image failed, use fallback SVG
                             e.target.src = fallbackImage;
                           } else if (!e.target.src.includes("data:image")) {
-                            // If API image failed, try default image
                             e.target.src = defaultImage;
                           }
                         }}
                       />
 
-                      {/* Image Counter */}
-                      <div
-                        style={{
-                          position: "absolute",
-                          top: "8px",
-                          right: "8px",
-                          background: "rgba(118, 75, 162, 0.9)",
-                          color: "#fff",
-                          padding: "6px 12px",
-                          borderRadius: "20px",
-                          fontSize: "12px",
-                          fontWeight: "700"
-                        }}
+                      {/* Gradient overlay for legibility */}
+                      <div className="rp-stay-media-overlay" />
+
+                      {/* Category badge */}
+                      <span className="rp-stay-media-cat">{property.stayType || "Stay"}</span>
+
+                      {/* Favorite — local UI toggle only (no backend) */}
+                      <button
+                        type="button"
+                        className={`rp-stay-fav${favorites.has(property._id) ? " is-active" : ""}`}
+                        aria-label={favorites.has(property._id) ? "Remove from saved" : "Save"}
+                        onClick={(e) => toggleFavorite(e, property._id)}
                       >
+                        {favorites.has(property._id) ? <FaHeart /> : <FaRegHeart />}
+                      </button>
+
+                      {/* Image counter */}
+                      <div className="rp-stay-counter">
                         {currentIndex + 1} / {images.length}
                       </div>
 
-                      {/* Previous Button */}
+                      {/* Previous / Next */}
                       {images.length > 1 && (
                         <button
+                          className="rp-stay-nav rp-stay-nav--prev"
                           onClick={(e) => handlePrevImage(e, property)}
-                          style={{
-                            position: "absolute",
-                            left: "8px",
-                            top: "50%",
-                            transform: "translateY(-50%)",
-                            background: "rgba(118, 75, 162, 0.7)",
-                            border: "none",
-                            color: "#fff",
-                            fontSize: "18px",
-                            padding: "8px 10px",
-                            cursor: "pointer",
-                            borderRadius: "4px",
-                            transition: "background 0.2s ease"
-                          }}
-                          onMouseEnter={(e) => e.target.style.background = "rgba(118, 75, 162, 1)"}
-                          onMouseLeave={(e) => e.target.style.background = "rgba(118, 75, 162, 0.7)"}
+                          aria-label="Previous image"
                         >
                           <FaChevronLeft />
                         </button>
                       )}
-
-                      {/* Next Button */}
                       {images.length > 1 && (
                         <button
+                          className="rp-stay-nav rp-stay-nav--next"
                           onClick={(e) => handleNextImage(e, property)}
-                          style={{
-                            position: "absolute",
-                            right: "8px",
-                            top: "50%",
-                            transform: "translateY(-50%)",
-                            background: "rgba(118, 75, 162, 0.7)",
-                            border: "none",
-                            color: "#fff",
-                            fontSize: "18px",
-                            padding: "8px 10px",
-                            cursor: "pointer",
-                            borderRadius: "4px",
-                            transition: "background 0.2s ease"
-                          }}
-                          onMouseEnter={(e) => e.target.style.background = "rgba(118, 75, 162, 1)"}
-                          onMouseLeave={(e) => e.target.style.background = "rgba(118, 75, 162, 0.7)"}
+                          aria-label="Next image"
                         >
                           <FaChevronRight />
                         </button>
                       )}
                     </div>
 
-                    {/* Property Details Section */}
-                    <div style={{ padding: "12px" }}>
-                      {/* Property ID, Mode Badge and Phone */}
-                      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "8px", gap: "8px" }}>
-                        <span style={{ fontSize: "13px", fontWeight: "700", color: "#764ba2", letterSpacing: "0.5px" }}>
-                          PROP #{property.propertyId}
-                        </span>
-                        <span
-                          style={{
-                            fontSize: "12px",
-                            background: property.propertyMode === "Rent" ? "#e3f2fd" : property.propertyMode === "Lease" ? "#f3e5f5" : "#e8f5e9",
-                            color: property.propertyMode === "Rent" ? "#1976d2" : property.propertyMode === "Lease" ? "#764ba2" : "#388e3c",
-                            padding: "3px 10px",
-                            borderRadius: "12px",
-                            fontWeight: "700",
-                            whiteSpace: "nowrap"
-                          }}
-                        >
-                          {property.propertyMode}
-                        </span>
-                        <a
-                          href="tel:8300622013"
-                          style={{
-                            fontSize: "12px",
-                            fontWeight: "700",
-                            color: "#fff",
-                            background: "#d32f2f",
-                            padding: "6px 12px",
-                            borderRadius: "12px",
-                            whiteSpace: "nowrap",
-                            textDecoration: "none",
-                            display: "flex",
-                            alignItems: "center",
-                            gap: "6px",
-                            transition: "all 0.2s ease",
-                            cursor: "pointer"
-                          }}
-                          onMouseEnter={(e) => {
-                            e.currentTarget.style.background = "#b71c1c";
-                            e.currentTarget.style.boxShadow = "0 4px 12px rgba(211, 47, 47, 0.3)";
-                            e.currentTarget.style.transform = "scale(1.05)";
-                          }}
-                          onMouseLeave={(e) => {
-                            e.currentTarget.style.background = "#d32f2f";
-                            e.currentTarget.style.boxShadow = "none";
-                            e.currentTarget.style.transform = "scale(1)";
-                          }}
-                        >
-                          <FaPhone style={{ fontSize: "13px" }} />
-                           Call Now
-                        </a>
+                    {/* Body */}
+                    <div className="rp-stay-body">
+                      {/* Top row: ID + category */}
+                      <div className="rp-stay-toprow">
+                        <div className="rp-stay-idtags">
+                          <span className="rp-stay-id">PROP #{property.propertyId}</span>
+                          <span className="rp-stay-cat">{property.stayType || "Stay"}</span>
+                        </div>
                       </div>
 
-                      {/* Location - Title */}
-                      <h3 style={{ margin: "4px 0 8px 0", fontSize: "18px", fontWeight: "700", color: "#222", lineHeight: "1.3", display: "flex", alignItems: "center", gap: "4px" }}>
-                        📍 {property.location}
+                      {/* Title (click to view full details) */}
+                      <h3
+                        className="rp-stay-title"
+                        onClick={(e) => { e.stopPropagation(); navigate(`/stay/${property._id}`, { state: { property } }); }}
+                        title="View full details"
+                        style={{ cursor: "pointer" }}
+                      >
+                        {property.stayName || property.location || "Tourist Stay"}
                       </h3>
 
-                      {/* Property Type and Rent Type */}
-                      <div style={{ display: "flex", gap: "12px", margin: "6px 0", fontSize: "13px" }}>
-                        <span style={{ background: "#f0f0f0", padding: "4px 10px", borderRadius: "4px", fontWeight: "600", color: "#333" }}>
-                          Type: {property.propertyType || "—"}
-                        </span>
-                        <span style={{ background: "#f0f0f0", padding: "4px 10px", borderRadius: "4px", fontWeight: "600", color: "#333" }}>
-                          Rent: {property.rentType || "—"}
-                        </span>
+                      {/* Location */}
+                      <p className="rp-stay-loc">
+                        <FaMapMarkerAlt /> {property.location}{property.city ? `, ${property.city}` : ""}
+                      </p>
+
+                      {/* Amenity chips */}
+                      <div className="rp-stay-chips">
+                        <span className="rp-stay-chip">🏨 {property.stayType || "—"}</span>
+                        <span className="rp-stay-chip">⭐ {property.starRating ? `${property.starRating} Star` : "—"}</span>
+                        <span className="rp-stay-chip">🍽️ {property.mealPlan || "—"}</span>
+                        {property.taxType && (
+                          <span className="rp-stay-chip">🏷️ {property.taxType}</span>
+                        )}
                       </div>
 
-                      {/* BHK and Floor */}
-                      <div style={{ display: "flex", gap: "12px", margin: "6px 0", fontSize: "13px" }}>
-                        <span style={{ background: "#f9f9f9", padding: "4px 10px", borderRadius: "4px", fontWeight: "600", color: "#333" }}>
-                          🏠 BHK: {property.bedrooms || property.bhk || "—"}
-                        </span>
-                        <span style={{ background: "#f9f9f9", padding: "4px 10px", borderRadius: "4px", fontWeight: "600", color: "#333" }}>
-                          🪜 Floor: {property.floorNumber || property.floor || "—"}
-                        </span>
-                      </div>
-
-                      {/* Amount and Advance */}
-                      <div
-                        style={{
-                          margin: "8px 0",
-                          padding: "8px 10px",
-                          background: "linear-gradient(135deg, #f3f3f3 0%, #f9f9f9 100%)",
-                          borderRadius: "6px",
-                          display: "flex",
-                          justifyContent: "space-between",
-                          fontSize: "14px",
-                          borderLeft: "4px solid #764ba2"
-                        }}
-                      >
-                        <div>
-                          <p style={{ margin: "0", fontSize: "11px", color: "#999", textTransform: "uppercase", letterSpacing: "0.5px" }}>
-                            {property.propertyMode === "Rent" ? "Rent Amount" : property.propertyMode === "Lease" ? "Lease Amount" : "Sale Price"}
-                          </p>
-                          <p style={{ margin: "2px 0 0 0", fontSize: "16px", fontWeight: "700", color: "#764ba2" }}>
-                            ₹{(property.rentAmount || property.leaseAmount || property.salePrice || "—")}
-                          </p>
+                      {/* Price + Visit Website */}
+                      <div className="rp-stay-pricerow">
+                        <div className="rp-stay-price">
+                          <span className="rp-stay-price-amount">{formatNightlyPrice(property)}</span>
+                          <span className="rp-stay-price-unit">per night</span>
                         </div>
-                        <div style={{ textAlign: "right" }}>
-                          <p style={{ margin: "0", fontSize: "11px", color: "#999", textTransform: "uppercase", letterSpacing: "0.5px" }}>
-                            Advance
-                          </p>
-                          <p style={{ margin: "2px 0 0 0", fontSize: "16px", fontWeight: "700", color: "#d32f2f" }}>
-                            ₹{property.advanceAmount || "—"}
-                          </p>
-                        </div>
+                        {property.websiteLink && (
+                          <a
+                            href={property.websiteLink}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="rp-stay-website"
+                            onClick={(e) => e.stopPropagation()}
+                          >
+                            <FaGlobe /> Visit Website
+                          </a>
+                        )}
                       </div>
 
-                      {/* Posted Date and Masked Phone Number */}
-                      <div style={{
-                        display: "flex",
-                        justifyContent: "space-between",
-                        alignItems: "center",
-                        paddingTop: "8px",
-                        borderTop: "1px solid #e0e0e0",
-                        marginTop: "8px",
-                        gap: "12px"
-                      }}>
-                        <div style={{
-                          fontSize: "12px",
-                          color: "#999",
-                          fontWeight: "600",
-                          flex: 1
-                        }}>
-                          📅 Posted: {property.createdAt
+                      {/* Meta: posted date */}
+                      <div className="rp-stay-meta">
+                        <span className="rp-stay-meta-date">
+                          📅 Posted {property.createdAt
                             ? new Date(property.createdAt).toLocaleDateString("en-IN", {
                                 day: "numeric",
                                 month: "short",
                                 year: "numeric"
                               })
                             : "N/A"}
-                        </div>
-                        <div style={{
-                          fontSize: "12px",
-                          color: "#d32f2f",
-                          fontWeight: "700",
-                          background: "#ffe5e5",
-                          padding: "4px 10px",
-                          borderRadius: "6px",
-                          whiteSpace: "nowrap"
-                        }}>
-                          📞 {property.maskedPhoneNumber || "—"}
-                        </div>
+                        </span>
                       </div>
+
+                      {/* View full details */}
+                      <button
+                        type="button"
+                        onClick={(e) => { e.stopPropagation(); navigate(`/stay/${property._id}`, { state: { property } }); }}
+                        style={{
+                          width: "100%",
+                          marginTop: "10px",
+                          padding: "11px",
+                          background: "#764ba2",
+                          color: "#fff",
+                          border: "none",
+                          borderRadius: "10px",
+                          fontSize: "14px",
+                          fontWeight: 700,
+                          cursor: "pointer"
+                        }}
+                      >
+                        View Details ›
+                      </button>
                     </div>
                   </div>
                 );
@@ -1107,7 +1442,7 @@ const ExclusiveDetails = () => {
             </div>
           ) : (
             <p style={{ textAlign: "center", color: "#999" }}>
-              No properties found
+              No tourist places found
             </p>
           )}
         </div>

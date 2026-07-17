@@ -1,5 +1,6 @@
-import React from 'react';
+﻿import React from 'react';
 import {  useLocation, useNavigate } from 'react-router-dom';
+import { getActiveBase, baseToPath } from '../utils/cityBase';
 
 const PaymentFailureBuyer = () => {
   const searchParams = new URLSearchParams(useLocation().search);
@@ -9,7 +10,7 @@ const PaymentFailureBuyer = () => {
   const email = searchParams.get('email');
   const phone = searchParams.get('phone');
     const status = searchParams.get('status');
-      const payUdate = searchParams.get('payUdate'); // 👈 Get payUdate from URL
+      const payUdate = searchParams.get('payUdate'); // ðŸ‘ˆ Get payUdate from URL
   const planName = searchParams.get('planName');
 
 
@@ -22,7 +23,7 @@ const PaymentFailureBuyer = () => {
       const navigate = useNavigate();
 
   const handleClick = () => {
-    navigate('/mobileviews');  // navigate to a route
+    navigate(baseToPath(getActiveBase()));  // navigate to a route
   };
 
  const handleTryClick = () => {
@@ -32,9 +33,9 @@ const PaymentFailureBuyer = () => {
   return (
    <>
         {/* <div style={{ textAlign: 'center', padding: '20px' }}>
-      <h2>❌ Payment Failed!</h2>
+      <h2>âŒ Payment Failed!</h2>
       <p><strong>Transaction ID:</strong> {mihpayid}</p>
-      <p><strong>Amount:</strong> ₹{amount}</p>
+      <p><strong>Amount:</strong> â‚¹{amount}</p>
       <p><strong>Name:</strong> {firstname}</p>
       <p><strong>Email:</strong> {email}</p>
       <p><strong>Phone:</strong> {phone}</p>
@@ -113,7 +114,7 @@ const PaymentFailureBuyer = () => {
           marginBottom: '0.75rem'
         }}>
           <span style={{ color: '#4B5563', fontWeight: '500' }}>Amount:</span>
-          <span style={{ color: '#111827', fontWeight: '600' }}>₹ {amount}</span>
+          <span style={{ color: '#111827', fontWeight: '600' }}>â‚¹ {amount}</span>
         </div>
         
         <div style={{

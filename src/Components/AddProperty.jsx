@@ -2,7 +2,9 @@
 
 
 
-import React, { useState, useEffect, useRef } from "react";
+import React, { useState, useEffect, useMemo, useRef } from "react";
+import { getChennaiAreaPincodeMap, getDefaultCity } from "../utils/areaPincode";
+import { getActiveBase, baseToPath } from "../utils/cityBase";
 import axios from "axios";
 import { Button } from "react-bootstrap";
 import {  useLocation, useNavigate, useParams } from "react-router-dom";
@@ -220,9 +222,9 @@ const [videos, setVideos] = useState([]);
     numberOfFloors: '',
     carParking: '',
     rentalPropertyAddress: '',
-    country: '',
+    country: 'India',
     state: '',
-    city: '',
+    city: getDefaultCity(),
     district: '',
     area: '',
     streetName: '',
@@ -239,18 +241,20 @@ const [videos, setVideos] = useState([]);
     pinCode:"",
     locationCoordinates:'',
     rentalAmount:"",
+    callForRent: false,
     securityDeposit:"", // input
     availableDate:"",  //date
     familyMembers:"",
     foodHabit:"",
     jobType:"",
     petAllowed:"",
-    rentType:"", 
+    rentType:"",
     wheelChairAvailable:"",
   });
 
-  // Area to Pincode mapping
-  const areaPincodeMap = {
+  // Pondicherry area -> pincode list used by the autosuggest. CH users
+  // swap this out for the Chennai list (see useMemo below).
+  const PONDY_AREA_PINCODE_MAP = {
     "Abishegapakkam": "605007",
     "Ariyankuppam": "605007",
     "Arumbarthapuram": "605110",
@@ -324,6 +328,10 @@ const [videos, setVideos] = useState([]);
     "Viranam": "605106",
     "Yanam": "533464",
   };
+  const areaPincodeMap = useMemo(
+    () => (getActiveBase() === 'CH' ? getChennaiAreaPincodeMap() : PONDY_AREA_PINCODE_MAP),
+    []
+  );
 
   // Area suggestions state
   const [areaSuggestions, setAreaSuggestions] = useState([]);
@@ -762,7 +770,7 @@ const handleClear = () => {
     latitude: '',
     longitude: '',
     pinCode: '',
-    city: '',
+    city: getDefaultCity(),
     area: '',
     nagar: '',
     streetName: '',
@@ -1075,8 +1083,8 @@ const formattedCreatedAt = Date.now
     // { icon: <BiMap />, label: "Location", value: "New York, USA" },
     { icon: fieldIcons.country, label: "Country", value: formData.country },
     { icon: fieldIcons.state, label: "State", value: formData.state },
-    { icon: fieldIcons.city, label: "City", value: formData.city },
     { icon: fieldIcons.district, label: "District", value:  formData.district},
+    { icon: fieldIcons.city, label: "City", value: formData.city },
     { icon: fieldIcons.area, label: "Area", value: formData.area },
     
     { icon: fieldIcons.nagar, label: "Nagar", value: formData.nagar },
@@ -1664,7 +1672,7 @@ const dropdownFieldOrder = [
   const requiredFieldsByStep = {
     1: ['propertyMode', 'propertyType' , 'rentType', 'rentalAmount', 'totalArea', 'areaUnit'],
     2: ['bedrooms', 'postedBy', 'availableDate'],
-    4: [ 'state', 'city', 'area', 'pinCode'],
+    4: [ 'state', 'district', 'city', 'area', 'pinCode'],
   };
 
   // Filter out bedroom requirement for Land/Plot types
@@ -2559,7 +2567,7 @@ const confirmStepSubmit = () => {
 
 const cancelStepSubmit = () => {
   setShowConfirmation(false);
-  navigate("/mobileviews"); // ❌ User chose not to proceed
+  navigate(baseToPath(getActiveBase())); // back to the city the user is browsing
 };
 
 // const handleSubmit = async (e) => {
@@ -3896,23 +3904,43 @@ const handleEdit = () => {
   >
 <img src={price} alt="" style={{ width: 20, height: 20 }} /> <sup style={{ color: 'red' }}>*</sup> </span>
       <input
-        type="number"
+        type={formData.callForRent ? "text" : "number"}
         name="rentalAmount"
-        value={formData.rentalAmount}
+        value={formData.callForRent ? "Call Owner" : formData.rentalAmount}
         onChange={handleFieldChange}
         className="form-input m-0"
         placeholder="Rental Amount"
-        required
+        required={!formData.callForRent}
+        disabled={!!formData.callForRent}
         ref={formRefs.rentalAmount}
         style={{ flex: '1', padding: '12px', fontSize: '14px', border: 'none', outline: 'none' , color:"grey"}}
       />
     </div>
-    {formData.rentalAmount && (
+    {(formData.rentalAmount || formData.callForRent) && (
       <GoCheckCircleFill style={{ color: "green", margin: "5px" }} />
     )}
   </div>
 
-  {priceInWords && (
+  {/* "Call Owner" toggle — when checked, the input displays the text and the
+       value is stored as a Boolean flag (callForRent) while rentalAmount stays 0. */}
+  <label style={{ display: 'flex', alignItems: 'center', gap: '8px', marginTop: '6px', fontSize: '14px', color: '#4F4B7E', cursor: 'pointer' }}>
+    <input
+      type="checkbox"
+      checked={!!formData.callForRent}
+      onChange={(e) => {
+        const checked = e.target.checked;
+        setFormData(prev => ({
+          ...prev,
+          callForRent: checked,
+          rentalAmount: checked ? 0 : prev.rentalAmount,
+        }));
+        if (checked) setPriceInWords("");
+      }}
+    />
+    Call Owner (use when price is on request)
+  </label>
+
+  {priceInWords && !formData.callForRent && (
     <p style={{ fontSize: "14px", color: "#4F4B7E", marginTop: "5px" }}>
       {priceInWords}
     </p>
@@ -5690,28 +5718,97 @@ const handleEdit = () => {
 
     </label>
   </div>
+  {/* district */}
+   <div className="form-group" >
+      <label style={{width:'100%'}}>
+      {/* <label>District</label> */}
+
+        <div
+  style={{
+    display: "flex",
+    alignItems: "stretch", // <- Stretch children vertically
+    width: "100%",
+    boxShadow: "0 4px 10px rgba(38, 104, 190, 0.1)",
+  }} className="rounded-2"
+>        <span
+    style={{
+      display: "flex",
+      alignItems: "center",
+      justifyContent: "center",
+      padding: "0 14px",
+      borderRight: "1px solid #4F4B7E",
+      background: "#fff", // optional
+    }}
+  >
+                {fieldIcons.district || <FaHome />} <sup style={{ color: 'red' }}>*</sup>
+              </span>     <div style={{ flex: "1" }}>
+            <select
+              name="district"
+              value={formData.district || ""}
+              onChange={handleFieldChange}
+              className="form-control"
+              style={{ display: "none" }} // Hide the default <select> dropdown
+            >
+              <option value="">Select District</option>
+              {dataList.district?.map((option, index) => (
+                <option key={index} value={option}>
+                  {option}
+                </option>
+              ))}
+            </select>
+
+            <button
+              className="m-0"
+              type="button"
+              onClick={() => toggleDropdown("district")}
+              style={{
+                cursor: "pointer",
+                // border: "1px solid #4F4B7E",
+                padding: "12px",
+                background: "#fff",
+                borderRadius: "5px",
+                width: "100%",
+                textAlign: "left",
+                border:"none",
+                color: "grey",
+                 position: "relative",
+                boxShadow: '0 4px 10px rgba(38, 104, 190, 0.1)',
+}}            >
+
+              {formData.district || "Select District"}
+               {formData.district && (
+            <GoCheckCircleFill style={{ position: "absolute", right: "10px", top: "50%", transform: "translateY(-50%)", color: "green" }} />
+          )}
+            </button>
+
+            {renderDropdown("district")}
+          </div>
+        </div>
+      </label>
+    </div>
+
   {/* City */}
 
 <div className="form-group">
   {/* <label>City:</label> */}
-  <div className="input-card p-0 rounded-2" style={{ 
-    display: 'flex', 
-    alignItems: 'center', 
-    justifyContent: 'space-between', 
-    width: '100%',  
+  <div className="input-card p-0 rounded-2" style={{
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    width: '100%',
     boxShadow: '0 4px 10px rgba(38, 104, 190, 0.1)',
     background: "#fff",
     paddingRight: "10px"
   }}>
-    
-  
+
+
     <div
   style={{
     display: "flex",
     alignItems: "stretch", // <- Stretch children vertically
     width: "100%",
   }}
-> 
+>
      <span
     style={{
       display: "flex",
@@ -5740,75 +5837,6 @@ const handleEdit = () => {
       <GoCheckCircleFill style={{ color: "green", margin: "5px" }} />
     )}
 </div></div>
-
-  {/* district */}
-   <div className="form-group" >
-      <label style={{width:'100%'}}>
-      {/* <label>District</label> */}
-  
-        <div
-  style={{
-    display: "flex",
-    alignItems: "stretch", // <- Stretch children vertically
-    width: "100%",
-    boxShadow: "0 4px 10px rgba(38, 104, 190, 0.1)",
-  }} className="rounded-2"
->        <span
-    style={{
-      display: "flex",
-      alignItems: "center",
-      justifyContent: "center",
-      padding: "0 14px",
-      borderRight: "1px solid #4F4B7E",
-      background: "#fff", // optional
-    }}
-  >
-                {fieldIcons.district || <FaHome />}
-              </span>     <div style={{ flex: "1" }}>
-            <select
-              name="district"
-              value={formData.district || ""}
-              onChange={handleFieldChange}
-              className="form-control"
-              style={{ display: "none" }} // Hide the default <select> dropdown
-            >
-              <option value="">Select District</option>
-              {dataList.district?.map((option, index) => (
-                <option key={index} value={option}>
-                  {option}
-                </option>
-              ))}
-            </select>
-  
-            <button
-              className="m-0"
-              type="button"
-              onClick={() => toggleDropdown("district")}
-              style={{
-                cursor: "pointer",
-                // border: "1px solid #4F4B7E",
-                padding: "12px",
-                background: "#fff",
-                borderRadius: "5px",
-                width: "100%",
-                textAlign: "left",
-                border:"none",
-                color: "grey",
-                 position: "relative",
-                boxShadow: '0 4px 10px rgba(38, 104, 190, 0.1)',   
-}}            >
-            
-              {formData.district || "Select District"}
-               {formData.district && (
-            <GoCheckCircleFill style={{ position: "absolute", right: "10px", top: "50%", transform: "translateY(-50%)", color: "green" }} />
-          )} 
-            </button>
-  
-            {renderDropdown("district")}
-          </div>
-        </div>
-      </label>
-    </div>
 
   {/* area */}
   <div className="form-group" style={{ position: 'relative' }}>

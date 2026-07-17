@@ -112,7 +112,7 @@
 //       rentId: rentIdNum,
 //       planName: card.name,
 //       planId: card._id,
-//     amount: card.price  // ✅ Pass price as amount
+//     amount: card.price  // âœ… Pass price as amount
 //     }
 //   });
 // };
@@ -186,7 +186,7 @@
 //                     <h4 className="card-title text-start text-white"><strong>{card.name}</strong></h4>
 //                     <p className="text-muted text-start" style={{ fontSize: "19px" }}>{card.packageType}</p>
 //                     {/* <p className="text-muted text-start" style={{ fontSize: "19px" }}>UNLIMITED Property Leads</p> */}
-//                     <h3 className="text-start text-danger" style={{ fontSize: '1.5rem' }}>₹ {card.price}</h3>
+//                     <h3 className="text-start text-danger" style={{ fontSize: '1.5rem' }}>â‚¹ {card.price}</h3>
 //                     <p className="text-start text-white mb-4" style={{ fontSize: '14px' }}>
 //                       /{card.durationDays} Days / {card.numOfCars} Car{card.numOfCars > 1 ? 's' : ''}
 //                     </p>
@@ -249,6 +249,7 @@ import { Button, Modal } from 'react-bootstrap';
 import axios from 'axios';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { FaArrowLeft, FaChevronLeft } from 'react-icons/fa';
+import { getActiveBase, baseToPath } from '../utils/cityBase';
 import VideoPlayer from './VideoPlayer';
 
 
@@ -370,7 +371,7 @@ const handleConfirmPlan = async () => {
 };
 
  const handleBackNavigation = () => {
-    navigate("/mobileviews");
+    navigate(baseToPath(getActiveBase()));
   };
 
   return (

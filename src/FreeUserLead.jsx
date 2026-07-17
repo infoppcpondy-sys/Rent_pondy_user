@@ -72,10 +72,16 @@ const filteredData = properties.filter((item) => {
   const handlePermanentDelete = async (rentId) => {
     const confirmDelete = window.confirm("Are you sure you want to permanently delete this record?");
     if (!confirmDelete) return;
-  
+
+    if (!adminName) {
+      alert("Admin name is missing. Please log in again.");
+      return;
+    }
+
     try {
       const response = await axios.delete(`${process.env.REACT_APP_API_URL}/delete-rentId-data`, {
         params: { rentId },
+        data: { deletedBy: adminName },
       });
   
       if (response.status === 200) {

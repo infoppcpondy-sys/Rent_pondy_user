@@ -1,4 +1,4 @@
-
+﻿
 
 
 // import React, { useEffect, useState } from "react";
@@ -104,7 +104,7 @@
 //   };
 
 //   const handleBackNavigation = () => {
-//     navigate("/mobileviews");
+//     navigate("/pondicherry");
 //   };
 
 
@@ -250,7 +250,7 @@
 //       <strong>Txn ID:</strong> {plan.paymentData?.txnid || "N/A"}
 //     </p>
 //     <p style={styles.planDetail}>
-//       <strong>Amount:</strong> ₹{plan.paymentData?.amount || "N/A"}
+//       <strong>Amount:</strong> â‚¹{plan.paymentData?.amount || "N/A"}
 //     </p>
 //     <p style={styles.planDetail}>
 //       <strong>Payment Date:</strong> {formatDate(plan.paymentData?.payUdate)}
@@ -447,6 +447,7 @@ import React, { useEffect, useState } from "react";
 import axios from "axios";
 import { useNavigate } from "react-router-dom";
 import { FaArrowLeft } from "react-icons/fa";
+import { getActiveBase, baseToPath } from "../utils/cityBase";
 import { GoCheckCircleFill } from "react-icons/go";
 import NoData from "../Assets/OOOPS-No-Data-Found.png";
 
@@ -517,7 +518,7 @@ const MyBuyerPlan = () => {
   };
 
   const handleBackNavigation = () => {
-    navigate("/mobileviews");
+    navigate(baseToPath(getActiveBase()));
   };
 
   // const openConfirmationPopup = (plan) => {
@@ -730,7 +731,7 @@ const MyBuyerPlan = () => {
   //                 <strong>Status:</strong> {plan.paymentData?.payustatususer || plan.ra_status || "N/A"}
   //               </p>
   //               <p style={styles.planDetail}>
-  //                 <strong>Amount:</strong> ₹{plan.planInfo?.planAmount || "N/A"}
+  //                 <strong>Amount:</strong> â‚¹{plan.planInfo?.planAmount || "N/A"}
   //               </p>
   //               <p style={styles.planDetail}>
   //                 <strong>Payment Date:</strong> {formatDate(plan.paymentData?.payUdate)}
@@ -942,13 +943,13 @@ return (
                 <strong>Status:</strong> {plan.paymentData?.payustatususer || plan.ra_status || "N/A"}
               </p>
               <p style={styles.planDetail}>
-                <strong>Amount:</strong> ₹{plan.planInfo?.planAmount || "N/A"}
+                <strong>Amount:</strong> â‚¹{plan.planInfo?.planAmount || "N/A"}
               </p>
               <p style={styles.planDetail}>
                 <strong>Payment Date:</strong> {formatDate(plan.paymentData?.payUdate)}
               </p>
 
-              {/* ✅ Always show expiry date & status if paid or expired */}
+              {/* âœ… Always show expiry date & status if paid or expired */}
               {["paid", "raExpired"].includes(plan.paymentData?.payustatususer) && (
                 <p style={styles.planDetail}>
                   <strong>Expiry Date:</strong>{" "}

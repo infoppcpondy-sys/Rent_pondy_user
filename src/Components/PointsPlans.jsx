@@ -1,8 +1,9 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import 'bootstrap/dist/css/bootstrap.min.css';
-import { Button, Modal } from 'react-bootstrap';
 import axios from 'axios';
 import { useLocation, useNavigate } from 'react-router-dom';
+import { FaChevronLeft } from 'react-icons/fa';
+import { initiatePointsPayment } from './PayUPointsPayment/initiatePointsPayment';
 
 const FALLBACK_PLANS = [
   { _id: 'points-100',  name: 'Starter',  price: 100, points: 100,  durationDays: 30, description: 'Great for trying things out' },
@@ -17,9 +18,10 @@ export default function PointsPlans() {
   const [loadingIndex, setLoadingIndex] = useState(null);
   const [cardData, setCardData] = useState(FALLBACK_PLANS);
   const [balance, setBalance] = useState(null);
-  const [showPopup, setShowPopup] = useState(false);
-  const [selectedPlan, setSelectedPlan] = useState(null);
   const [message, setMessage] = useState(null);
+  const [activeIndex, setActiveIndex] = useState(0);
+  const scrollerRef = useRef(null);
+  const cardRefs = useRef([]);
 
   const phoneNumber = location.state?.phoneNumber || localStorage.getItem('phoneNumber') || '';
 
@@ -59,32 +61,65 @@ export default function PointsPlans() {
     }
   }, [message]);
 
-  const confirmPlanSelection = (card, index) => {
+  useEffect(() => {
+    const el = scrollerRef.current;
+    if (!el) return;
+    let raf = 0;
+    const onScroll = () => {
+      cancelAnimationFrame(raf);
+      raf = requestAnimationFrame(() => {
+        const center = el.scrollLeft + el.clientWidth / 2;
+        let nearest = 0;
+        let bestDist = Infinity;
+        cardRefs.current.forEach((node, i) => {
+          if (!node) return;
+          const nodeCenter = node.offsetLeft + node.offsetWidth / 2;
+          const dist = Math.abs(nodeCenter - center);
+          if (dist < bestDist) { bestDist = dist; nearest = i; }
+        });
+        setActiveIndex(nearest);
+      });
+    };
+    el.addEventListener('scroll', onScroll, { passive: true });
+    onScroll();
+    return () => {
+      el.removeEventListener('scroll', onScroll);
+      cancelAnimationFrame(raf);
+    };
+  }, [cardData.length]);
+
+  const goToCard = (index) => {
+    const node = cardRefs.current[index];
+    const el = scrollerRef.current;
+    if (!node || !el) return;
+    const target = node.offsetLeft - (el.clientWidth - node.offsetWidth) / 2;
+    el.scrollTo({ left: target, behavior: 'smooth' });
+  };
+
+  const handleBuyPoints = async (card, index) => {
     if (!phoneNumber) {
       setMessage({ text: 'Please login first', type: 'error' });
       navigate('/login');
       return;
     }
-    setSelectedPlan({ card, index });
-    setShowPopup(true);
-  };
+    if (loadingIndex !== null) return;
 
-  const handleConfirmPlan = () => {
-    if (!selectedPlan) return;
-    const { card, index } = selectedPlan;
     setLoadingIndex(index);
-    setShowPopup(false);
-
-    navigate('/payu-form', {
-      state: {
+    try {
+      // Skip the confirm popup and the intermediate PayU form — go straight
+      // to PayU's hosted page.
+      await initiatePointsPayment({
         phoneNumber,
         planName: card.name,
         planId: card._id,
         amount: card.price,
         points: card.points,
-        planType: 'points',
-      },
-    });
+      });
+    } catch (error) {
+      const errMsg = error?.response?.data?.message || error?.message || 'Failed to start payment.';
+      setMessage({ text: errMsg, type: 'error' });
+      setLoadingIndex(null);
+    }
   };
 
   const gradients = [
@@ -93,11 +128,31 @@ export default function PointsPlans() {
     'linear-gradient(135deg, #4facfe 0%, #00f2fe 100%)',
   ];
 
+  const handleBackNavigation = () => {
+    navigate(-1);
+  };
+
   return (
-    <div className="container d-flex align-items-center justify-content-center p-0">
-      <div className="d-flex flex-column align-items-center justify-content-center m-0" style={{ maxWidth: '500px', width: '100%' }}>
+    <div className="container d-flex align-items-center justify-content-center p-0" style={{ overflowX: 'hidden' }}>
+      <div className="d-flex flex-column align-items-center justify-content-center m-0" style={{ maxWidth: '500px', width: '100%', overflowX: 'hidden' }}>
         <div className="row g-2 w-100">
-          <h3 className="m-0 ms-3" style={{ fontSize: '20px' }}>Points Plans</h3>
+          <div className="d-flex align-items-center w-100 p-2" style={{ background: '#EFEFEF' }}>
+            <button
+              onClick={handleBackNavigation}
+              className="pe-5"
+              style={{
+                backgroundColor: '#f0f0f0',
+                border: 'none',
+                padding: '10px 20px',
+                cursor: 'pointer',
+                display: 'flex',
+                alignItems: 'center',
+              }}
+            >
+              <FaChevronLeft style={{ color: '#30747F' }} />
+            </button>
+            <h3 className="m-0" style={{ fontSize: '16px' }}>Points Plans</h3>
+          </div>
 
           <div className="text-center mb-2 px-3 w-100">
             <p className="lead mb-1 pt-2" style={{ fontSize: '14px', color: '#666', fontWeight: 500, lineHeight: 1.6 }}>
@@ -119,158 +174,216 @@ export default function PointsPlans() {
             </p>
           )}
 
-          <div className="row justify-content-center w-100">
-            {cardData.map((card, index) => (
-              <div key={card._id || index} className="col-12 d-flex justify-content-center mb-4 p-0">
+          <style>{`
+            .pp-scroller::-webkit-scrollbar { display: none; height: 0; width: 0; }
+            .pp-scroller { -ms-overflow-style: none; scrollbar-width: none; }
+          `}</style>
+
+          <div className="w-100" style={{ overflow: 'hidden', position: 'relative' }}>
+          <div
+            ref={scrollerRef}
+            className="pp-scroller"
+            style={{
+              display: 'flex',
+              flexWrap: 'nowrap',
+              gap: 14,
+              overflowX: 'auto',
+              overflowY: 'visible',
+              WebkitOverflowScrolling: 'touch',
+              scrollSnapType: 'x mandatory',
+              paddingTop: 20,
+              paddingBottom: 28,
+              paddingLeft: 'max(16px, calc((100% - 240px) / 2))',
+              paddingRight: 'max(16px, calc((100% - 240px) / 2))',
+              scrollPaddingInline: 'max(16px, calc((100% - 240px) / 2))',
+              width: '100%',
+              boxSizing: 'border-box',
+            }}
+          >
+            {cardData.map((card, index) => {
+              const isActive = activeIndex === index;
+              const isPopular = card.popular || index === 1;
+              return (
                 <div
-                  className="card shadow-lg rounded-4 border-0 pricing-card"
+                  key={card._id || index}
+                  ref={(el) => (cardRefs.current[index] = el)}
                   style={{
-                    width: '72%',
-                    background: gradients[index % gradients.length],
-                    transition: 'all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275)',
-                    boxShadow: hoverIndex === index ? '0 25px 50px rgba(0,0,0,0.35)' : '0 10px 30px rgba(0,0,0,0.15)',
-                    transform: hoverIndex === index ? 'translateY(-12px) scale(1.03)' : 'translateY(0) scale(1)',
-                    position: 'relative',
-                    overflow: 'hidden',
-                    cursor: 'pointer',
+                    flex: '0 0 240px',
+                    width: 240,
+                    scrollSnapAlign: 'center',
+                    transition: 'transform 0.35s cubic-bezier(0.34,1.56,0.64,1), opacity 0.35s ease',
+                    transform: isActive ? 'scale(1)' : 'scale(0.92)',
+                    opacity: isActive ? 1 : 0.7,
+                    paddingTop: isPopular ? 14 : 0,
                   }}
-                  onMouseEnter={() => setHoverIndex(index)}
-                  onMouseLeave={() => setHoverIndex(null)}
                 >
                   <div
-                    className="card-body"
+                    className="rounded-4 border-0"
                     style={{
-                      background: 'rgba(255,255,255,0.97)',
-                      backdropFilter: 'blur(10px)',
-                      borderRadius: 20,
-                      margin: 12,
                       position: 'relative',
-                      zIndex: 2,
-                      padding: 24,
+                      background: gradients[index % gradients.length],
+                      padding: 3,
+                      borderRadius: 22,
+                      boxShadow: isActive ? '0 18px 40px rgba(79,75,126,0.22)' : '0 8px 20px rgba(79,75,126,0.12)',
+                      transition: 'box-shadow 0.35s ease',
+                      cursor: 'pointer',
                     }}
+                    onMouseEnter={() => setHoverIndex(index)}
+                    onMouseLeave={() => setHoverIndex(null)}
+                    onClick={() => goToCard(index)}
                   >
-                    {(card.popular || index === 1) && (
+                    {isPopular && (
                       <div
                         style={{
                           position: 'absolute',
-                          top: -14,
-                          right: 24,
-                          background: 'linear-gradient(135deg, #FFD700, #FFA500)',
+                          top: -12,
+                          left: '50%',
+                          transform: 'translateX(-50%)',
+                          background: 'linear-gradient(135deg, #FFD27A, #FF8A3D)',
                           color: '#fff',
-                          padding: '8px 18px',
-                          borderRadius: 25,
-                          fontSize: 12,
-                          fontWeight: 'bold',
-                          boxShadow: '0 6px 20px rgba(255,165,0,0.5)',
+                          padding: '5px 14px',
+                          borderRadius: 999,
+                          fontSize: 10,
+                          fontWeight: 700,
+                          letterSpacing: '0.8px',
+                          boxShadow: '0 6px 14px rgba(255,138,61,0.45)',
+                          whiteSpace: 'nowrap',
+                          zIndex: 3,
                         }}
                       >
-                        MOST POPULAR
+                        ★ MOST POPULAR
                       </div>
                     )}
 
-                    <h4 className="card-title text-start mt-1" style={{ color: '#4F4B7E', fontWeight: 'bold', fontSize: 28, marginBottom: 8 }}>
-                      {card.name}
-                    </h4>
-
-                    <p className="text-start" style={{ fontSize: 15, color: '#888', marginBottom: 16, fontWeight: 500 }}>
-                      {card.description || 'Points top-up'}
-                    </p>
-
-                    <div style={{ display: 'flex', alignItems: 'baseline', marginBottom: 8, gap: 8 }}>
-                      <h2
-                        className="text-start m-0"
-                        style={{
-                          fontSize: '2.5rem',
-                          background: 'linear-gradient(135deg, #FF6B6B, #f5576c)',
-                          WebkitBackgroundClip: 'text',
-                          WebkitTextFillColor: 'transparent',
-                          fontWeight: 'bold',
-                        }}
-                      >
-                        ₹{card.price}
-                      </h2>
-                      <span style={{ fontSize: 14, color: '#999', fontWeight: 500, paddingBottom: 8 }}>one time</span>
-                    </div>
-
                     <div
                       style={{
-                        background: 'linear-gradient(135deg, rgba(102,126,234,0.08), rgba(245,87,108,0.08))',
-                        padding: 14,
-                        borderRadius: 14,
-                        marginBottom: 20,
-                        border: '1px solid rgba(102,126,234,0.15)',
+                        background: '#fff',
+                        borderRadius: 19,
+                        padding: '22px 20px 20px',
+                        position: 'relative',
                       }}
                     >
-                      <h5 className="m-0 text-start" style={{ fontSize: 15, color: '#4F4B7E', fontWeight: 700, marginBottom: 8 }}>
-                        What you get
-                      </h5>
-                      <p className="text-start m-0" style={{ color: '#555', fontSize: 14, fontWeight: 500, lineHeight: 1.5 }}>
-                        • {card.points} points (≈ {Math.floor((card.points || 0) / 10)} owner contact reveals)
-                      </p>
-                      {card.durationDays && (
-                        <p className="text-start m-0 mt-1" style={{ color: '#555', fontSize: 14, fontWeight: 500 }}>
-                          • Valid for {card.durationDays} days
-                        </p>
-                      )}
-                    </div>
+                      <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', marginBottom: 4 }}>
+                        <h4 style={{ color: '#2A2750', fontWeight: 700, fontSize: 22, margin: 0, letterSpacing: '-0.3px' }}>
+                          {card.name}
+                        </h4>
+                        <span
+                          style={{
+                            fontSize: 10,
+                            fontWeight: 700,
+                            letterSpacing: '0.6px',
+                            color: '#9D99C2',
+                            background: '#F2F1FA',
+                            padding: '3px 8px',
+                            borderRadius: 999,
+                          }}
+                        >
+                          {card.points} PTS
+                        </span>
+                      </div>
 
-                    <div className="d-flex justify-content-center">
-                      <button
-                        className="pay-button btn pt-3 pb-3 ps-5 pe-5 rounded-pill"
+                      <p style={{ fontSize: 12, color: '#8A87A8', margin: '0 0 14px', fontWeight: 500, lineHeight: 1.4 }}>
+                        Reveal {Math.floor((card.points || 0) / 10)} owner contacts
+                      </p>
+
+                      <div style={{ display: 'flex', alignItems: 'baseline', gap: 6, marginBottom: 14 }}>
+                        <span style={{ fontSize: 14, color: '#4F4B7E', fontWeight: 600 }}>₹</span>
+                        <h2
+                          style={{
+                            fontSize: 36,
+                            margin: 0,
+                            color: '#2A2750',
+                            fontWeight: 800,
+                            lineHeight: 1,
+                            letterSpacing: '-1px',
+                          }}
+                        >
+                          {card.price}
+                        </h2>
+                        <span style={{ fontSize: 11, color: '#A6A3C2', fontWeight: 500, marginLeft: 4 }}>one time</span>
+                      </div>
+
+                      <div
                         style={{
-                          background: 'linear-gradient(135deg, #4F4B7E 0%, #764ba2 100%)',
+                          background: 'linear-gradient(135deg, rgba(102,126,234,0.06), rgba(245,87,108,0.06))',
+                          padding: '10px 12px',
+                          borderRadius: 12,
+                          marginBottom: 16,
+                          border: '1px solid rgba(102,126,234,0.10)',
+                        }}
+                      >
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 6 }}>
+                          <span style={{ width: 5, height: 5, borderRadius: '50%', background: '#764ba2' }} />
+                          <span style={{ color: '#4F4B7E', fontSize: 12, fontWeight: 600 }}>
+                            {card.points} points
+                          </span>
+                        </div>
+                        {card.durationDays && (
+                          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                            <span style={{ width: 5, height: 5, borderRadius: '50%', background: '#f5576c' }} />
+                            <span style={{ color: '#4F4B7E', fontSize: 12, fontWeight: 600 }}>
+                              Valid for {card.durationDays} days
+                            </span>
+                          </div>
+                        )}
+                      </div>
+
+                      <button
+                        style={{
+                          width: '100%',
+                          background: hoverIndex === index
+                            ? 'linear-gradient(135deg, #5b5790 0%, #8459b5 100%)'
+                            : 'linear-gradient(135deg, #4F4B7E 0%, #764ba2 100%)',
                           color: '#fff',
-                          fontSize: 16,
+                          fontSize: 13,
                           fontWeight: 700,
                           border: 'none',
-                          boxShadow:
-                            hoverIndex === index && loadingIndex !== index
-                              ? '0 15px 35px rgba(79,75,126,0.6)'
-                              : '0 8px 20px rgba(79,75,126,0.4)',
-                          transition: 'all 0.3s cubic-bezier(0.34,1.56,0.64,1)',
+                          borderRadius: 999,
+                          padding: '12px 18px',
+                          letterSpacing: '0.8px',
+                          boxShadow: '0 8px 18px rgba(79,75,126,0.30)',
+                          transition: 'all 0.25s ease',
                           cursor: loadingIndex === index ? 'not-allowed' : 'pointer',
-                          opacity: loadingIndex === index ? 0.8 : 1,
-                          transform: hoverIndex === index && loadingIndex !== index ? 'scale(1.08)' : 'scale(1)',
-                          letterSpacing: '0.5px',
-                          minWidth: 200,
-                          width: '100%',
+                          opacity: loadingIndex === index ? 0.7 : 1,
                         }}
-                        onClick={() => confirmPlanSelection(card, index)}
+                        onClick={(e) => { e.stopPropagation(); handleBuyPoints(card, index); }}
                         disabled={loadingIndex === index}
                       >
-                        {loadingIndex === index ? 'Processing...' : 'BUY POINTS'}
+                        {loadingIndex === index ? 'Processing…' : 'BUY POINTS'}
                       </button>
                     </div>
                   </div>
                 </div>
-              </div>
+              );
+            })}
+          </div>
+          </div>
+
+          <div
+            className="d-flex justify-content-center align-items-center w-100"
+            style={{ gap: 6, marginTop: -6, marginBottom: 16 }}
+          >
+            {cardData.map((_, i) => (
+              <button
+                key={i}
+                onClick={() => goToCard(i)}
+                aria-label={`Go to plan ${i + 1}`}
+                style={{
+                  width: activeIndex === i ? 22 : 7,
+                  height: 7,
+                  borderRadius: 999,
+                  border: 'none',
+                  padding: 0,
+                  background: activeIndex === i
+                    ? 'linear-gradient(135deg, #4F4B7E 0%, #764ba2 100%)'
+                    : '#D8D5E8',
+                  transition: 'all 0.3s cubic-bezier(0.34,1.56,0.64,1)',
+                  cursor: 'pointer',
+                }}
+              />
             ))}
           </div>
 
-          <Modal show={showPopup} onHide={() => setShowPopup(false)} centered>
-            <Modal.Body className="text-center" style={{ padding: 30 }}>
-              <h5 style={{ marginBottom: 16, color: '#2a2a2a', fontWeight: 600 }}>Confirm Points Purchase</h5>
-              {selectedPlan && (
-                <p style={{ color: '#666', marginBottom: 24, fontSize: 15 }}>
-                  Buy <b>{selectedPlan.card.points}</b> points for <b>₹{selectedPlan.card.price}</b>?
-                </p>
-              )}
-              <div style={{ display: 'flex', gap: 12, justifyContent: 'center' }}>
-                <Button
-                  style={{ background: 'linear-gradient(135deg, #4F4B7E 0%, #764ba2 100%)', fontSize: 14, border: 'none', fontWeight: 600, padding: '8px 24px' }}
-                  onClick={handleConfirmPlan}
-                >
-                  Yes, Pay Now
-                </Button>
-                <Button
-                  style={{ background: '#E8E8E8', fontSize: 14, border: 'none', color: '#666', fontWeight: 600, padding: '8px 24px' }}
-                  onClick={() => setShowPopup(false)}
-                >
-                  Cancel
-                </Button>
-              </div>
-            </Modal.Body>
-          </Modal>
         </div>
       </div>
     </div>

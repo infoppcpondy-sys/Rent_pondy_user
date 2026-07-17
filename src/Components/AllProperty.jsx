@@ -3544,7 +3544,7 @@ import { MdBalcony , MdOutlineMeetingRoom, MdOutlineOtherHouses, MdSchedule , Md
 import { BsBuildingsFill, BsFillHouseCheckFill } from "react-icons/bs";
 import { GiKitchenScale,  GiResize , GiGears} from "react-icons/gi";
 import { HiUserGroup } from "react-icons/hi";
-import { BiSearchAlt,  BiWorld} from "react-icons/bi";
+import { BiSearchAlt,  BiWorld, BiFilterAlt} from "react-icons/bi";
 import {  MdElevator   } from "react-icons/md";
 import calendar from '../Assets/Calender-01.png'
 import bed from '../Assets/BHK-01.png'
@@ -3622,6 +3622,9 @@ import maplocation from "../Assets/maplocation.png";
 import AnimatedSearchLogo from "./AnimatedSearchLogo";
 import NoPropertyPopup from './NoPropertyPopup';
 import TenantAssistanceModal from './TenantAssistanceModal';
+import TenantSearchModal from './TenantSearchModal';
+import { getActiveBase, baseToPath } from '../utils/cityBase';
+import { chennaiPincodeRows, CHENNAI_DIRECTIONS } from '../chennaiPincodes';
 
 
 
@@ -3700,6 +3703,73 @@ label.open(map, marker);
 };
 const AllProperty = () => {
   const [properties, setProperties] = useState([]);
+  // Pincode counts for the area-ticker marquee. Pulled from the same endpoint
+  // the admin Search Pincode page uses so the numbers always match.
+  const [marqueePincodeCounts, setMarqueePincodeCounts] = useState({});
+  // Raw property list used by the property-card details popup.
+  const [marqueePropertyList, setMarqueePropertyList] = useState([]);
+  // Property card the user tapped on the "Total Rent Property Available" row.
+  const [selectedPropertyCard, setSelectedPropertyCard] = useState(null);
+  // Chennai-only: which direction card (Central/North/South/West) the user
+  // tapped. Opens an area picker modal that drills into selectedPropertyCard.
+  const [selectedChennaiDirection, setSelectedChennaiDirection] = useState(null);
+
+  // Browser-back handling for the marquee popups: opening a popup pushes a
+  // history entry, hitting back pops the topmost open popup (property card
+  // or tenant card first, then the Chennai direction picker). Refs keep the
+  // popstate listener from capturing stale state values. Works for PY and
+  // CH flows. NOTE: selectedTenantCardRef is wired up below the
+  // selectedTenantCard state declaration; declared here for closure capture.
+  const selectedPropertyCardRef = useRef(null);
+  const selectedChennaiDirectionRef = useRef(null);
+  const selectedTenantCardRef = useRef(null);
+  useEffect(() => { selectedPropertyCardRef.current = selectedPropertyCard; }, [selectedPropertyCard]);
+  useEffect(() => { selectedChennaiDirectionRef.current = selectedChennaiDirection; }, [selectedChennaiDirection]);
+  useEffect(() => {
+    const onPopState = () => {
+      // Close the topmost popup, in reverse-open order.
+      if (selectedPropertyCardRef.current) {
+        setSelectedPropertyCard(null);
+      } else if (selectedTenantCardRef.current) {
+        setSelectedTenantCard(null);
+      } else if (selectedChennaiDirectionRef.current) {
+        setSelectedChennaiDirection(null);
+      }
+    };
+    window.addEventListener('popstate', onPopState);
+    return () => window.removeEventListener('popstate', onPopState);
+  }, []);
+  const openChennaiDirection = (dir) => {
+    window.history.pushState({ rpModal: 'chennai-direction' }, '');
+    setSelectedChennaiDirection(dir);
+  };
+  const openPropertyCard = (card) => {
+    window.history.pushState({ rpModal: 'property-card' }, '');
+    setSelectedPropertyCard(card);
+  };
+  const openTenantCard = (card) => {
+    window.history.pushState({ rpModal: 'tenant-card' }, '');
+    setSelectedTenantCard(card);
+  };
+  // Close helpers — use history.back() so the popstate listener handles the
+  // actual state reset, keeping the history stack in sync.
+  const closePropertyCard = () => { window.history.back(); };
+  const closeChennaiDirection = () => { window.history.back(); };
+  const closeTenantCard = () => { window.history.back(); };
+  // Per-pincode active tenant-assistance counts for the second ticker.
+  const [tenantAssistanceCounts, setTenantAssistanceCounts] = useState({});
+  // Raw active tenant-assistance records, used by the details popup.
+  const [tenantAssistanceList, setTenantAssistanceList] = useState([]);
+  // The pincode card the user tapped (opens the details popup).
+  const [selectedTenantCard, setSelectedTenantCard] = useState(null);
+  // Keys (Ra_Id/_id) of tenants whose phone number has been revealed.
+  const [revealedTenantContacts, setRevealedTenantContacts] = useState([]);
+  // Key (Ra_Id/_id) of the tenant whose full details are expanded via "More".
+  const [expandedTenant, setExpandedTenant] = useState(null);
+  // Sync tenant-card state into the popstate-listener ref (declared earlier).
+  useEffect(() => { selectedTenantCardRef.current = selectedTenantCard; }, [selectedTenantCard]);
+  // Points charged per tenant-number reveal (admin-tunable, default 20).
+  const [tenantContactPoints, setTenantContactPoints] = useState(20);
   // const [filters, setFilters] = useState({ id: '', price: '', propertyMode: '', city: '' });
   const [filters, setFilters] = useState({ 
     id: '', 
@@ -3725,6 +3795,7 @@ const AllProperty = () => {
   const [hoverHome, setHoverHome] = useState(false);
   const [showNoDataModal, setShowNoDataModal] = useState(false);
   const [searchPerformed, setSearchPerformed] = useState(false);
+  const [showFilterPanel, setShowFilterPanel] = useState(false);
 
   // Area suggestions state
   const [areaSuggestions, setAreaSuggestions] = useState([]);
@@ -4144,7 +4215,10 @@ const AllProperty = () => {
 
   const handleAreaInputChange = (e) => {
     const value = e.target.value;
+    // Keep both states in sync: the Search Property modal reads `filters.area`,
+    // the horizontal filter Area modal reads `horizontalFilters.selectedArea`.
     setHorizontalFilters(prev => ({ ...prev, selectedArea: value }));
+    setFilters(prev => ({ ...prev, area: value }));
 
     if (value.length > 0) {
       const filtered = Object.keys(areaPincodeMap).filter(area =>
@@ -4164,6 +4238,12 @@ const AllProperty = () => {
       ...prev,
       selectedArea: selectedArea,
       selectedPincode: pincode
+    }));
+    // Mirror into `filters` so the Search Property modal's bound input updates.
+    setFilters(prev => ({
+      ...prev,
+      area: selectedArea,
+      pinCode: pincode
     }));
     setShowAreaSuggestions(false);
     setAreaSuggestions([]);
@@ -4374,6 +4454,7 @@ const AllProperty = () => {
 
   const [showMap, setShowMap] = useState(false);
   const [isSearchMenuOpen, setIsSearchMenuOpen] = useState(false);
+  const [isTenantSearchOpen, setIsTenantSearchOpen] = useState(false);
 
   const [clickedCar, setClickedCar] = useState([]);
   const location = useLocation();
@@ -5146,7 +5227,7 @@ const fieldLabels = {
               <button
                 onClick={() => {
                   toggleDropdown(field);
-                  navigate('/');
+                  navigate(baseToPath(getActiveBase()));
                 }}
                 style={{
                   padding: '10px',
@@ -5434,6 +5515,306 @@ useEffect(() => {
     setNavbarSearchValue('');
   };
 
+  // Keep the marquee live: fetch the full approved-properties set from the
+  // same endpoint the admin Search Pincode page uses, then build a
+  // pincode → count map. Re-fetches every 30s and whenever the tab regains
+  // focus so newly added properties show up without a hard refresh. The
+  // page's own `properties` array uses `/fetch-active-users-on-demand-rent`,
+  // which may not include every approved record, so it was undercounting
+  // some pincodes (e.g. 605104 Kottakuppam) in the marquee.
+  useEffect(() => {
+    let cancelled = false;
+
+    const fetchMarqueeCounts = async () => {
+      try {
+        const res = await axios.get(
+          `${process.env.REACT_APP_API_URL}/fetch-active-users-datas-all-rent`,
+          // Bypass any HTTP / browser cache so the ticker always reflects
+          // the latest count.
+          { headers: { 'Cache-Control': 'no-cache' }, params: { _t: Date.now() } }
+        );
+        if (cancelled) return;
+        const list = res.data?.users || [];
+        const counts = {};
+        list.forEach((property) => {
+          if (property.isDeleted) return;
+          const pinCode =
+            property.pinCode ||
+            property.pincode ||
+            property.postalCode ||
+            property.zipCode ||
+            property.propertyPincode ||
+            (property.address && property.address.pincode) ||
+            (property.address && property.address.pinCode);
+          if (!pinCode) return;
+          const pinStr = String(pinCode).trim();
+          counts[pinStr] = (counts[pinStr] || 0) + 1;
+        });
+        setMarqueePincodeCounts(counts);
+        // Also keep the raw (non-deleted) list so the property-card popup
+        // can filter by pincode without hitting the API again.
+        setMarqueePropertyList(list.filter((p) => !p.isDeleted));
+      } catch (err) {
+        console.error('Marquee pincode count fetch failed:', err);
+      }
+    };
+
+    fetchMarqueeCounts();
+    const intervalId = setInterval(fetchMarqueeCounts, 30000);
+    const onFocus = () => fetchMarqueeCounts();
+    window.addEventListener('focus', onFocus);
+
+    return () => {
+      cancelled = true;
+      clearInterval(intervalId);
+      window.removeEventListener('focus', onFocus);
+    };
+  }, []);
+
+  // Area-wise approved-property counts (by pincode) used by the marquee ticker.
+  // For Pondicherry: same pincode → area mapping as the admin SearchPincode
+  // page, with the combined cards (605001+605002, 605006+605009).
+  // For Chennai: aggregate counts by direction (Central / North / South /
+  // West) so the marquee mirrors the 4 direction cards from the admin's
+  // /search-pincode-chennai page.
+  const areaPropertySummary = useMemo(() => {
+    const activeBase = getActiveBase();
+
+    if (activeBase === 'CH') {
+      const pincodeToDirection = {};
+      chennaiPincodeRows.forEach((row) => {
+        if (!(row.pincode in pincodeToDirection)) {
+          pincodeToDirection[row.pincode] = row.direction;
+        }
+      });
+
+      const directionTotals = {};
+      const directionCodes = {};
+      CHENNAI_DIRECTIONS.forEach((d) => {
+        directionTotals[d] = 0;
+        directionCodes[d] = [];
+      });
+      Object.entries(marqueePincodeCounts).forEach(([code, count]) => {
+        const dir = pincodeToDirection[code];
+        if (dir) {
+          directionTotals[dir] += count;
+          directionCodes[dir].push(code);
+        }
+      });
+
+      // Always show all four direction boxes, even when a direction has
+      // zero properties, so the 2x2 grid stays stable for CH users. The
+      // drill-down modal handles the empty case gracefully.
+      const cards = CHENNAI_DIRECTIONS.map((d) => ({
+        pincode: d,
+        area: d,
+        count: directionTotals[d],
+        codes: directionCodes[d],
+      }));
+
+      const total = cards.reduce((sum, e) => sum + e.count, 0);
+      return { cards, total };
+    }
+
+    const pincodeToAreaName = {
+      '605001': 'White Town',
+      '605002': 'Pondicherry',
+      '605003': 'Muthialpet',
+      '605004': 'Mudaliarpet',
+      '605005': 'Nellithope',
+      '605006': 'Gorimedu',
+      '605007': 'Ariyankuppam',
+      '605008': 'Lawspet',
+      '605009': 'Kadirkamam',
+      '605010': 'Moolakulam',
+      '605011': 'Rainbow Nagar',
+      '605013': 'Saram',
+      '605104': 'Kottakuppam',
+      '605110': 'Villanur',
+    };
+
+    // Same combined cards the admin Search Pincode page uses.
+    const combinedPairs = [
+      { codes: ['605001', '605002'], label: 'White Town & Pondicherry' },
+      { codes: ['605006', '605009'], label: 'Gorimedu & Kadirkamam' },
+    ];
+    const combinedSubPincodes = new Set(
+      combinedPairs.flatMap((p) => p.codes)
+    );
+
+    const entries = [];
+    combinedPairs.forEach(({ codes, label }) => {
+      const total = codes.reduce(
+        (sum, c) => sum + (marqueePincodeCounts[c] || 0),
+        0
+      );
+      if (total > 0) entries.push({ pincode: codes.join(' & '), area: label, count: total, codes });
+    });
+    Object.entries(pincodeToAreaName).forEach(([code, name]) => {
+      if (combinedSubPincodes.has(code)) return;
+      const count = marqueePincodeCounts[code] || 0;
+      if (count > 0) entries.push({ pincode: code, area: name, count, codes: [code] });
+    });
+
+    const cards = entries.sort((a, b) => b.count - a.count);
+    const total = cards.reduce((sum, e) => sum + e.count, 0);
+
+    return { cards, total };
+  }, [marqueePincodeCounts]);
+
+  // Pincode counts for the tenant-assistance ticker. Pulled from the same
+  // endpoint the admin Active Buyer Assistance page uses.
+  useEffect(() => {
+    let cancelled = false;
+
+    const fetchTenantAssistanceCounts = async () => {
+      try {
+        const res = await axios.get(
+          `${process.env.REACT_APP_API_URL}/raActive-buyerAssistance-all-plans-rent`,
+          { headers: { 'Cache-Control': 'no-cache' }, params: { _t: Date.now() } }
+        );
+        if (cancelled) return;
+        const list = (res.data?.data || []).filter((item) => !item.isDeleted);
+        const counts = {};
+        list.forEach((item) => {
+          const pinCode =
+            item.pinCode ||
+            item.pincode ||
+            item.postalCode ||
+            item.zipCode ||
+            (item.address && item.address.pincode) ||
+            (item.address && item.address.pinCode);
+          if (!pinCode) return;
+          const pinStr = String(pinCode).trim();
+          counts[pinStr] = (counts[pinStr] || 0) + 1;
+        });
+        setTenantAssistanceCounts(counts);
+        setTenantAssistanceList(list);
+      } catch (err) {
+        console.error('Tenant-assistance count fetch failed:', err);
+      }
+    };
+
+    fetchTenantAssistanceCounts();
+    const intervalId = setInterval(fetchTenantAssistanceCounts, 30000);
+    const onFocus = () => fetchTenantAssistanceCounts();
+    window.addEventListener('focus', onFocus);
+
+    return () => {
+      cancelled = true;
+      clearInterval(intervalId);
+      window.removeEventListener('focus', onFocus);
+    };
+  }, []);
+
+  // Area-wise active tenant-assistance counts, mapped/combined the same way
+  // as areaPropertySummary so both tickers stay consistent.
+  const tenantAssistanceSummary = useMemo(() => {
+    const pincodeToAreaName = {
+      '605001': 'White Town',
+      '605002': 'Pondicherry',
+      '605003': 'Muthialpet',
+      '605004': 'Mudaliarpet',
+      '605005': 'Nellithope',
+      '605006': 'Gorimedu',
+      '605007': 'Ariyankuppam',
+      '605008': 'Lawspet',
+      '605009': 'Kadirkamam',
+      '605010': 'Moolakulam',
+      '605011': 'Rainbow Nagar',
+      '605013': 'Saram',
+      '605104': 'Kottakuppam',
+      '605110': 'Villanur',
+    };
+
+    const combinedPairs = [
+      { codes: ['605001', '605002'], label: 'White Town & Pondicherry' },
+      { codes: ['605006', '605009'], label: 'Gorimedu & Kadirkamam' },
+    ];
+    const combinedSubPincodes = new Set(
+      combinedPairs.flatMap((p) => p.codes)
+    );
+
+    const entries = [];
+    combinedPairs.forEach(({ codes, label }) => {
+      const total = codes.reduce(
+        (sum, c) => sum + (tenantAssistanceCounts[c] || 0),
+        0
+      );
+      if (total > 0) entries.push({ pincode: codes.join(' & '), area: label, count: total, codes });
+    });
+    Object.entries(pincodeToAreaName).forEach(([code, name]) => {
+      if (combinedSubPincodes.has(code)) return;
+      const count = tenantAssistanceCounts[code] || 0;
+      if (count > 0) entries.push({ pincode: code, area: name, count, codes: [code] });
+    });
+
+    const cards = entries.sort((a, b) => b.count - a.count);
+    const total = cards.reduce((sum, e) => sum + e.count, 0);
+
+    return { cards, total };
+  }, [tenantAssistanceCounts]);
+
+  // Load the admin-tunable points cost for revealing a tenant number.
+  useEffect(() => {
+    axios
+      .get(`${process.env.REACT_APP_API_URL}/points-config-public`)
+      .then((res) => {
+        const v = Number(res.data?.pointsPerTenantContactReveal);
+        if (Number.isFinite(v) && v >= 1) setTenantContactPoints(v);
+      })
+      .catch(() => {});
+  }, []);
+
+  // Reveal a tenant's phone number — charges points first.
+  const handleViewTenantContact = async (item) => {
+    const contactKey = item._id || item.Ra_Id;
+    if (revealedTenantContacts.includes(contactKey)) return;
+
+    const storedPhoneNumber = localStorage.getItem('phoneNumber');
+    if (!storedPhoneNumber) {
+      navigate('/login');
+      return;
+    }
+
+    try {
+      const balanceRes = await axios.get(
+        `${process.env.REACT_APP_API_URL}/points-balance/${storedPhoneNumber}`
+      );
+      const balance = Number(balanceRes.data?.balance ?? 0);
+      if (balance < tenantContactPoints) {
+        alert(
+          `Not enough points. You need ${tenantContactPoints} points to view this contact (balance: ${balance}).`
+        );
+        return;
+      }
+
+      const deductRes = await axios.post(
+        `${process.env.REACT_APP_API_URL}/points-deduct`,
+        {
+          phoneNumber: storedPhoneNumber,
+          points: tenantContactPoints,
+          rentId: item.Ra_Id,
+          reason: 'view-tenant-contact',
+        }
+      );
+
+      if (deductRes?.data?.success !== true) {
+        alert(deductRes?.data?.message || 'Could not deduct points. Please try again.');
+        return;
+      }
+
+      setRevealedTenantContacts((prev) => [...prev, contactKey]);
+    } catch (err) {
+      if (err?.response?.status === 402) {
+        alert('Not enough points to view this contact.');
+      } else {
+        console.error('Tenant contact deduct failed:', err);
+        alert('Could not view contact. Please try again.');
+      }
+    }
+  };
+
   return (
     <Container fluid className="p-0 w-100 d-flex align-items-center justify-content-center ">
       <Helmet>
@@ -5452,40 +5833,17 @@ useEffect(() => {
       
       
       <Row className="g-3 w-100 ">
-        {/* Exclusive Ticker */}
-        <Col lg={12} className="p-0 m-0">
-          <div
-            style={{
-              height: "40px",
-              display: "flex",
-              alignItems: "center",
-              background: "linear-gradient(90deg,#0f2027,#203a43,#2c5364)",
-              color: "#fff",
-              borderRadius: "8px",
-              padding: "0 10px",
-              fontWeight: "500",
-              cursor: "pointer"
-            }}
-            onClick={() => navigate("/exclusiveDetail")}
-          >
-            <marquee behavior="scroll" direction="left" scrollamount="6">
-              ✨✨ Welcome Owners & Tenants | Discover Area-Based Exclusive Rental Properties — Premium Members Only ✨
-✨
-            </marquee>
-          </div>
-        </Col>
-
-        {/* Horizontal Navbar Search Box */}
+        {/* Horizontal Navbar Search Box — top of page */}
         <Col lg={12} className="p-0 m-0">
           <div style={{
             width: '100%',
-            padding: '12px 2px',
+            padding: '0 2px',
             background: 'linear-gradient(135deg, #f8f9ff 0%, #ffffff 100%)',
             borderBottom: 'none',
             position: 'relative'
           }}>
             <div style={{
-              maxWidth: '1000px',
+              maxWidth: '560px',
               margin: '0 auto',
               position: 'relative'
             }}>
@@ -5495,23 +5853,12 @@ useEffect(() => {
                   display: 'flex',
                   alignItems: 'center',
                   background: 'linear-gradient(135deg, #ffffff 0%, #f0f2ff 100%)',
-                  borderRadius: '50px',
-                  boxShadow: '0 8px 32px rgba(79, 75, 126, 0.12)',
+                  borderRadius: '40px',
+                  boxShadow: '0 4px 16px rgba(79, 75, 126, 0.10)',
                   overflow: 'hidden',
-                  border: '2px solid #e0e5ff',
-                  transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
+                  border: '1.5px solid #e0e5ff',
                   cursor: 'text',
-                  padding: '8px 16px'
-                }}
-                onMouseEnter={(e) => {
-                  e.currentTarget.style.boxShadow = '0 12px 40px rgba(79, 75, 126, 0.2)';
-                  e.currentTarget.style.borderColor = '#4F4B7E';
-                  e.currentTarget.style.background = 'linear-gradient(135deg, #ffffff 0%, #e8ecff 100%)';
-                }}
-                onMouseLeave={(e) => {
-                  e.currentTarget.style.boxShadow = '0 8px 32px rgba(79, 75, 126, 0.12)';
-                  e.currentTarget.style.borderColor = '#e0e5ff';
-                  e.currentTarget.style.background = 'linear-gradient(135deg, #ffffff 0%, #f0f2ff 100%)';
+                  padding: '4px 10px'
                 }}
               >
                 {/* Search Icon Left */}
@@ -5520,13 +5867,13 @@ useEffect(() => {
                     display: 'flex',
                     alignItems: 'center',
                     justifyContent: 'center',
-                    padding: '10px 14px',
+                    padding: '6px 8px',
                     color: '#4F4B7E',
                     transition: 'all 0.3s ease',
-                    fontSize: '18px'
+                    fontSize: '16px'
                   }}
                 >
-                  <BiSearchAlt size={20} />
+                  <BiSearchAlt size={16} />
                 </span>
 
                 {/* Search Input with Clear Button */}
@@ -5547,20 +5894,46 @@ useEffect(() => {
                     }}
                     placeholder="Enter Area Name or Pincode"
                     aria-label="Search properties by area or pincode"
+                    className="rent-pondy-search-input"
                     style={{
                       flex: '1',
-                      padding: '12px 10px',
-                      paddingRight: navbarSearchValue ? '36px' : '10px',
-                      fontSize: '15px',
+                      padding: '6px 8px',
+                      paddingRight: navbarSearchValue ? '30px' : '8px',
+                      fontSize: '13px',
                       border: 'none',
                       outline: 'none',
+                      boxShadow: 'none',
                       color: '#111111',
                       background: 'transparent',
+                      backgroundColor: 'transparent',
                       fontWeight: '500',
-                      transition: 'all 0.3s ease',
-                      letterSpacing: '0.4px'
+                      letterSpacing: '0.3px',
+                      WebkitAppearance: 'none',
+                      MozAppearance: 'none',
+                      appearance: 'none',
+                      WebkitTapHighlightColor: 'transparent',
                     }}
                   />
+                  <style>{`
+                    .rent-pondy-search-input,
+                    .rent-pondy-search-input:hover,
+                    .rent-pondy-search-input:focus,
+                    .rent-pondy-search-input:active,
+                    .rent-pondy-search-input:focus-visible {
+                      outline: none !important;
+                      box-shadow: none !important;
+                      border: none !important;
+                      background: transparent !important;
+                      background-color: transparent !important;
+                    }
+                    .rent-pondy-search-input:-webkit-autofill,
+                    .rent-pondy-search-input:-webkit-autofill:hover,
+                    .rent-pondy-search-input:-webkit-autofill:focus {
+                      -webkit-box-shadow: 0 0 0 1000px transparent inset !important;
+                      -webkit-text-fill-color: #111111 !important;
+                      transition: background-color 9999s ease-in-out 0s;
+                    }
+                  `}</style>
                   {/* Clear Button */}
                   {navbarSearchValue && (
                     <button
@@ -5595,6 +5968,35 @@ useEffect(() => {
                     </button>
                   )}
                 </div>
+
+                {/* Filter Funnel Button */}
+                <button
+                  onClick={() => setShowFilterPanel((v) => !v)}
+                  aria-label="Toggle filters"
+                  title="Filters"
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    marginLeft: '4px',
+                    width: '30px',
+                    height: '30px',
+                    borderRadius: '50%',
+                    border: 'none',
+                    cursor: 'pointer',
+                    background: showFilterPanel
+                      ? 'linear-gradient(135deg, #4F4B7E, #6C66A8)'
+                      : 'linear-gradient(135deg, #eef0ff, #ffffff)',
+                    color: showFilterPanel ? '#fff' : '#4F4B7E',
+                    boxShadow: showFilterPanel
+                      ? '0 2px 8px rgba(79,75,126,0.35)'
+                      : '0 1px 4px rgba(79,75,126,0.18)',
+                    transition: 'all 0.2s ease',
+                    flex: '0 0 auto',
+                  }}
+                >
+                  <BiFilterAlt size={15} />
+                </button>
               </div>
 
               {/* Modern Suggestions Dropdown */}
@@ -5632,8 +6034,9 @@ useEffect(() => {
                         transition: 'all 0.2s ease',
                         borderBottom: index !== navbarAreaSuggestions.length - 1 ? '1px solid #f0f0f5' : 'none',
                         display: 'flex',
-                        justifyContent: 'space-between',
-                        alignItems: 'center',
+                        justifyContent: 'flex-start',
+                        alignItems: 'baseline',
+                        gap: '8px',
                         background: navbarKeyboardIndex === index ? '#f8f9ff' : 'transparent',
                         position: 'relative',
                         overflow: 'hidden'
@@ -5644,7 +6047,7 @@ useEffect(() => {
                       }}
                     >
                       <span style={{ color: '#333', fontWeight: 500, fontSize: '13px', letterSpacing: '0.1px' }}>{area}</span>
-                      <span style={{ color: '#a8a8d8', fontSize: '11px', marginLeft: '12px', fontWeight: 400 }}>– {areaPincodeMap[area]}</span>
+                      <span style={{ color: '#333', fontSize: '12px', fontWeight: 500 }}>– {areaPincodeMap[area]}</span>
                     </div>
                   ))}
                 </div>
@@ -5653,14 +6056,809 @@ useEffect(() => {
           </div>
         </Col>
 
-        {/* Horizontal Filter Section */}
-        {searchPerformed && (
-        <Col lg={12} className="p-0 m-0 mt-3 mb-2" data-filter-section>
+        {/* Exclusive Stays running-text banner — sits above "Total Rent
+            Property Available" and taps through to the stays page. */}
+        <Col lg={12} className="p-0 m-0">
+          <div
+            onClick={() => navigate('/exclusive-location')}
+            role="button"
+            tabIndex={0}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter' || e.key === ' ') {
+                e.preventDefault();
+                navigate('/exclusive-location');
+              }
+            }}
+            title="Tap to explore exclusive places to stay"
+            style={{
+              cursor: 'pointer',
+              overflow: 'hidden',
+              whiteSpace: 'nowrap',
+              background: 'linear-gradient(90deg, #FF7043 0%, #FF9800 100%)',
+              borderRadius: '10px',
+              margin: '4px 4px 10px',
+              padding: '9px 0',
+              boxShadow: '0 2px 8px rgba(255, 112, 67, 0.35)',
+            }}
+          >
+            <div
+              style={{
+                display: 'flex',
+                width: 'max-content',
+                animation: 'exclusiveStayMarquee 18s linear infinite',
+              }}
+            >
+              {[0, 1].map((i) => (
+                <span
+                  key={i}
+                  style={{
+                    paddingRight: '48px',
+                    color: '#ffffff',
+                    fontWeight: 700,
+                    fontSize: '14px',
+                    letterSpacing: '0.3px',
+                  }}
+                >
+                  ✨ Exclusive Place to Stay — Resorts · Hotels · Guest Houses&nbsp;&nbsp;·&nbsp;&nbsp;Tap to explore →
+                </span>
+              ))}
+            </div>
+          </div>
+          <style>{`
+            @keyframes exclusiveStayMarquee {
+              from { transform: translateX(0); }
+              to { transform: translateX(-50%); }
+            }
+          `}</style>
+        </Col>
+
+        {/* Rent Property Cards — Chennai gets fixed 4 direction cards
+            (Central/North/South/West) with a drill-down to areas; other
+            cities keep the horizontal scrolling marquee. */}
+        {areaPropertySummary.cards.length > 0 && (
+        <Col lg={12} className="p-0 m-0">
           <div style={{
-            maxWidth: '1000px',
-            margin: '0 auto',
-            padding: '0 12px'
+            fontSize: '13px',
+            fontWeight: 700,
+            color: '#203a43',
+            padding: '0 4px 4px',
           }}>
+            🏠 Total Rent Property Available ({areaPropertySummary.total})
+          </div>
+          <div
+            style={{
+              background: 'linear-gradient(135deg, #e6f0f5 0%, #ffffff 100%)',
+              borderRadius: '10px',
+              padding: '8px',
+            }}
+          >
+            {getActiveBase() === 'CH' ? (
+              // Static single-row layout of all four direction cards. No
+              // marquee — fixed positions so users can tap a direction
+              // without chasing a scroller.
+              <div
+                style={{
+                  display: 'grid',
+                  gridTemplateColumns: 'repeat(4, 1fr)',
+                  gap: '6px',
+                }}
+              >
+                {areaPropertySummary.cards.map((card) => (
+                  <div
+                    key={`ch-dir-${card.area}`}
+                    onClick={() => openChennaiDirection(card.area)}
+                    style={{
+                      padding: '8px 4px',
+                      textAlign: 'center',
+                      background: '#ffffff',
+                      border: '1.5px solid #203a43',
+                      borderRadius: '10px',
+                      boxShadow: '0 2px 8px rgba(32,58,67,0.18)',
+                      cursor: 'pointer',
+                    }}
+                  >
+                    <div style={{ fontSize: '11px', fontWeight: 800, color: '#203a43', marginBottom: '4px' }}>
+                      {card.area} Chennai
+                    </div>
+                    <div style={{
+                      background: '#e6f0f5',
+                      borderRadius: '6px',
+                      padding: '4px 2px',
+                    }}>
+                      <div style={{ fontSize: '1.15rem', fontWeight: 800, color: '#203a43', lineHeight: 1 }}>
+                        {card.count}
+                      </div>
+                      <div style={{ fontSize: '0.65rem', color: '#000', marginTop: '2px', fontWeight: 700 }}>
+                        {card.count === 1 ? 'Property' : 'Properties'}
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <div style={{ overflow: 'hidden', width: '100%' }}>
+                {/* Cards rendered twice so the -50% translate loops seamlessly
+                    (no empty gap when the scroll restarts). */}
+                <div
+                  style={{
+                    display: 'flex',
+                    width: 'max-content',
+                    animation: `propertyCardScroll ${Math.max(areaPropertySummary.cards.length * 6, 24)}s linear infinite`,
+                  }}
+                >
+                {[...areaPropertySummary.cards, ...areaPropertySummary.cards].map((card, idx) => (
+                  <div
+                    key={`${card.pincode}-${idx}`}
+                    onClick={() => openPropertyCard(card)}
+                    style={{
+                      flex: '0 0 auto',
+                      verticalAlign: 'top',
+                      width: '88px',
+                      margin: '0 4px',
+                      padding: '5px 4px',
+                      textAlign: 'center',
+                      background: '#ffffff',
+                      border: '1.5px solid #203a43',
+                      borderRadius: '8px',
+                      boxShadow: '0 2px 8px rgba(32,58,67,0.2)',
+                      whiteSpace: 'normal',
+                      cursor: 'pointer',
+                    }}
+                  >
+                    <div style={{ fontSize: '10px', fontWeight: 700, color: '#203a43', marginBottom: '3px', minHeight: '24px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                      {card.area}
+                    </div>
+                    <div style={{
+                      background: '#e6f0f5',
+                      borderRadius: '5px',
+                      padding: '3px 2px',
+                    }}>
+                      <div style={{ fontSize: '1.05rem', fontWeight: 800, color: '#203a43', lineHeight: 1 }}>
+                        {card.count}
+                      </div>
+                      <div style={{ fontSize: '0.75rem', color: '#000', marginTop: '1px', fontWeight: 700 }}>
+                        {card.count === 1 ? 'Property' : 'Properties'}
+                      </div>
+                    </div>
+                  </div>
+                ))}
+                </div>
+                <style>{`
+                  @keyframes propertyCardScroll {
+                    from { transform: translateX(0); }
+                    to { transform: translateX(-50%); }
+                  }
+                `}</style>
+              </div>
+            )}
+          </div>
+        </Col>
+        )}
+
+        {/* Tenant Assistance Scrolling Cards */}
+        {tenantAssistanceSummary.cards.length > 0 && (
+        <Col lg={12} className="p-0 m-0">
+          <div style={{
+            fontSize: '13px',
+            fontWeight: 700,
+            color: '#11998e',
+            padding: '0 4px 4px',
+          }}>
+            🤝 Total Tenants Available ({tenantAssistanceSummary.total})
+          </div>
+          <div
+            style={{
+              background: 'linear-gradient(135deg, #eafff4 0%, #ffffff 100%)',
+              borderRadius: '10px',
+              padding: '8px 0',
+            }}
+          >
+            <div style={{ overflow: 'hidden', width: '100%' }}>
+              {/* Cards rendered twice so the -50% translate loops seamlessly
+                  (no empty gap when the scroll restarts). */}
+              <div
+                style={{
+                  display: 'flex',
+                  width: 'max-content',
+                  animation: `tenantCardScroll ${Math.max(tenantAssistanceSummary.cards.length * 6, 24)}s linear infinite`,
+                }}
+              >
+              {[...tenantAssistanceSummary.cards, ...tenantAssistanceSummary.cards].map((card, idx) => (
+                <div
+                  key={`${card.pincode}-${idx}`}
+                  onClick={() => openTenantCard(card)}
+                  style={{
+                    flex: '0 0 auto',
+                    verticalAlign: 'top',
+                    width: '88px',
+                    margin: '0 4px',
+                    padding: '5px 4px',
+                    textAlign: 'center',
+                    background: '#ffffff',
+                    border: '1.5px solid #11998e',
+                    borderRadius: '8px',
+                    boxShadow: '0 2px 8px rgba(17,153,142,0.2)',
+                    whiteSpace: 'normal',
+                    cursor: 'pointer',
+                  }}
+                >
+                  <div style={{ fontSize: '10px', fontWeight: 700, color: '#11998e', marginBottom: '3px', minHeight: '24px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                    {card.area}
+                  </div>
+                  <div style={{
+                    background: '#eafff4',
+                    borderRadius: '5px',
+                    padding: '3px 2px',
+                  }}>
+                    <div style={{ fontSize: '1.05rem', fontWeight: 800, color: '#11998e', lineHeight: 1 }}>
+                      {card.count}
+                    </div>
+                    <div style={{ fontSize: '0.75rem', color: '#000', marginTop: '1px', fontWeight: 700 }}>
+                      {card.count === 1 ? 'Tenant' : 'Tenants'}
+                    </div>
+                  </div>
+                </div>
+              ))}
+              </div>
+              <style>{`
+                @keyframes tenantCardScroll {
+                  from { transform: translateX(0); }
+                  to { transform: translateX(-50%); }
+                }
+              `}</style>
+            </div>
+          </div>
+        </Col>
+        )}
+
+        {/* Chennai area picker — opens after tapping a direction card.
+            Lists every area in that direction (one row per area, even when
+            the underlying pincode has no properties yet), with the count
+            shown on the right. Tapping a row hands off to the existing
+            property-list modal below, filtered by the area's pincode. */}
+        {selectedChennaiDirection && !selectedPropertyCard && (() => {
+          const rows = chennaiPincodeRows
+            .filter((row) => row.direction === selectedChennaiDirection)
+            .map((row) => ({
+              area: row.area,
+              pincode: row.pincode,
+              count: marqueePincodeCounts[row.pincode] || 0,
+            }))
+            .sort((a, b) => a.area.localeCompare(b.area));
+
+          return (
+            <div
+              onClick={() => closeChennaiDirection()}
+              style={{
+                position: 'fixed',
+                inset: 0,
+                background: 'rgba(0,0,0,0.5)',
+                zIndex: 2000,
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                padding: '16px',
+              }}
+            >
+              <div
+                onClick={(e) => e.stopPropagation()}
+                style={{
+                  width: '100%',
+                  maxWidth: '420px',
+                  maxHeight: '80vh',
+                  background: '#ffffff',
+                  borderRadius: '14px',
+                  overflow: 'hidden',
+                  display: 'flex',
+                  flexDirection: 'column',
+                  boxShadow: '0 20px 50px rgba(0,0,0,0.3)',
+                }}
+              >
+                <div style={{
+                  background: 'linear-gradient(135deg, #0f2027, #2c5364)',
+                  color: '#fff',
+                  padding: '14px 16px',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'space-between',
+                }}>
+                  <div>
+                    <div style={{ fontSize: '15px', fontWeight: 800 }}>
+                      📍 {selectedChennaiDirection} Chennai
+                    </div>
+                    <div style={{ fontSize: '12px', opacity: 0.9 }}>
+                      {rows.length} {rows.length === 1 ? 'area' : 'areas'}
+                    </div>
+                  </div>
+                  <span
+                    onClick={() => closeChennaiDirection()}
+                    style={{ fontSize: '22px', cursor: 'pointer', lineHeight: 1, fontWeight: 700 }}
+                  >
+                    ✕
+                  </span>
+                </div>
+
+                <div style={{ overflowY: 'auto', padding: '8px 12px' }}>
+                  {rows.length === 0 ? (
+                    <div style={{ padding: '24px 8px', textAlign: 'center', color: '#666' }}>
+                      No areas in {selectedChennaiDirection} Chennai.
+                    </div>
+                  ) : (
+                    rows.map(({ area, pincode, count }, idx) => (
+                      <div
+                        key={`${area}-${pincode}-${idx}`}
+                        onClick={() => {
+                          if (count === 0) return;
+                          // Don't clear the direction — keep it set so the
+                          // browser back button can return the user to the
+                          // area picker after closing the property modal.
+                          openPropertyCard({
+                            pincode,
+                            area,
+                            count,
+                            codes: [pincode],
+                          });
+                        }}
+                        style={{
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'space-between',
+                          padding: '10px 12px',
+                          marginBottom: '8px',
+                          borderRadius: '10px',
+                          border: '1px solid #d9e2e6',
+                          background: count > 0 ? '#f8fbfc' : '#f3f3f3',
+                          cursor: count > 0 ? 'pointer' : 'default',
+                          opacity: count > 0 ? 1 : 0.6,
+                        }}
+                      >
+                        <div style={{ flex: 1, minWidth: 0 }}>
+                          <div style={{ fontSize: '13px', fontWeight: 700, color: '#203a43', whiteSpace: 'normal' }}>
+                            {area}
+                          </div>
+                          <div style={{ fontSize: '11px', color: '#5b7a85', marginTop: '2px' }}>
+                            {pincode}
+                          </div>
+                        </div>
+                        <div style={{
+                          marginLeft: '10px',
+                          background: count > 0 ? '#203a43' : '#9aa9af',
+                          color: '#fff',
+                          borderRadius: '999px',
+                          padding: '2px 10px',
+                          fontSize: '12px',
+                          fontWeight: 700,
+                        }}>
+                          {count}
+                        </div>
+                      </div>
+                    ))
+                  )}
+                </div>
+              </div>
+            </div>
+          );
+        })()}
+
+        {/* Property Brief Popup — opens when user taps a property card.
+            Shows a brief per-property summary (NO contact details) plus a
+            "More" button that routes to the full detail page. */}
+        {selectedPropertyCard && (() => {
+          const recordTs = (item) => {
+            // Pick whichever date-ish field exists on the record. Higher = newer.
+            const candidates = [
+              item.createdAt, item.updatedAt, item.created_at, item.updated_at,
+              item.addedDate, item.postedDate, item.uploadedDate, item.date,
+            ];
+            for (const c of candidates) {
+              if (!c) continue;
+              const t = new Date(c).getTime();
+              if (!isNaN(t)) return t;
+            }
+            // ObjectId fallback: the first 8 hex chars are the creation timestamp.
+            const id = String(item._id || '');
+            if (/^[a-f0-9]{24}$/i.test(id)) {
+              return parseInt(id.slice(0, 8), 16) * 1000;
+            }
+            return 0;
+          };
+          const records = marqueePropertyList
+            .filter((item) => {
+              const pin = String(
+                item.pinCode || item.pincode || item.postalCode ||
+                item.zipCode || item.propertyPincode ||
+                (item.address && (item.address.pincode || item.address.pinCode)) || ''
+              ).trim();
+              return selectedPropertyCard.codes.includes(pin);
+            })
+            .sort((a, b) => recordTs(b) - recordTs(a));
+          return (
+            <div
+              onClick={() => closePropertyCard()}
+              style={{
+                position: 'fixed',
+                inset: 0,
+                background: 'rgba(0,0,0,0.5)',
+                zIndex: 2000,
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                padding: '16px',
+              }}
+            >
+              <div
+                onClick={(e) => e.stopPropagation()}
+                style={{
+                  width: '100%',
+                  maxWidth: '420px',
+                  maxHeight: '80vh',
+                  background: '#ffffff',
+                  borderRadius: '14px',
+                  overflow: 'hidden',
+                  display: 'flex',
+                  flexDirection: 'column',
+                  boxShadow: '0 20px 50px rgba(0,0,0,0.3)',
+                }}
+              >
+                {/* Header */}
+                <div style={{
+                  background: 'linear-gradient(135deg, #0f2027, #2c5364)',
+                  color: '#fff',
+                  padding: '14px 16px',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'space-between',
+                }}>
+                  <div>
+                    <div style={{ fontSize: '15px', fontWeight: 800 }}>
+                      🏠 {selectedPropertyCard.area}
+                    </div>
+                    <div style={{ fontSize: '12px', opacity: 0.9 }}>
+                      Pincode {selectedPropertyCard.pincode} • {records.length}{' '}
+                      {records.length === 1 ? 'Property' : 'Properties'}
+                    </div>
+                  </div>
+                  <span
+                    onClick={() => closePropertyCard()}
+                    style={{ fontSize: '22px', cursor: 'pointer', lineHeight: 1, fontWeight: 700 }}
+                  >
+                    ✕
+                  </span>
+                </div>
+
+                {/* Body */}
+                <div style={{ overflowY: 'auto', padding: '12px' }}>
+                  {records.length === 0 ? (
+                    <div style={{ textAlign: 'center', color: '#888', padding: '20px' }}>
+                      No properties found.
+                    </div>
+                  ) : (
+                    records.map((item, idx) => {
+                      const rentId = item.rentId || item.Rent_Id || item.Ra_Id || item._id;
+                      const propertyMode = item.propertyMode || 'Residential';
+                      const propertyType = item.propertyType || item.type || 'Property';
+                      const bedrooms = item.bedrooms || item.bhk || item.BHK || null;
+                      const totalArea = item.totalArea || item.area || item.builtUpArea || null;
+                      const areaUnit = item.areaUnit || (totalArea ? 'Sq.ft' : '');
+                      const rent = item.rent || item.price || item.monthlyRent || null;
+                      const rentType = item.rentType || (rent ? 'Monthly' : '');
+                      const locality = item.area || item.locality || item.localityName || '';
+                      const city = item.city || item.cityName || '';
+                      const pin = item.pinCode || item.pincode || item.postalCode || '';
+                      return (
+                        <div
+                          key={item._id || rentId || idx}
+                          style={{
+                            border: '1px solid #d6e0e6',
+                            borderRadius: '10px',
+                            padding: '10px 12px',
+                            marginBottom: '10px',
+                            background: '#f8fbfd',
+                          }}
+                        >
+                          <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '6px' }}>
+                            <span style={{ fontWeight: 800, color: '#203a43', fontSize: '14px' }}>
+                              {propertyMode} • {propertyType}
+                            </span>
+                            {rentId && (
+                              <span style={{ fontSize: '11px', color: '#888' }}>
+                                ID {String(rentId).slice(-6)}
+                              </span>
+                            )}
+                          </div>
+                          <div style={{ fontSize: '13px', color: '#333', lineHeight: 1.6 }}>
+                            <div>📍 {locality || 'N/A'}{city ? `, ${city}` : ''}{pin ? ` - ${pin}` : ''}</div>
+                            {bedrooms && <div>🛏️ {bedrooms} BHK</div>}
+                            {totalArea && <div>📐 {totalArea} {areaUnit}</div>}
+                            {rent && (
+                              <div>
+                                💰 ₹{Number(rent).toLocaleString('en-IN')}
+                                {rentType ? ` / ${rentType}` : ''}
+                              </div>
+                            )}
+                          </div>
+                          <button
+                            onClick={() => {
+                              if (rentId) {
+                                setSelectedPropertyCard(null);
+                                navigate(`/detail/${rentId}`, { state: { phoneNumber } });
+                              }
+                            }}
+                            disabled={!rentId}
+                            style={{
+                              marginTop: '8px',
+                              background: rentId ? '#203a43' : '#aaa',
+                              color: '#fff',
+                              border: 'none',
+                              borderRadius: '6px',
+                              padding: '5px 14px',
+                              fontSize: '12px',
+                              fontWeight: 700,
+                              cursor: rentId ? 'pointer' : 'not-allowed',
+                            }}
+                          >
+                            More ▸
+                          </button>
+                        </div>
+                      );
+                    })
+                  )}
+                </div>
+              </div>
+            </div>
+          );
+        })()}
+
+        {/* Tenant Assistance Details Popup */}
+        {selectedTenantCard && (() => {
+          const records = tenantAssistanceList.filter((item) => {
+            const pin = String(
+              item.pinCode || item.pincode || item.postalCode || item.zipCode || ''
+            ).trim();
+            return selectedTenantCard.codes.includes(pin);
+          });
+          return (
+            <div
+              onClick={() => { setExpandedTenant(null); closeTenantCard(); }}
+              style={{
+                position: 'fixed',
+                inset: 0,
+                background: 'rgba(0,0,0,0.5)',
+                zIndex: 2000,
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                padding: '16px',
+              }}
+            >
+              <div
+                onClick={(e) => e.stopPropagation()}
+                style={{
+                  width: '100%',
+                  maxWidth: '420px',
+                  maxHeight: '80vh',
+                  background: '#ffffff',
+                  borderRadius: '14px',
+                  overflow: 'hidden',
+                  display: 'flex',
+                  flexDirection: 'column',
+                  boxShadow: '0 20px 50px rgba(0,0,0,0.3)',
+                }}
+              >
+                {/* Header */}
+                <div style={{
+                  background: 'linear-gradient(135deg, #11998e, #38ef7d)',
+                  color: '#fff',
+                  padding: '14px 16px',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'space-between',
+                }}>
+                  <div>
+                    <div style={{ fontSize: '15px', fontWeight: 800 }}>
+                      🤝 {selectedTenantCard.area}
+                    </div>
+                    <div style={{ fontSize: '12px', opacity: 0.9 }}>
+                      Pincode {selectedTenantCard.pincode} • {records.length}{' '}
+                      {records.length === 1 ? 'Tenant' : 'Tenants'}
+                    </div>
+                  </div>
+                  <span
+                    onClick={() => { setExpandedTenant(null); closeTenantCard(); }}
+                    style={{ fontSize: '22px', cursor: 'pointer', lineHeight: 1, fontWeight: 700 }}
+                  >
+                    ✕
+                  </span>
+                </div>
+
+                {/* Body */}
+                <div style={{ overflowY: 'auto', padding: '12px' }}>
+                  {records.length === 0 ? (
+                    <div style={{ textAlign: 'center', color: '#888', padding: '20px' }}>
+                      No tenant details found.
+                    </div>
+                  ) : (
+                    records.map((item, idx) => (
+                      <div
+                        key={item._id || item.Ra_Id || idx}
+                        style={{
+                          border: '1px solid #e0e5ff',
+                          borderRadius: '10px',
+                          padding: '10px 12px',
+                          marginBottom: '10px',
+                          background: '#f8fffb',
+                        }}
+                      >
+                        <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '6px' }}>
+                          <span style={{ fontWeight: 800, color: '#11998e', fontSize: '14px' }}>
+                            {item.raName || 'Tenant'}
+                          </span>
+                          <span style={{ fontSize: '12px', color: '#888' }}>
+                            RA #{item.Ra_Id || 'N/A'}
+                          </span>
+                        </div>
+                        <div style={{ fontSize: '13px', color: '#333', lineHeight: 1.6 }}>
+                          {(() => {
+                            const contactKey = item._id || item.Ra_Id;
+                            const revealed = revealedTenantContacts.includes(contactKey);
+                            return revealed ? (
+                              <div>
+                                📞{' '}
+                                <a
+                                  href={`tel:${item.phoneNumber}`}
+                                  style={{ color: '#11998e', fontWeight: 700, textDecoration: 'none' }}
+                                >
+                                  {item.phoneNumber || 'N/A'}
+                                </a>
+                              </div>
+                            ) : (
+                              <button
+                                onClick={() => handleViewTenantContact(item)}
+                                style={{
+                                  background: '#11998e',
+                                  color: '#fff',
+                                  border: 'none',
+                                  borderRadius: '6px',
+                                  padding: '5px 12px',
+                                  fontSize: '12px',
+                                  fontWeight: 700,
+                                  cursor: 'pointer',
+                                  margin: '2px 0 4px',
+                                }}
+                              >
+                                📞 View Contact ({tenantContactPoints} pts)
+                              </button>
+                            );
+                          })()}
+                          <div>🏠 {item.propertyMode || 'N/A'} • {item.propertyType || 'N/A'}</div>
+                          <div>📍 {item.area || 'N/A'}, {item.city || 'N/A'} - {item.pinCode || item.pincode || 'N/A'}</div>
+                          <div>
+                            💰 ₹{item.minPrice || 'N/A'} – ₹{item.maxPrice || 'N/A'}
+                          </div>
+
+                          {(() => {
+                            const tenantKey = item._id || item.Ra_Id || idx;
+                            const isExpanded = expandedTenant === tenantKey;
+                            return (
+                              <>
+                                <button
+                                  onClick={() =>
+                                    setExpandedTenant(isExpanded ? null : tenantKey)
+                                  }
+                                  style={{
+                                    background: 'transparent',
+                                    color: '#11998e',
+                                    border: '1px solid #11998e',
+                                    borderRadius: '6px',
+                                    padding: '4px 12px',
+                                    fontSize: '12px',
+                                    fontWeight: 700,
+                                    cursor: 'pointer',
+                                    marginTop: '8px',
+                                  }}
+                                >
+                                  {isExpanded ? '▲ Less' : '▼ More'}
+                                </button>
+
+                                {isExpanded && (
+                                  <div
+                                    style={{
+                                      marginTop: '8px',
+                                      paddingTop: '8px',
+                                      borderTop: '1px dashed #b9e8d4',
+                                    }}
+                                  >
+                                    <div>🛏️ Bedrooms: {item.bedrooms || 'N/A'} BHK</div>
+                                    <div>
+                                      📐 Min. Area: {item.totalArea || 'N/A'}{' '}
+                                      {item.areaUnit || ''}
+                                    </div>
+                                    <div>🧭 Facing: {item.facing || 'N/A'}</div>
+                                    <div>
+                                      🏙️ City: {item.city || 'N/A'} - {item.pinCode || item.pincode || 'N/A'}
+                                    </div>
+                                    <div>
+                                      📋 Plan: {item.planName || item.planType || 'N/A'}
+                                    </div>
+                                    <div style={{ marginTop: '4px' }}>
+                                      📝 Description:
+                                    </div>
+                                    <div style={{ color: '#555' }}>
+                                      {item.description || 'No description available.'}
+                                    </div>
+                                  </div>
+                                )}
+                              </>
+                            );
+                          })()}
+                        </div>
+                      </div>
+                    ))
+                  )}
+                </div>
+              </div>
+            </div>
+          );
+        })()}
+
+        {/* Filter Popup — mobile-sized bottom sheet */}
+        {showFilterPanel && (
+        <div
+          data-filter-section
+          onClick={() => setShowFilterPanel(false)}
+          style={{
+            position: 'fixed',
+            inset: 0,
+            background: 'rgba(0,0,0,0.5)',
+            zIndex: 1500,
+            display: 'flex',
+            alignItems: 'flex-end',
+            justifyContent: 'center',
+            overflowY: 'auto',
+          }}
+        >
+          <div
+            onClick={(e) => e.stopPropagation()}
+            style={{
+              position: 'relative',
+              background: '#fff',
+              borderRadius: '16px 16px 0 0',
+              maxWidth: '420px',
+              width: '100%',
+              padding: '16px 12px 12px',
+              boxShadow: '0 -8px 24px rgba(0,0,0,0.18)',
+              maxHeight: '85vh',
+              overflowY: 'auto',
+            }}
+          >
+            {/* Drag handle bar */}
+            <div
+              style={{
+                width: '40px',
+                height: '4px',
+                borderRadius: '4px',
+                background: '#d0d0d0',
+                margin: '0 auto 10px',
+              }}
+            />
+            <button
+              onClick={() => setShowFilterPanel(false)}
+              aria-label="Close filters"
+              style={{
+                position: 'absolute',
+                top: '8px',
+                right: '10px',
+                background: 'none',
+                border: 'none',
+                fontSize: '20px',
+                cursor: 'pointer',
+                color: '#666',
+                lineHeight: 1,
+                padding: 0,
+              }}
+            >
+              ×
+            </button>
             {/* Filter Header Row */}
             <div style={{
               display: 'flex',
@@ -7155,7 +8353,7 @@ useEffect(() => {
               }
             `}</style>
           </div>
-        </Col>
+        </div>
         )}
 
         <style>{`
@@ -7222,7 +8420,7 @@ useEffect(() => {
     width: '70px',
     position: 'fixed',
     right: 'calc(50% - 187.5px + 10px)',
-    bottom: '15%',
+    bottom: '8%',
     zIndex: '1',
     cursor: 'pointer',
   }}
@@ -7275,7 +8473,7 @@ useEffect(() => {
           className="btn btn-light border rounded-2 py-2 d-flex align-items-center justify-content-start ps-3 mb-3"
           onClick={() => {
             setIsSearchMenuOpen(false);
-            navigate(`/tenant-search`);
+            setIsTenantSearchOpen(true);
           }}
         >
           <FaUsers className="me-2" /> Tenant Search
@@ -7352,7 +8550,7 @@ useEffect(() => {
           {/* Tenant Search */}
           <button style={{background:"#DFDFDF" , color:"#5E5E5E" , fontWeight:600 , fontSize:"15px"}}
           className="btn btn-light border rounded-2 py-2 d-flex align-items-center justify-content-start ps-3 mb-3"
-                onClick={() => navigate(`/tenant-search`)}
+                onClick={() => setIsTenantSearchOpen(true)}
 >
             <FaUsers className="me-2" /> Tenant Search
           </button>
@@ -8322,7 +9520,7 @@ useEffect(() => {
           fontSize: '14px'
         }}
         onClick={() => {
-          navigate('/');
+          navigate(baseToPath(getActiveBase()));
         }}
       >
         HOME
@@ -9944,7 +11142,7 @@ useEffect(() => {
                           </div>
                           <h6 className="m-0 mt-2">
                             <span style={{ fontSize: '15px', color: '#4F4B7E', fontWeight: 600 }}>
-                              ₹ {typeof property.rentalAmount === 'string' && property.rentalAmount === 'On Demand' ? 'On Demand' : formatPrice(property.rentalAmount) || 'N/A'}
+                              {property.callForRent ? 'Call Owner' : <>₹ {typeof property.rentalAmount === 'string' && property.rentalAmount === 'On Demand' ? 'On Demand' : formatPrice(property.rentalAmount) || 'N/A'}</>}
                             </span>
                             <span style={{ color: '#4F4B7E', fontSize: '12px', marginLeft: "8px" }}>/ {property.rentType || "N/A"}</span>
                           </h6>
@@ -10042,7 +11240,7 @@ useEffect(() => {
                           </div>
                           <h6 className="m-0 mt-2">
                             <span style={{ fontSize: '15px', color: '#4F4B7E', fontWeight: 600 }}>
-                              ₹ {typeof property.rentalAmount === 'string' && property.rentalAmount === 'On Demand' ? 'On Demand' : formatPrice(property.rentalAmount) || 'N/A'}
+                              {property.callForRent ? 'Call Owner' : <>₹ {typeof property.rentalAmount === 'string' && property.rentalAmount === 'On Demand' ? 'On Demand' : formatPrice(property.rentalAmount) || 'N/A'}</>}
                             </span>
                             <span style={{ color: '#4F4B7E', fontSize: '12px', marginLeft: "8px" }}>/ {property.rentType || "N/A"}</span>
                           </h6>
@@ -10259,12 +11457,14 @@ justifyContent: "space-between",
     letterSpacing: '1px',
   }}
 >
-   <img src={indianprice} alt="" width={8} className="me-2" />
-  {typeof property.rentalAmount === 'string' && property.rentalAmount === 'On Demand'
-    ? 'On Demand'
-    : property.rentalAmount
-      ? formatPrice(property.rentalAmount)
-      : 'N/A'}
+  {property.callForRent ? null : <img src={indianprice} alt="" width={8} className="me-2" />}
+  {property.callForRent
+    ? 'Call Owner'
+    : typeof property.rentalAmount === 'string' && property.rentalAmount === 'On Demand'
+      ? 'On Demand'
+      : property.rentalAmount
+        ? formatPrice(property.rentalAmount)
+        : 'N/A'}
 </span>
 
          <span style={{ color: '#4F4B7E', fontSize: '13px', marginLeft: "5px", fontSize: '11px' }}>
@@ -10290,11 +11490,17 @@ justifyContent: "space-between",
       </Row>
 
       {/* Tenant Assistance Modal */}
-      <TenantAssistanceModal 
+      <TenantAssistanceModal
         isOpen={showTenantAssistanceModal}
         onClose={() => setShowTenantAssistanceModal(false)}
         filterData={capturedFilterData}
         phoneNumber={phoneNumber}
+      />
+
+      {/* Tenant Search Modal */}
+      <TenantSearchModal
+        isOpen={isTenantSearchOpen}
+        onClose={() => setIsTenantSearchOpen(false)}
       />
 
     </Container>

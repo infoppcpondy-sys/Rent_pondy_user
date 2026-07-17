@@ -803,12 +803,14 @@ const linkStyle = (key) => ({
                                    {/* <FaRupeeSign className="me-2" color="#4F4B7E"/> */}
                                    <img src={
                                      indianprice
-                                   } alt="" width={8}  className="me-2"/>
+                                   } alt="" width={8}  className="me-2" style={{ display: user.callForRent ? 'none' : undefined }}/>
                                    {/* {property.price ? property.price.toLocaleString('en-IN') : 'N/A'} */}
-                                    {user.rentalAmount
-                           ? formatPrice(user.rentalAmount)
-                           : 'N/A'}
-                                 </span> 
+                                    {user.callForRent
+                           ? 'Call Owner'
+                           : user.rentalAmount
+                             ? formatPrice(user.rentalAmount)
+                             : 'N/A'}
+                                 </span>
                       <span style={{ color: '#4F4B7E', fontSize: '13px', marginLeft: "5px", fontSize: '11px' }}>
                             / {user.rentType || "N/A"}
                            </span>
@@ -1063,10 +1065,12 @@ onClick={() => handleCardClick(user.rentId)}
                   {/* <FaRupeeSign className="me-2" color="#4F4B7E"/> */}
                   <img src={
                     indianprice
-                  } alt="" width={8}  className="me-2"/>
-     {user.rentalAmount
-          ? formatPrice(user.rentalAmount)
-          : 'N/A'}                 </span> 
+                  } alt="" width={8}  className="me-2" style={{ display: user.callForRent ? 'none' : undefined }}/>
+     {user.callForRent
+          ? 'Call Owner'
+          : user.rentalAmount
+            ? formatPrice(user.rentalAmount)
+            : 'N/A'}                 </span>
            <span style={{ color: '#4F4B7E', fontSize: '13px', marginLeft: "5px", fontSize: '11px' }}>
                             / {user.rentType || "N/A"}
                            </span>

@@ -5,6 +5,7 @@
 
 import React, { useEffect, useState , useRef} from "react";
 import { useLocation, useNavigate, useParams } from "react-router-dom";
+import { getActiveBase, baseToPath } from "../utils/cityBase";
 import axios from "axios";
 import { Swiper, SwiperSlide } from "swiper/react";
 import { Navigation, Pagination } from "swiper/modules";
@@ -1831,15 +1832,20 @@ const handleHeartClick = async () => {
 //   : "N/A";
 
 
-  // Format price with commas (e.g., 14,00,000 or "On Demand")
+  // Format price with commas (e.g., 14,00,000 or "On Demand"). When callForRent
+  // is set, ignore the numeric amount entirely and show the prompt instead.
   const formattedPrice =
-    propertyDetails?.rentalAmount && typeof propertyDetails.rentalAmount === 'number'
-      ? new Intl.NumberFormat('en-IN').format(propertyDetails.rentalAmount)
-      : propertyDetails?.rentalAmount || 'N/A';
+    propertyDetails?.callForRent
+      ? 'Call Owner'
+      : propertyDetails?.rentalAmount && typeof propertyDetails.rentalAmount === 'number'
+        ? new Intl.NumberFormat('en-IN').format(propertyDetails.rentalAmount)
+        : propertyDetails?.rentalAmount || 'N/A';
 
-  // Convert price to words (e.g., "14 Lakhs")
+  // Convert price to words (e.g., "14 Lakhs"). Skip when callForRent is set.
   const priceInWords =
-    propertyDetails?.rentalAmount && typeof propertyDetails.rentalAmount === 'number'
+    propertyDetails?.callForRent
+      ? ''
+      : propertyDetails?.rentalAmount && typeof propertyDetails.rentalAmount === 'number'
       ? (() => {
           const rentalAmount = propertyDetails.rentalAmount;
           if (rentalAmount >= 10000000) {
@@ -3702,7 +3708,7 @@ const isMatched = isFieldMatched(detail.label, detail.value, matchedFields);
         style={{background:"#CDC9F9" , color:"#fff" , borderRadius:"25px" , width:"25%", border:"none"}}
         ><IoChevronBackSharp size={18}/>
  Back</button>
-        <button className="d-flex align-items-center justify-content-around ps-3  p-2" onClick={() => navigate('/mobileviews')} 
+        <button className="d-flex align-items-center justify-content-around ps-3  p-2" onClick={() => navigate(baseToPath(getActiveBase()))}
                style={{background:"#CDC9F9" , color:"#fff" , borderRadius:"25px" , width:"25%", border:"none"}}
         ><TiHome />
 Home</button>

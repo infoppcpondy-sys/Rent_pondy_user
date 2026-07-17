@@ -2,11 +2,13 @@
 
 
 import React, { useRef, useEffect } from "react";
+import { useNavigate } from "react-router-dom";
 import AnimatedLogo from "./AnimatedLogo";
 
 const TopBar = ({ items, setActive, activeItem }) => {
   const topBarRef = useRef(null);
   const isScrollingRef = useRef(false);
+  const navigate = useNavigate();
 
   useEffect(() => {
     const topBarElement = topBarRef.current;
@@ -92,9 +94,9 @@ const TopBar = ({ items, setActive, activeItem }) => {
       <ul  className="list-unstyled d-flex mb-0"
         style={{
           display: "flex",
-          gap: "10px",
-          padding: "10px",
-          paddingRight: "20px", // Ensures the last item has breathing room
+          gap: "8px",
+          padding: "8px 10px",
+          paddingRight: "18px", // Ensures the last item has breathing room
           margin: "0",
           listStyle: "none",
           paddingBottom:"0px",
@@ -104,7 +106,7 @@ const TopBar = ({ items, setActive, activeItem }) => {
         {/* Original items + duplicated items for seamless looping */}
         {[...items, ...items].map((item, index) => (
           <li
-          className={`text-center px-3 ${activeItem === item.content ? "text-primary" : "text-secondary"}`}
+          className={`text-center px-2 ${activeItem === item.content ? "text-primary" : "text-secondary"}`}
 
             key={`${item.content}-${index}`}
             style={{
@@ -115,20 +117,38 @@ const TopBar = ({ items, setActive, activeItem }) => {
               alignItems: "center",
               flexShrink: 0, // Prevents shrinking
             }}
-            onClick={() => setActive(item.content)}
+            onClick={() => {
+              if (item.route) {
+                navigate(item.route);
+              } else {
+                setActive(item.content);
+              }
+            }}
           >
-            {item.isAnimated ? (
+            {item.iconNode ? (
+              <span
+                style={{
+                  width: "24px",
+                  height: "24px",
+                  display: "inline-flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                }}
+              >
+                {item.iconNode}
+              </span>
+            ) : item.isAnimated ? (
               <AnimatedLogo logoImage={item.icon} brandColor="#28a745" />
             ) : (
               <img
                 src={item.icon}
                 alt={item.text}
-                style={{ width: "28px", height: "28px", objectFit: "cover" }}
+                style={{ width: "24px", height: "24px", objectFit: "cover" }}
               />
             )}
-            <span 
+            <span
                style={{
-                marginTop: "5px",
+                marginTop: "4px",
                 color: activeItem === item.content ? "#2F4F4F" : "grey", // 👈 Text color changes if active
                 fontSize: "10px",
                 paddingBottom: "3px",

@@ -1,4 +1,6 @@
-import React, { useState, useEffect, useRef } from "react";
+import React, { useState, useEffect, useMemo, useRef } from "react";
+import { getChennaiAreaPincodeMap, getDefaultCity } from "../utils/areaPincode";
+import { getActiveBase } from "../utils/cityBase";
 import axios from "axios";
 import { Button } from "react-bootstrap";
 import { useLocation, useNavigate, useParams } from "react-router-dom";
@@ -195,9 +197,9 @@ const [formData, setFormData] = useState({
     western: '',
     carParking: '',
     rentalPropertyAddress: '',
-    country: '',
+    country: 'India',
     state: '',
-    city: '',
+    city: getDefaultCity(),
     district: '',
     area: '',
     streetName: '',
@@ -225,8 +227,9 @@ const [formData, setFormData] = useState({
     createdAt:"",
   });
 
-  // Area to Pincode mapping
-  const areaPincodeMap = {
+  // Pondicherry area -> pincode list used by the autosuggest. CH users
+  // swap this out for the Chennai list (see useMemo below).
+  const PONDY_AREA_PINCODE_MAP = {
     "Abishegapakkam": "605007",
     "Ariyankuppam": "605007",
     "Arumbarthapuram": "605110",
@@ -299,6 +302,14 @@ const [formData, setFormData] = useState({
     "Viranam": "605106",
     "Yanam": "533464",
   };
+  const areaPincodeMap = useMemo(
+    () => (getActiveBase() === 'CH' ? getChennaiAreaPincodeMap() : PONDY_AREA_PINCODE_MAP),
+    []
+  );
+
+  // Cross-city guard. Shown if the loaded property's base disagrees with
+  // the active city scope (PY user opened a CH record, or vice versa).
+  const [crossCityBlock, setCrossCityBlock] = useState(null);
 
   // Area suggestions state
   const [areaSuggestions, setAreaSuggestions] = useState([]);
@@ -627,7 +638,7 @@ const handleClear = () => {
     latitude: '',
     longitude: '',
     pinCode: '',
-    city: '',
+    city: getDefaultCity(),
     area: '',
     nagar: '',
     streetName: '',
@@ -738,6 +749,16 @@ const handleClear = () => {
       }
     }
 
+    // District is required (custom dropdown — no HTML5 `required` to rely on).
+    if (!formData.district || String(formData.district).trim() === '') {
+      setMessage({ text: `District field is required. Please fill this field.`, type: "error" });
+      setTimeout(() => {
+        const districtEl = document.querySelector('select[name="district"]')?.closest('.form-group');
+        if (districtEl) districtEl.scrollIntoView({ behavior: "smooth", block: "center" });
+      }, 100);
+      return;
+    }
+
     // Check character limit for Property Description
     if (formData.description && formData.description.length > 200) {
       setMessage({ text: `Property description exceeds 200 characters. Current: ${formData.description.length} characters. Please reduce it before previewing.`, type: "error" });
@@ -795,6 +816,14 @@ const formattedUpdatedAt = formData.updatedAt
       try {
         const response = await axios.get(`${process.env.REACT_APP_API_URL}/fetch-data?rentId=${rentId}`);
         const data = response.data.user;
+        // Block the edit if a PY/CH user opened a record from the other
+        // city — show a guard instead of populating the form.
+        const activeScope = getActiveBase();
+        const recordBase = data && data.base ? data.base : 'PY';
+        if (recordBase !== activeScope) {
+          setCrossCityBlock({ recordBase, activeScope });
+          return;
+        }
         setPhotos(
           Array.isArray(data.photos) 
             // ? data.photos.map(photo => (typeof photo === "string" ? photo : photo.photo)) 
@@ -829,7 +858,7 @@ const formattedUpdatedAt = formData.updatedAt
           western: data.western || '',
           carParking: data.carParking || '',
           rentalPropertyAddress: data.rentalPropertyAddress || '',
-          country: data.country || '',
+          country: data.country || 'India',
           state: data.state || '',
           city: data.city || '',
           district: data.district || '',
@@ -1001,8 +1030,8 @@ const formattedUpdatedAt = formData.updatedAt
     // { icon: <BiMap />, label: "Location", value: "New York, USA" },
     { icon: fieldIcons.country, label: "Country", value: formData.country },
     { icon: fieldIcons.state, label: "State", value: formData.state },
-    { icon: fieldIcons.city, label: "City", value: formData.city },
     { icon: fieldIcons.district, label: "District", value:  formData.district},
+    { icon: fieldIcons.city, label: "City", value: formData.city },
     { icon: fieldIcons.area, label: "Area", value: formData.area },
     
     { icon: fieldIcons.nagar, label: "Nagar", value: formData.nagar },
@@ -1702,7 +1731,7 @@ const shouldHideField = (fieldName) =>
   
   //     setMessage(response.data.message);
   //     setTimeout(() => {
-  //       navigate('/mobileviews');
+  //       navigate('/pondicherry');
   //     }, 2000);
   
   //   } catch (error) {
@@ -2256,6 +2285,30 @@ const handleEdit = () => {
 };
 
 const isReadOnly = false; // set true to make it readonly
+
+  // City-scope guard. Shown before the form when the loaded property
+  // doesn't belong to the active city scope.
+  if (crossCityBlock) {
+    const recordCity = crossCityBlock.recordBase === 'CH' ? 'Chennai' : 'Pondicherry';
+    const myCity = crossCityBlock.activeScope === 'CH' ? 'Chennai' : 'Pondicherry';
+    return (
+      <div className="container py-5">
+        <div className="alert alert-warning text-center shadow-sm" style={{ maxWidth: 520, margin: '40px auto', borderRadius: 12 }}>
+          <h4 className="mb-3">Wrong city for this property</h4>
+          <p className="mb-2">
+            This property belongs to <strong>{recordCity}</strong>, but you
+            are browsing <strong>{myCity}</strong>.
+          </p>
+          <p className="mb-3 text-muted" style={{ fontSize: 14 }}>
+            Switch to {recordCity} from the city tabs at the top, then re-open it.
+          </p>
+          <button className="btn btn-primary" onClick={() => window.history.back()}>
+            Go back
+          </button>
+        </div>
+      </div>
+    );
+  }
 
   return (
          <motion.div
@@ -4709,28 +4762,96 @@ onClick={() => removePhoto(index)}>
 
     </label>
   </div>
+  {/* district */}
+   <div className="form-group" >
+      <label style={{width:'100%'}}>
+      {/* <label>District</label> */}
+
+        <div
+  style={{
+    display: "flex",
+    alignItems: "stretch", // <- Stretch children vertically
+    width: "100%",
+    boxShadow: "0 4px 10px rgba(38, 104, 190, 0.1)",
+  }} className="rounded-2"
+>        <span
+    style={{
+      display: "flex",
+      alignItems: "center",
+      justifyContent: "center",
+      padding: "0 14px",
+      borderRight: "1px solid #4F4B7E",
+      background: "#fff", // optional
+    }}
+  >
+                {fieldIcons.district || <FaHome />}<sup style={{ color: 'red' }}>*</sup>
+              </span>     <div style={{ flex: "1" }}>
+            <select
+              name="district"
+              value={formData.district || ""}
+              onChange={handleFieldChange}
+              className="form-control"
+              style={{ display: "none" }} // Hide the default <select> dropdown
+            >
+              <option value="">Select District</option>
+              {dataList.district?.map((option, index) => (
+                <option key={index} value={option}>
+                  {option}
+                </option>
+              ))}
+            </select>
+
+            <button
+              className="m-0"
+              type="button"
+              onClick={() => toggleDropdown("district")}
+              style={{
+                cursor: "pointer",
+                border:"none",
+                padding: "12px",
+                background: "#fff",
+                borderRadius: "5px",
+                width: "100%",
+                textAlign: "left",
+                color: "grey",
+                 position: "relative",
+                boxShadow: '0 4px 10px rgba(38, 104, 190, 0.1)',
+}}            >
+
+              {formData.district || "Select District"}
+               {formData.district && (
+            <GoCheckCircleFill style={{ position: "absolute", right: "10px", top: "50%", transform: "translateY(-50%)", color: "green" }} />
+          )}
+            </button>
+
+            {renderDropdown("district")}
+          </div>
+        </div>
+      </label>
+    </div>
+
   {/* City */}
 
 <div className="form-group">
   {/* <label>City:</label> */}
-  <div className="input-card p-0 rounded-2" style={{ 
-    display: 'flex', 
-    alignItems: 'center', 
-    justifyContent: 'space-between', 
-    width: '100%',  
+  <div className="input-card p-0 rounded-2" style={{
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    width: '100%',
     boxShadow: '0 4px 10px rgba(38, 104, 190, 0.1)',
     background: "#fff",
     paddingRight: "10px"
   }}>
-    
-  
+
+
     <div
   style={{
     display: "flex",
     alignItems: "stretch", // <- Stretch children vertically
     width: "100%",
   }}
-> 
+>
      <span
     style={{
       display: "flex",
@@ -4757,74 +4878,6 @@ onClick={() => removePhoto(index)}>
       <GoCheckCircleFill style={{ color: "green", margin: "5px" }} />
     )}
 </div></div>
-
-  {/* district */}
-   <div className="form-group" >
-      <label style={{width:'100%'}}>
-      {/* <label>District</label> */}
-  
-        <div
-  style={{
-    display: "flex",
-    alignItems: "stretch", // <- Stretch children vertically
-    width: "100%",
-    boxShadow: "0 4px 10px rgba(38, 104, 190, 0.1)",
-  }} className="rounded-2"
->        <span
-    style={{
-      display: "flex",
-      alignItems: "center",
-      justifyContent: "center",
-      padding: "0 14px",
-      borderRight: "1px solid #4F4B7E",
-      background: "#fff", // optional
-    }}
-  >
-                {fieldIcons.district || <FaHome />}
-              </span>     <div style={{ flex: "1" }}>
-            <select
-              name="district"
-              value={formData.district || ""}
-              onChange={handleFieldChange}
-              className="form-control"
-              style={{ display: "none" }} // Hide the default <select> dropdown
-            >
-              <option value="">Select District</option>
-              {dataList.district?.map((option, index) => (
-                <option key={index} value={option}>
-                  {option}
-                </option>
-              ))}
-            </select>
-  
-            <button
-              className="m-0"
-              type="button"
-              onClick={() => toggleDropdown("district")}
-              style={{
-                cursor: "pointer",
-                border:"none",
-                padding: "12px",
-                background: "#fff",
-                borderRadius: "5px",
-                width: "100%",
-                textAlign: "left",
-                color: "grey",
-                 position: "relative",
-                boxShadow: '0 4px 10px rgba(38, 104, 190, 0.1)',   
-}}            >
-            
-              {formData.district || "Select District"}
-               {formData.district && (
-            <GoCheckCircleFill style={{ position: "absolute", right: "10px", top: "50%", transform: "translateY(-50%)", color: "green" }} />
-          )} 
-            </button>
-  
-            {renderDropdown("district")}
-          </div>
-        </div>
-      </label>
-    </div>
 
   {/* area */}
   <div className="form-group">

@@ -1,10 +1,11 @@
-
+﻿
 
 
 
 
 import React, { useState, useEffect } from "react";
 import { useNavigate, useParams } from "react-router-dom";
+import { getActiveBase, baseToPath } from "../../utils/cityBase";
 import axios from "axios";
 import { MdCall } from 'react-icons/md';
 import profil from '../../Assets/xd_profile.png'
@@ -192,7 +193,7 @@ useEffect(() => {
 const navigate = useNavigate();
 
 const handlePageNavigation = () => {
-  navigate('/mobileviews'); // Redirect to the desired path
+  navigate(baseToPath(getActiveBase())); // Redirect to the active city
 };
   return (
     <div className="container d-flex align-items-center justify-content-center p-0">

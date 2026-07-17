@@ -4,7 +4,7 @@ import React, { useEffect, useState , useRef } from 'react';
 import TopBar from './TopBar';
 import BottomNavigation from './BottomNavigation';
 import AnimatedLogo from './AnimatedLogo';
-import { FaHome, FaBuilding, FaPlusSquare, FaUser, FaEllipsisH } from 'react-icons/fa';
+import { FaHome, FaBuilding, FaPlusSquare, FaUser, FaEllipsisH, FaUmbrellaBeach } from 'react-icons/fa';
 import logo from '../Assets/ppc_sentyourinterest.png';
 import logo2 from '../Assets/allprop50.png';
 import logo3 from '../Assets/bl50.png';
@@ -38,6 +38,7 @@ import ZeroView from './ZeroView';
 import MyProperty from './MyProperty';
 import PropertyVideos from './PropertyVideo';
 import SaleAllProperty from './SaleAllProperty';
+import PayNow from './PayNow';
 import { useLocation, useNavigate } from 'react-router-dom';
 
 
@@ -104,6 +105,7 @@ useEffect(() => {
   const topBarItems = [
     { icon: logo, text: 'Commercial / Lease', content: 'topPyProperty', isAnimated: false },
     { icon: logo2, text: 'All Property', content: 'topAllProperty', isAnimated: false },
+    { iconNode: <FaUmbrellaBeach size={26} color="#FF7043" />, text: 'Tourist Place', route: '/exclusiveDetail', isAnimated: false },
     { icon: logo3, text: 'Tenant List', content: 'topMBuyerList', isAnimated: false },
     { icon: mapicon, text: 'Property Map', content: 'topPropertyMap', isAnimated: false },
     { icon: salee, text: 'sale Property', content: 'topSaleProperty', isAnimated: false },
@@ -210,7 +212,7 @@ useEffect(() => {
                width: "100%",
                maxWidth: "470px",
                overflowY: "auto",
-               paddingTop: "144px",
+               paddingTop: "100px",
                paddingBottom: "90px",
                scrollbarWidth: "none",
                position: "relative"
@@ -237,6 +239,8 @@ useEffect(() => {
           </motion.div>
         </AnimatePresence>
       </div>
+  {/* Floating Pay Now button + amount modal */}
+  <PayNow phoneNumber={phoneNumber} />
   {/* Bottom Navigation */}
   <div
     // style={{
@@ -270,6 +274,9 @@ useEffect(() => {
     />
   </div>
 </div>
+
+{/* AI assistant is now mounted app-wide in RouterPage.jsx (outside <Routes>) so
+    voice mode survives navigation to the detail page and back. */}
 
 </div>
 

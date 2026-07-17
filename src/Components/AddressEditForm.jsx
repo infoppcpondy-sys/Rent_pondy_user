@@ -3,6 +3,7 @@ import React, { useState, useEffect, useRef } from "react";
 import axios from "axios";
 import { Button } from "react-bootstrap";
 import { useLocation, useNavigate, useParams } from "react-router-dom";
+import { getActiveBase, baseToPath } from "../utils/cityBase";
 import { RiLayoutLine } from 'react-icons/ri';
 import { TbArrowLeftRight, TbFileDescription, TbMapPinCode, TbToolsKitchen, TbWheelchair, TbWorldLongitude } from 'react-icons/tb';
 import {FaChevronLeft , FaMoneyBillWave,  FaBath, FaChartArea, FaPhone ,FaEdit,FaRoad,FaDoorClosed,FaMapPin, FaHome, FaUserAlt, FaEnvelope,  FaRupeeSign , FaFileVideo , FaToilet,FaCar,FaBed,  FaCity , FaTimes, FaClock, FaMapMarkedAlt, FaExchangeAlt, FaCompass, FaHandshake, FaTag, FaPhoneAlt, FaSpinner} from 'react-icons/fa';
@@ -1438,7 +1439,7 @@ const shouldHideField = (fieldName) =>
   
   //     setMessage(response.data.message);
   //     setTimeout(() => {
-  //       navigate('/mobileviews');
+  //       navigate('/pondicherry');
   //     }, 2000);
   
   //   } catch (error) {
@@ -1542,7 +1543,7 @@ const handleSubmit = async (e) => {
     setMessage(response.data.message);
 
     setTimeout(() => {
-      navigate('/mobileviews');
+      navigate(baseToPath(getActiveBase()));
     }, 2000);
 
   } catch (error) {

@@ -2163,7 +2163,9 @@
 
 
 
-import React, { useState, useEffect , useRef} from "react";
+import React, { useState, useEffect, useMemo, useRef } from "react";
+import { getChennaiAreaPincodeMap, getDefaultCity } from "../utils/areaPincode";
+import { getActiveBase } from "../utils/cityBase";
 import axios from "axios";
 import { MdAddPhotoAlternate, MdOutlineClose, MdStraighten } from "react-icons/md";
 import { FaFileVideo } from "react-icons/fa";
@@ -2212,7 +2214,7 @@ function EditProperty() {
     phoneNumber: "",
     rentalPropertyAddress: "",
     state: "",
-    city: "",
+    city: getDefaultCity(),
     district: "",
     area: "",
     streetName: "",
@@ -2248,6 +2250,7 @@ function EditProperty() {
     carParking: "",
     bestTimeToCall: "",
     rentalAmount:"",
+    callForRent: false,
     length:"",
     breadth:"",
     totalArea:"",
@@ -2255,8 +2258,9 @@ function EditProperty() {
 locationCoordinates:""
   });
 
-  // Area to Pincode mapping
-  const areaPincodeMap = {
+  // Pondicherry area -> pincode list used by the autosuggest. CH users
+  // swap this out for the Chennai list (see useMemo below).
+  const PONDY_AREA_PINCODE_MAP = {
     "Abishegapakkam": "605007",
     "Ariyankuppam": "605007",
     "Arumbarthapuram": "605110",
@@ -2330,6 +2334,13 @@ locationCoordinates:""
     "Viranam": "605106",
     "Yanam": "533464",
   };
+  const areaPincodeMap = useMemo(
+    () => (getActiveBase() === 'CH' ? getChennaiAreaPincodeMap() : PONDY_AREA_PINCODE_MAP),
+    []
+  );
+
+  // Cross-city guard: PY user opening a CH record (or vice versa).
+  const [crossCityBlock, setCrossCityBlock] = useState(null);
 
   // Area suggestions state
   const [areaSuggestions, setAreaSuggestions] = useState([]);
@@ -2648,7 +2659,7 @@ const handleClear = () => {
       latitude: '',
       longitude: '',
       pinCode: '',
-      city: '',
+      city: getDefaultCity(),
       area: '',
       nagar: '',
       streetName: '',
@@ -2736,6 +2747,14 @@ const handleClear = () => {
       try {
         const response = await axios.get(`${process.env.REACT_APP_API_URL}/fetch-data?rentId=${rentId}`);
         const data = response.data.user;
+        // Block the edit if a PY/CH user opened a record from the other
+        // city — show a guard instead of populating the form.
+        const activeScope = getActiveBase();
+        const recordBase = data && data.base ? data.base : 'PY';
+        if (recordBase !== activeScope) {
+          setCrossCityBlock({ recordBase, activeScope });
+          return;
+        }
 
         setFormData({
           phoneNumber: data.phoneNumber || "",
@@ -2744,6 +2763,7 @@ const handleClear = () => {
           city: data.city || "",
           district: data.district || "",
           rentalAmount:data.rentalAmount || "",
+          callForRent: !!data.callForRent,
           area: data.area || "",
           streetName: data.streetName || "",
           doorNumber: data.doorNumber || "",
@@ -3289,6 +3309,31 @@ const handleClear = () => {
         )
       );
     };
+
+  // City-scope guard. Shown before the form when the loaded property
+  // doesn't belong to the active city scope.
+  if (crossCityBlock) {
+    const recordCity = crossCityBlock.recordBase === 'CH' ? 'Chennai' : 'Pondicherry';
+    const myCity = crossCityBlock.activeScope === 'CH' ? 'Chennai' : 'Pondicherry';
+    return (
+      <div className="container py-5">
+        <div className="alert alert-warning text-center shadow-sm" style={{ maxWidth: 520, margin: '40px auto', borderRadius: 12 }}>
+          <h4 className="mb-3">Wrong city for this property</h4>
+          <p className="mb-2">
+            This property belongs to <strong>{recordCity}</strong>, but you
+            are browsing <strong>{myCity}</strong>.
+          </p>
+          <p className="mb-3 text-muted" style={{ fontSize: 14 }}>
+            Switch to {recordCity} from the city tabs at the top, then re-open it.
+          </p>
+          <button className="btn btn-primary" onClick={() => window.history.back()}>
+            Go back
+          </button>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="d-flex align-items-center justify-content-center">
     <div style={{
@@ -3673,17 +3718,36 @@ const handleClear = () => {
   <div className="input-card p-0 rounded-1" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', width: '100%',  border: '1px solid #4F4B7E', background:"#fff" }}>
     <FaRupeeSign className="input-icon" style={{color: '#4F4B7E', marginLeft:"10px"}} />
     <input
-      type="tel"
-      name="price"
-      value={formData.rentalAmount}
+      type={formData.callForRent ? "text" : "tel"}
+      name="rentalAmount"
+      value={formData.callForRent ? "Call Owner" : formData.rentalAmount}
       onChange={handleFieldChange}
       className="form-input m-0"
       placeholder="price"
+      disabled={!!formData.callForRent}
       style={{ flex: '1 0 80%', padding: '8px', fontSize: '14px', border: 'none', outline: 'none' }}
     />
   </div>
+
+  {/* Call Owner toggle */}
+  <label style={{ display: 'flex', alignItems: 'center', gap: '8px', marginTop: '6px', fontSize: '14px', color: '#4F4B7E', cursor: 'pointer' }}>
+    <input
+      type="checkbox"
+      checked={!!formData.callForRent}
+      onChange={(e) => {
+        const checked = e.target.checked;
+        setFormData(prev => ({
+          ...prev,
+          callForRent: checked,
+          rentalAmount: checked ? 0 : prev.rentalAmount,
+        }));
+        if (checked && typeof setPriceInWords === 'function') setPriceInWords("");
+      }}
+    />
+    Call Owner (use when price is on request)
+  </label>
   </div>
-  {priceInWords && (
+  {priceInWords && !formData.callForRent && (
         <p style={{ fontSize: "14px", color: "#4F4B7E", marginTop: "5px" }}>
           {priceInWords}
         </p>

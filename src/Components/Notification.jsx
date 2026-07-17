@@ -1,6 +1,7 @@
-
+﻿
 import React, { useEffect, useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
+import { getActiveBase, baseToPath } from "../utils/cityBase";
 import axios from "axios";
 import { FaArrowLeft, FaChevronLeft } from "react-icons/fa";
 import logo from "../Assets/Sale Property-01.png";
@@ -96,7 +97,7 @@ useEffect(() => {
 }, [message]);
 
   const handlePageNavigation = () => {
-    navigate("/mobileviews");
+    navigate(baseToPath(getActiveBase()));
   };
 
   // const fetchUnreadNotifications = async (phoneNumber) => {
@@ -442,7 +443,7 @@ const cancelDelete = () => {
             {new Date(notification.createdAt).toLocaleString()}
           </p>
           <h6 className="mb-1 text-primary">
-            {notification.isRead ? "🔵 Read" : "🔴 Unread"}
+            {notification.isRead ? "ðŸ”µ Read" : "ðŸ”´ Unread"}
           </h6>
         </div>
       </div>

@@ -18,7 +18,7 @@ export default function Apps() {
     <Router>
       <Routes>
         <Route path="/" element={<Login />} />
-        <Route path="/mobileviews" element={<MobileView />} />
+        <Route path="/pondicherry" element={<MobileView />} />
         <Route path="/add" element={<AddProperties />} />
         <Route path='/card' element={<PropertyCard />} />
         <Route path='/my' element={<MyProperty />} />

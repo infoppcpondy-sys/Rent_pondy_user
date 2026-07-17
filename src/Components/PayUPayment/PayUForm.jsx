@@ -1,4 +1,4 @@
-
+﻿
 
 
 
@@ -20,7 +20,7 @@
 //     amount = '',
 //     phoneNumber = '',
 //     planId = '',
-//     rentId = '' // ✅ make sure this exists
+//     rentId = '' // âœ… make sure this exists
 //   } = location.state || {};
 
 //   const [form, setForm] = useState({
@@ -227,6 +227,7 @@
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
 import { useLocation, useNavigate } from 'react-router-dom';
+import { getActiveBase, baseToPath } from '../../utils/cityBase';
 
 const PayUForm = () => {
   const location = useLocation();
@@ -383,7 +384,7 @@ const PayUForm = () => {
       }));
 
       setTimeout(() => {
-        navigate('/mobileviews');
+        navigate(baseToPath(getActiveBase()));
       }, 3000);
 
     } catch (error) {

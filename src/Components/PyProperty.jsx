@@ -3073,6 +3073,9 @@ import minprice from "../Assets/Price Mini-01.png";
 import bestTimeToCall from '../Assets/best_time.png';
 import pinCode from '../Assets/alt_mob.PNG';
 import FloatingSearchButton from './FloatingSearchButton';
+import TenantSearchModal from './TenantSearchModal';
+import { getActiveBase } from '../utils/cityBase';
+import { chennaiPincodeRows, CHENNAI_DIRECTIONS } from '../chennaiPincodes';
 import locationCoordinates from '../Assets/alt_mob.PNG';
 import rentType from '../Assets/rent_type.PNG';
 import pet from '../Assets/pet.PNG';
@@ -3089,9 +3092,13 @@ import maplocation from "../Assets/maplocation.png";
 import NoPropertyPopup from './NoPropertyPopup';
 
 const PyProperty = () => {
+    const [isTenantSearchOpen, setIsTenantSearchOpen] = useState(false);
     const [imageCounts, setImageCounts] = useState({}); // Store image count for each property
   
   const [properties, setProperties] = useState([]);
+  // Pincode counts for the area-ticker marquee. Pulled from the same endpoint
+  // the admin Search Pincode page uses so the numbers always match.
+  const [marqueePincodeCounts, setMarqueePincodeCounts] = useState({});
     const [uploads, setUploads] = useState([]);
   const [mergedData, setMergedData] = useState([]);
 
@@ -4157,12 +4164,166 @@ useEffect(() => {
        setNavbarSearchValue('');
      };
 
+  // Fetch pincode counts for the area-ticker marquee from the same endpoint
+  // the admin Search Pincode page uses, so the numbers always match.
+  useEffect(() => {
+    let cancelled = false;
+
+    const fetchMarqueeCounts = async () => {
+      try {
+        const res = await axios.get(
+          `${process.env.REACT_APP_API_URL}/fetch-active-users-datas-all-rent`,
+          // Bypass any HTTP / browser cache so the ticker always reflects
+          // the latest count.
+          { headers: { 'Cache-Control': 'no-cache' }, params: { _t: Date.now() } }
+        );
+        if (cancelled) return;
+        const list = res.data?.users || [];
+        const counts = {};
+        list.forEach((property) => {
+          if (property.isDeleted) return;
+          const pinCode =
+            property.pinCode ||
+            property.pincode ||
+            property.postalCode ||
+            property.zipCode ||
+            property.propertyPincode ||
+            (property.address && property.address.pincode) ||
+            (property.address && property.address.pinCode);
+          if (!pinCode) return;
+          const pinStr = String(pinCode).trim();
+          counts[pinStr] = (counts[pinStr] || 0) + 1;
+        });
+        setMarqueePincodeCounts(counts);
+      } catch (err) {
+        console.error('Marquee pincode count fetch failed:', err);
+      }
+    };
+
+    fetchMarqueeCounts();
+    const intervalId = setInterval(fetchMarqueeCounts, 30000);
+    const onFocus = () => fetchMarqueeCounts();
+    window.addEventListener('focus', onFocus);
+
+    return () => {
+      cancelled = true;
+      clearInterval(intervalId);
+      window.removeEventListener('focus', onFocus);
+    };
+  }, []);
+
+  // Area-wise approved-property counts (by pincode) used by the marquee ticker.
+  // For Pondicherry: same pincode → area mapping as the admin SearchPincode
+  // page, with the combined cards (605001+605002, 605006+605009).
+  // For Chennai: aggregate counts by direction (Central / North / South /
+  // West) so the marquee mirrors the 4 direction cards from the admin's
+  // /search-pincode-chennai page.
+  const areaPropertySummary = useMemo(() => {
+    const activeBase = getActiveBase();
+
+    if (activeBase === 'CH') {
+      // pincode -> direction lookup, built once from the bundled Chennai data.
+      const pincodeToDirection = {};
+      chennaiPincodeRows.forEach((row) => {
+        if (!(row.pincode in pincodeToDirection)) {
+          pincodeToDirection[row.pincode] = row.direction;
+        }
+      });
+
+      // Sum counts per direction. Pincodes that aren't tagged in our Chennai
+      // data are skipped — they'd usually be Pondy stragglers leaking through.
+      const directionTotals = {};
+      CHENNAI_DIRECTIONS.forEach((d) => { directionTotals[d] = 0; });
+      Object.entries(marqueePincodeCounts).forEach(([code, count]) => {
+        const dir = pincodeToDirection[code];
+        if (dir) directionTotals[dir] += count;
+      });
+
+      const areaList = CHENNAI_DIRECTIONS
+        .map((d) => ({ label: d, count: directionTotals[d] }))
+        .filter((e) => e.count > 0)
+        .sort((a, b) => b.count - a.count)
+        .map(({ label, count }) => `${label} - ${count}`);
+
+      return { areaList };
+    }
+
+    const pincodeToAreaName = {
+      '605001': 'White Town',
+      '605002': 'Pondicherry',
+      '605003': 'Muthialpet',
+      '605004': 'Mudaliarpet',
+      '605005': 'Nellithope',
+      '605006': 'Gorimedu',
+      '605007': 'Ariyankuppam',
+      '605008': 'Lawspet',
+      '605009': 'Kadirkamam',
+      '605010': 'Moolakulam',
+      '605011': 'Rainbow Nagar',
+      '605013': 'Saram',
+      '605104': 'Kottakuppam',
+      '605110': 'Villanur',
+    };
+
+    // Same combined cards the admin Search Pincode page uses.
+    const combinedPairs = [
+      { codes: ['605001', '605002'], label: 'White Town & Pondicherry' },
+      { codes: ['605006', '605009'], label: 'Gorimedu & Kadirkamam' },
+    ];
+    const combinedSubPincodes = new Set(
+      combinedPairs.flatMap((p) => p.codes)
+    );
+
+    const entries = [];
+    combinedPairs.forEach(({ codes, label }) => {
+      const total = codes.reduce(
+        (sum, c) => sum + (marqueePincodeCounts[c] || 0),
+        0
+      );
+      if (total > 0) entries.push({ label, count: total });
+    });
+    Object.entries(pincodeToAreaName).forEach(([code, name]) => {
+      if (combinedSubPincodes.has(code)) return;
+      const count = marqueePincodeCounts[code] || 0;
+      if (count > 0) entries.push({ label: name, count });
+    });
+
+    const areaList = entries
+      .sort((a, b) => b.count - a.count)
+      .map(({ label, count }) => `${label} - ${count}`);
+
+    return { areaList };
+  }, [marqueePincodeCounts]);
+
   return (
     <Container fluid className="p-0 w-100 d-flex align-items-center justify-content-center ">
 
       
       <Row className="g-3 w-100 ">
-        {/* Modern Horizontal Search Bar */}
+        {/* Exclusive Ticker */}
+        <Col lg={12} className="p-0 m-0">
+          <div
+            style={{
+              height: "40px",
+              display: "flex",
+              alignItems: "center",
+              background: "linear-gradient(90deg,#0f2027,#203a43,#2c5364)",
+              color: "#fff",
+              borderRadius: "8px",
+              padding: "0 10px",
+              fontWeight: "500",
+            }}
+          >
+            <marquee behavior="scroll" direction="left" scrollamount="6">
+              {areaPropertySummary.areaList.length > 0 && (
+                <>✨&nbsp; {areaPropertySummary.areaList.join('  |  ')} &nbsp;✨</>
+              )}
+            </marquee>
+          </div>
+        </Col>
+
+        {/* Modern Horizontal Search Bar - commented out */}
+        {false && (
         <Col lg={12} className="p-0 m-0">
           <div style={{
             width: '100%',
@@ -4341,90 +4502,9 @@ useEffect(() => {
             </div>
           </div>
         </Col>
+        )}
         <Col lg={12} className="d-flex align-items-center justify-content-center">
            
-         <div
-     className="d-flex flex-column justify-content-center align-items-center"
-     data-bs-toggle="modal"
-     data-bs-target="#propertyModal"
-     style={{
-       height: '50px',
-       width: '50px',
-       background: '#4F4B7E',
-       borderRadius: '50%',
-       position: 'fixed',
-       right: 'calc(50% - 187.5px + 10px)', // Center - half of 375px + some offset
-       bottom: '15%',
-       zIndex: '1',
-     }}
-   >
-     <BiSearchAlt fontSize={24} color="#fff" />
-   </div> 
-    {/* Modal */}
-    <div
-      className="modal fade"
-      id="propertyModal"
-      tabIndex="-1"
-      data-bs-backdrop="false"
-      data-bs-keyboard="false"
-      style={{  backgroundColor: 'rgba(64, 64, 64, 0.9)', // white with 90% opacity
-        backdropFilter: 'blur(1px)', // optional for a frosted-glass effect
-    }}
-    >
-      <div className="modal-dialog modal-dialog-centered">
-        <div className="modal-content rounded-5 shadow" 
-         style={{
-          width: "350px",
-          margin: "0 auto", // centers horizontally
-         
-        }}    >
-          <div className="modal-body py-4">
-            <div className="d-grid gap-2 mb-2">
-              {/* Search Property - Open another popup */}
-              <button style={{background:"#DFDFDF" , color:"#5E5E5E" , fontWeight:600 , fontSize:"15px"}}
-                className="btn btn-light border rounded-2 py-2 d-flex align-items-center justify-content-start ps-3 mb-3"
-                data-bs-toggle="modal"
-                data-bs-target="#filterPopup" // Nested modal
-              >
-                <FaHome className="me-2" /> Search Property
-              </button>
-    
-              {/* Tenant Search */}
-              <button style={{background:"#DFDFDF" , color:"#5E5E5E" , fontWeight:600 , fontSize:"15px"}}
-              className="btn btn-light border rounded-2 py-2 d-flex align-items-center justify-content-start ps-3 mb-3"
-                    onClick={() => navigate(`/tenant-search`)}
-    >
-                <FaUsers className="me-2" /> Tenant Search
-              </button>
-    
-              {/* Quick Sort */}
-              <button style={{background:"#DFDFDF" , color:"#5E5E5E" , fontWeight:600 , fontSize:"15px"}}
-              className="btn btn-light border rounded-2 py-2 d-flex align-items-center justify-content-start ps-3 mb-3"
-                              onClick={() => navigate(`/Sort-Property`)}
-    >
-                <FaSortAmountDownAlt className="me-2" /> Quick Sort
-              </button>
-    
-              {/* Property Assistance */}
-              <button style={{background:"#DFDFDF" , color:"#5E5E5E" , fontWeight:600 , fontSize:"15px"}}
-              className="btn btn-light border rounded-2 py-2 d-flex align-items-center justify-content-start ps-3 mb-3"
-          onClick={() => navigate(`/buyer-assistance`)}
-          >
-                <FaHeadset className="me-2" /> Property Assistance
-              </button>
-            </div>
-    
-            {/* Cancel */}
-            <div className="text-center" >
-              <button className="btn btn-primary rounded-2 px-4 mt-2" data-bs-dismiss="modal"
-              style={{ fontWeight:500 , fontSize:"10px"}}>
-                CANCEL
-              </button>
-            </div>
-          </div>
-        </div>
-      </div>
-    </div>  
  {/* Filter Popup (Nested Modal) */}
  <div
    className="modal fade"
@@ -6831,6 +6911,10 @@ justifyContent: "space-between",
       </Col>
       </Row>
       <FloatingSearchButton />
+      <TenantSearchModal
+        isOpen={isTenantSearchOpen}
+        onClose={() => setIsTenantSearchOpen(false)}
+      />
       <style>{`
         input::placeholder {
           color: #9b94d4 !important;

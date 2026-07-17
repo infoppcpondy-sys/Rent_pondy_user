@@ -1,10 +1,11 @@
-
+﻿
 
 
 
 import React, { useEffect, useState } from 'react';
 import axios from 'axios';
 import { useNavigate } from 'react-router-dom';
+import { getActiveBase, baseToPath } from '../utils/cityBase';
 import { FaArrowLeft, FaChevronLeft } from 'react-icons/fa';
 import { GoCheckCircleFill } from "react-icons/go";
 
@@ -143,7 +144,7 @@ useEffect(() => {
   // };
 
   const handleBackNavigation = () => {
-    navigate("/mobileviews");
+    navigate(baseToPath(getActiveBase()));
   };
 
   const getExpiryMessage = (payUdate, durationDays) => {
@@ -237,7 +238,7 @@ useEffect(() => {
                   {p.paymentData ? (
                     <>
                       <p className='m-0' style={styles.infoRow}><strong>PayU Status:</strong> {p.paymentData.payustatususer}</p>
-                      <p className='m-0' style={styles.infoRow}><strong>Amount:</strong> ₹{p.paymentData.amount}</p>
+                      <p className='m-0' style={styles.infoRow}><strong>Amount:</strong> â‚¹{p.paymentData.amount}</p>
                       <p className='m-0' style={styles.infoRow}><strong>Txn ID:</strong> {p.paymentData.txnid}</p>
                       <p className='m-0' style={styles.infoRow}><strong>PayU Date:</strong> {formatDate(p.paymentData.payUdate)}</p>
                       <p className='m-0' style={styles.infoRow}><strong>Email:</strong> {p.paymentData.email || "N/A"}</p>

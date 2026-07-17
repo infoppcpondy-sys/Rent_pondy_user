@@ -32,7 +32,7 @@ const MyAccount = () => {
     
   
       window.open(
-        `https://rentpondy.com/mobileviews?phone=${encodeURIComponent(phonenumber)}`,
+        `https://rentpondy.com/pondicherry?phone=${encodeURIComponent(phonenumber)}`,
         '_blank' // This opens in a new tab
       );
 
